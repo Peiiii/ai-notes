@@ -1,11 +1,12 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Note, AISummary, Todo, KnowledgeCard, ChatMessage, ViewMode } from './types';
+import { Note, AISummary, Todo, KnowledgeCard, ChatMessage, ViewMode, PulseReport } from './types';
 import useLocalStorage from './hooks/useLocalStorage';
-import { generateSummary, generateTitleForNote, generateChatResponse } from './services/geminiService';
+import { generateSummary, generateTitleForNote, generateChatResponse, generatePulseReport } from './services/geminiService';
 import NoteList from './components/NoteList';
 import NoteEditor from './components/NoteEditor';
 import Studio from './components/Studio';
 import ChatView from './components/ChatView';
+import PulseReportModal from './components/PulseReportModal';
 
 function simpleHash(str: string): string {
   let hash = 0;
@@ -18,6 +19,7 @@ function simpleHash(str: string): string {
 }
 
 const TITLE_GENERATION_LENGTH_THRESHOLD = 70;
+const PULSE_INTERVAL = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 function App() {
   const [notes, setNotes] = useLocalStorage<Note[]>('ai-notes-app', []);
@@ -33,10 +35,26 @@ function App() {
   
   const [notesNeedingTitle, setNotesNeedingTitle] = useState<Map<string, string>>(new Map());
 
+  const [isLoadingPulse, setIsLoadingPulse] = useState(false);
+  const [lastPulseTimestamp, setLastPulseTimestamp] = useLocalStorage<number | null>('ai-notes-pulse-timestamp', null);
+  const [pulseReports, setPulseReports] = useLocalStorage<PulseReport[]>('ai-notes-pulse-reports', []);
+  const [viewingPulseReport, setViewingPulseReport] = useState<PulseReport | null>(null);
+
   const activeNote = useMemo(
     () => notes.find((note) => note.id === activeNoteId) || null,
     [notes, activeNoteId]
   );
+  
+  // Effect for auto-generating Pulse Report
+  useEffect(() => {
+    const now = Date.now();
+    const shouldAutoGenerate = !lastPulseTimestamp || (now - lastPulseTimestamp > PULSE_INTERVAL);
+    if (shouldAutoGenerate && notes.length > 2) { // Only run if there's enough data
+      console.log("Auto-generating weekly Pulse report...");
+      handleGeneratePulse(true); // isAuto flag to prevent view switching
+    }
+  }, []); // Runs once on app startup
+
 
   useEffect(() => {
     if (notesNeedingTitle.size === 0) {
@@ -70,14 +88,14 @@ function App() {
     });
   }, [notesNeedingTitle, setNotes]);
 
-  const handleNewNote = (title: string = '', content: string = '') => {
+  const handleNewNote = () => {
     const newNote: Note = {
       id: crypto.randomUUID(),
-      title,
-      content,
+      title: '',
+      content: '',
       createdAt: Date.now(),
     };
-    setNotes([newNote, ...notes]);
+    setNotes(prevNotes => [newNote, ...prevNotes]);
     setActiveNoteId(newNote.id);
     setViewMode('editor');
   };
@@ -138,7 +156,15 @@ function App() {
   };
 
   const handleCardToNote = (card: KnowledgeCard) => {
-    handleNewNote(card.title, card.content);
+    const newNote: Note = {
+      id: crypto.randomUUID(),
+      title: card.title,
+      content: card.content,
+      createdAt: Date.now(),
+    };
+    setNotes(prevNotes => [newNote, ...prevNotes]);
+    setActiveNoteId(newNote.id);
+    setViewMode('editor');
   };
   
   const handleShowStudio = async () => {
@@ -190,19 +216,19 @@ function App() {
       role: 'user',
       content: message,
     };
-
-    const updatedHistory = [...chatHistory, userMessage];
-    setChatHistory(updatedHistory);
+    
+    const currentHistory = [...chatHistory, userMessage];
+    setChatHistory(currentHistory);
     setIsChatting(true);
 
     try {
-      const responseContent = await generateChatResponse(notes, updatedHistory, message);
+      const responseContent = await generateChatResponse(notes, currentHistory, message);
       const modelMessage: ChatMessage = {
         id: crypto.randomUUID(),
         role: 'model',
         content: responseContent,
       };
-      setChatHistory([...updatedHistory, modelMessage]);
+       setChatHistory(prevHistory => [...prevHistory, modelMessage]);
     } catch (error) {
       console.error("Chat failed:", error);
       const errorMessage: ChatMessage = {
@@ -210,11 +236,41 @@ function App() {
         role: 'model',
         content: "Sorry, I encountered an error. Please try again.",
       };
-      setChatHistory([...updatedHistory, errorMessage]);
+      setChatHistory(prevHistory => [...prevHistory, errorMessage]);
     } finally {
       setIsChatting(false);
     }
   };
+
+  const handleGeneratePulse = async (isAuto = false) => {
+    setIsLoadingPulse(true);
+    try {
+      const reportData = await generatePulseReport(notes);
+      const newReport: PulseReport = {
+        id: crypto.randomUUID(),
+        ...reportData,
+        createdAt: Date.now(),
+      };
+      setPulseReports(prev => [newReport, ...prev]);
+      setLastPulseTimestamp(Date.now());
+    } catch (error) {
+      console.error("Pulse report generation failed:", error);
+      if (!isAuto) {
+        alert("Failed to generate Pulse Report. Please check the console for details.");
+      }
+    } finally {
+      setIsLoadingPulse(false);
+    }
+  };
+  
+  const handleViewPulseReport = (report: PulseReport) => {
+    setViewingPulseReport(report);
+  };
+  
+  const handleClosePulseReport = () => {
+    setViewingPulseReport(null);
+  }
+
 
   const renderMainView = () => {
     switch (viewMode) {
@@ -227,6 +283,10 @@ function App() {
             onToggleTodo={handleToggleTodo}
             onAdoptTodo={handleAdoptTodo}
             onCardToNote={handleCardToNote}
+            isLoadingPulse={isLoadingPulse}
+            onGeneratePulse={handleGeneratePulse}
+            pulseReports={pulseReports}
+            onViewPulseReport={handleViewPulseReport}
           />
         );
       case 'chat':
@@ -250,7 +310,7 @@ function App() {
           notes={notes}
           activeNoteId={activeNoteId}
           onSelectNote={handleSelectNote}
-          onNewNote={() => handleNewNote()}
+          onNewNote={handleNewNote}
           onDeleteNote={handleDeleteNote}
           onShowStudio={handleShowStudio}
           onShowChat={handleShowChat}
@@ -259,6 +319,7 @@ function App() {
         />
       </div>
       <main className="flex-1">{renderMainView()}</main>
+      <PulseReportModal report={viewingPulseReport} onClose={handleClosePulseReport} />
     </div>
   );
 }

@@ -163,3 +163,66 @@ model:`;
         throw new Error("Failed to get chat response from AI.");
     }
 }
+
+
+const pulseReportSchema = {
+    type: Type.OBJECT,
+    properties: {
+        title: {
+            type: Type.STRING,
+            description: "A compelling title for the report, like 'Your Weekly Pulse' or 'Thought Trajectory'.",
+        },
+        content: {
+            type: Type.STRING,
+            description: "A narrative report, written in markdown, summarizing the user's thought evolution."
+        }
+    },
+    required: ["title", "content"]
+};
+
+
+export async function generatePulseReport(notes: Note[]): Promise<{ title: string; content: string }> {
+    if (notes.length === 0) {
+        return { title: "Not Enough Data", content: "Write at least one note to generate your first Pulse report." };
+    }
+
+    const notesContent = notes
+        .map(note => `Date: ${new Date(note.createdAt).toISOString().split('T')[0]}\nTitle: ${note.title || 'Untitled'}\nContent: ${note.content}`)
+        .join('\n\n---\n\n');
+    
+    const prompt = `
+You are a highly perceptive thought analyst. Your task is to analyze a user's entire collection of notes and generate a short, insightful "Pulse Report" about their intellectual journey.
+The report should be a narrative, not just a list. Be insightful and help the user see the bigger picture of their own thinking.
+
+**Analyze the following aspects:**
+1.  **Theme Evolution:** Identify the main topics. Have they shifted over time? Is there a new, emerging focus this week compared to older notes?
+2.  **New Connections:** Find surprising links between different notes, even if they were written far apart in time. Point out how a new idea might be an evolution of an older one.
+3.  **Forgotten Threads:** Resurface a significant idea, task, or topic from an older note that the user hasn't touched on recently. Gently remind them of it.
+4.  **Exploration Suggestions:** Based on their recurring interests, suggest one or two new questions or directions for them to explore.
+
+**Formatting Rules:**
+-   Use Markdown for formatting (e.g., # for title, ## for subtitles, * for lists).
+-   The tone should be encouraging, insightful, and like a personal analyst.
+-   IMPORTANT: Respond in the primary language used in the provided notes.
+-   Return the result as a single JSON object.
+
+Here are all the notes:
+${notesContent}
+`;
+
+    try {
+        const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: pulseReportSchema,
+            },
+        });
+        const jsonText = response.text.trim();
+        return JSON.parse(jsonText);
+    } catch (error) {
+        console.error("Error generating Pulse Report with Gemini:", error);
+        throw new Error("Failed to generate Pulse Report from AI.");
+    }
+}

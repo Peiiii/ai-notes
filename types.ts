@@ -1,4 +1,4 @@
-export type ViewMode = 'editor' | 'studio' | 'chat';
+export type ViewMode = 'editor' | 'studio' | 'chat' | 'pulse';
 
 export interface Note {
   id: string;
@@ -32,4 +32,11 @@ export interface ChatMessage {
   id: string;
   role: 'user' | 'model';
   content: string;
+}
+
+export interface PulseReport {
+  id: string;
+  title: string;
+  content: string;
+  createdAt: number;
 }
