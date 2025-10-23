@@ -53,48 +53,6 @@ const Studio: React.FC<StudioProps> = ({
         <p className="text-slate-500 dark:text-slate-400 mb-8">Your notes, synthesized. Ideas, tasks, and new perspectives.</p>
         
         <div className="space-y-12">
-            <section>
-              <h2 className="text-2xl font-semibold flex items-center gap-3 text-slate-800 dark:text-slate-100 mb-4">
-                <PulseIcon className="w-6 h-6" />
-                The Pulse
-              </h2>
-              <div className="bg-white dark:bg-slate-800/50 p-4 rounded-lg shadow-sm">
-                <p className="text-sm text-slate-600 dark:text-slate-300 mb-4">Get a periodic, narrative report of your thought evolution, new connections, and forgotten threads.</p>
-                <button 
-                  onClick={onGeneratePulse}
-                  disabled={isLoadingPulse}
-                  className="w-full flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-indigo-400 dark:disabled:bg-indigo-800 transition-colors"
-                >
-                  {isLoadingPulse ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                      Generating...
-                    </>
-                  ) : (
-                    'Generate New Pulse Report'
-                  )}
-                </button>
-                {sortedPulseReports.length > 0 && (
-                  <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
-                    <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-300 mb-2">Recent Reports</h3>
-                    <ul className="space-y-2">
-                      {sortedPulseReports.map(report => (
-                        <li key={report.id}>
-                          <button 
-                            onClick={() => onViewPulseReport(report)}
-                            className="w-full text-left p-2 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-                          >
-                            <p className="font-medium text-sm text-slate-800 dark:text-slate-100">{report.title}</p>
-                            <p className="text-xs text-slate-500 dark:text-slate-400">{new Date(report.createdAt).toLocaleString()}</p>
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            </section>
-        
           {!hasSummaryContent && !isLoadingPulse && pulseReports.length === 0 ? (
             <div className="text-center py-10">
               <h2 className="text-xl font-semibold text-slate-600 dark:text-slate-300">Start by creating some notes</h2>
@@ -190,6 +148,48 @@ const Studio: React.FC<StudioProps> = ({
                  ) : (
                   <p className="text-slate-500 dark:text-slate-400">No special insights or ideas found in your notes this time.</p>
                  )}
+              </section>
+
+              <section>
+                <h2 className="text-2xl font-semibold flex items-center gap-3 text-slate-800 dark:text-slate-100 mb-4">
+                  <PulseIcon className="w-6 h-6" />
+                  The Pulse
+                </h2>
+                <div className="bg-white dark:bg-slate-800/50 p-4 rounded-lg shadow-sm">
+                  <p className="text-sm text-slate-600 dark:text-slate-300 mb-4">Get a periodic, narrative report of your thought evolution, new connections, and forgotten threads.</p>
+                  <button 
+                    onClick={onGeneratePulse}
+                    disabled={isLoadingPulse}
+                    className="w-full flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-indigo-400 dark:disabled:bg-indigo-800 transition-colors"
+                  >
+                    {isLoadingPulse ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                        Generating...
+                      </>
+                    ) : (
+                      'Generate New Pulse Report'
+                    )}
+                  </button>
+                  {sortedPulseReports.length > 0 && (
+                    <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+                      <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-300 mb-2">Recent Reports</h3>
+                      <ul className="space-y-2">
+                        {sortedPulseReports.map(report => (
+                          <li key={report.id}>
+                            <button 
+                              onClick={() => onViewPulseReport(report)}
+                              className="w-full text-left p-2 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                            >
+                              <p className="font-medium text-sm text-slate-800 dark:text-slate-100">{report.title}</p>
+                              <p className="text-xs text-slate-500 dark:text-slate-400">{new Date(report.createdAt).toLocaleString()}</p>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
               </section>
             </>
           )}
