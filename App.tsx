@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Note, AISummary, Todo, KnowledgeCard, ChatMessage, ViewMode, PulseReport } from './types';
 import useLocalStorage from './hooks/useLocalStorage';
-import { generateSummary, generateTitleForNote, generateChatResponse, generatePulseReport } from './services/geminiService';
+import { generateSummary, generateTitleForNote, generateChatResponse, generatePulseReport, generateThreadResponse } from './services/geminiService';
 import NoteList from './components/NoteList';
 import NoteEditor from './components/NoteEditor';
 import Studio from './components/Studio';
@@ -39,6 +39,9 @@ function App() {
   const [lastPulseTimestamp, setLastPulseTimestamp] = useLocalStorage<number | null>('ai-notes-pulse-timestamp', null);
   const [pulseReports, setPulseReports] = useLocalStorage<PulseReport[]>('ai-notes-pulse-reports', []);
   const [viewingPulseReport, setViewingPulseReport] = useState<PulseReport | null>(null);
+  
+  const [isThreadVisible, setIsThreadVisible] = useState(false);
+  const [isChattingInThread, setIsChattingInThread] = useState(false);
 
   const activeNote = useMemo(
     () => notes.find((note) => note.id === activeNoteId) || null,
@@ -49,7 +52,7 @@ function App() {
   useEffect(() => {
     const now = Date.now();
     const shouldAutoGenerate = !lastPulseTimestamp || (now - lastPulseTimestamp > PULSE_INTERVAL);
-    if (shouldAutoGenerate && notes.length > 2) { // Only run if there's enough data
+    if (shouldAutoGenerate && notes.length > 0) { 
       console.log("Auto-generating weekly Pulse report...");
       handleGeneratePulse(true); // isAuto flag to prevent view switching
     }
@@ -98,12 +101,14 @@ function App() {
     setNotes(prevNotes => [newNote, ...prevNotes]);
     setActiveNoteId(newNote.id);
     setViewMode('editor');
+    setIsThreadVisible(false);
   };
 
   const handleDeleteNote = (id: string) => {
     setNotes(notes.filter((note) => note.id !== id));
     if (activeNoteId === id) {
       setActiveNoteId(null);
+      setIsThreadVisible(false);
     }
   };
 
@@ -134,11 +139,13 @@ function App() {
   const handleSelectNote = (id: string) => {
     setActiveNoteId(id);
     setViewMode('editor');
+    setIsThreadVisible(false);
   };
 
   const handleShowChat = () => {
     setViewMode('chat');
     setActiveNoteId(null);
+    setIsThreadVisible(false);
   };
 
   const handleToggleTodo = (id: string) => {
@@ -165,11 +172,13 @@ function App() {
     setNotes(prevNotes => [newNote, ...prevNotes]);
     setActiveNoteId(newNote.id);
     setViewMode('editor');
+    setIsThreadVisible(false);
   };
   
   const handleShowStudio = async () => {
       setViewMode('studio');
       setActiveNoteId(null);
+      setIsThreadVisible(false);
 
       const currentNotesHash = JSON.stringify(notes);
       
@@ -241,6 +250,68 @@ function App() {
       setIsChatting(false);
     }
   };
+  
+  const handleToggleThread = () => {
+    if (activeNoteId) {
+        setIsThreadVisible(prev => !prev);
+    }
+  };
+
+  const handleSendThreadMessage = async (message: string) => {
+      if (!message.trim() || !activeNote) return;
+
+      const userMessage: ChatMessage = {
+        id: crypto.randomUUID(),
+        role: 'user',
+        content: message,
+      };
+      
+      const updatedHistoryForAI = [...(activeNote.threadHistory || []), userMessage];
+
+      // Optimistically update UI with user message
+      setNotes(prevNotes => prevNotes.map(note => 
+          note.id === activeNote.id ? { ...note, threadHistory: updatedHistoryForAI } : note
+      ));
+      
+      setIsChattingInThread(true);
+
+      try {
+          const responseContent = await generateThreadResponse(activeNote, notes, updatedHistoryForAI, message);
+          
+          const modelMessage: ChatMessage = {
+              id: crypto.randomUUID(),
+              role: 'model',
+              content: responseContent,
+          };
+
+          // Update with model's response
+          setNotes(prevNotes => prevNotes.map(note => {
+              if (note.id === activeNote.id) {
+                  const finalHistory = [...updatedHistoryForAI, modelMessage];
+                  return { ...note, threadHistory: finalHistory };
+              }
+              return note;
+          }));
+
+      } catch (error) {
+        console.error("Thread chat failed:", error);
+        const errorMessage: ChatMessage = {
+          id: crypto.randomUUID(),
+          role: 'model',
+          content: "Sorry, I encountered an error in this thread. Please try again.",
+        };
+         setNotes(prevNotes => prevNotes.map(note => {
+          if (note.id === activeNote.id) {
+              const finalHistory = [...updatedHistoryForAI, errorMessage];
+              return { ...note, threadHistory: finalHistory };
+          }
+          return note;
+        }));
+      } finally {
+        setIsChattingInThread(false);
+      }
+  };
+
 
   const handleGeneratePulse = async (isAuto = false) => {
     setIsLoadingPulse(true);
@@ -299,7 +370,14 @@ function App() {
         );
       case 'editor':
       default:
-        return <NoteEditor note={activeNote} onUpdateNote={handleUpdateNote} />;
+        return <NoteEditor 
+          note={activeNote} 
+          onUpdateNote={handleUpdateNote}
+          isThreadVisible={isThreadVisible}
+          onToggleThread={handleToggleThread}
+          onSendThreadMessage={handleSendThreadMessage}
+          isChattingInThread={isChattingInThread}
+        />;
     }
   };
 

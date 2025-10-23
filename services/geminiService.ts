@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 import { Note, KnowledgeCard, ChatMessage } from '../types';
 
@@ -224,5 +223,48 @@ ${notesContent}
     } catch (error) {
         console.error("Error generating Pulse Report with Gemini:", error);
         throw new Error("Failed to generate Pulse Report from AI.");
+    }
+}
+
+export async function generateThreadResponse(activeNote: Note, allNotes: Note[], history: ChatMessage[], question: string): Promise<string> {
+    const allNotesContext = allNotes
+        .filter(note => note.id !== activeNote.id) // Exclude the active note
+        .map(note => `Title: ${note.title || 'Untitled'}\nContent: ${note.content}`)
+        .join('\n\n---\n\n');
+
+    const activeNoteContext = `Title: ${activeNote.title || 'Untitled'}\nContent: ${activeNote.content}`;
+
+    const historyContent = history.slice(-10).map(msg => `${msg.role}: ${msg.content}`).join('\n');
+
+    const prompt = `You are an AI assistant integrated into a note-taking app, acting as a collaborative partner on a specific note.
+Your primary focus is the "CURRENT NOTE IN FOCUS". Your secondary context is the "ENTIRE NOTE LIBRARY".
+Your goal is to help the user iterate, research, and expand on the ideas within the current note.
+
+Use the entire library for broader context or when the user asks you to connect ideas, but always prioritize the content of the current note in your responses.
+Be helpful, concise, and act as a creative and analytical partner.
+
+--- CONVERSATION THREAD HISTORY ---
+${historyContent}
+
+--- CURRENT NOTE IN FOCUS ---
+${activeNoteContext}
+
+--- ENTIRE NOTE LIBRARY (for context) ---
+${allNotesContext}
+
+--- USER'S NEW MESSAGE ---
+user: ${question}
+
+model:`;
+
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+        });
+        return response.text.trim();
+    } catch (error) {
+        console.error("Error generating thread response:", error);
+        throw new Error("Failed to get thread response from AI.");
     }
 }

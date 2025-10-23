@@ -5,6 +5,7 @@ export interface Note {
   title: string;
   content: string;
   createdAt: number;
+  threadHistory?: ChatMessage[];
 }
 
 export interface Todo {
