@@ -1,12 +1,11 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Note, AISummary, Todo, KnowledgeCard } from './types';
+import { Note, AISummary, Todo, KnowledgeCard, ChatMessage, ViewMode } from './types';
 import useLocalStorage from './hooks/useLocalStorage';
-import { generateSummary, generateTitleForNote } from './services/geminiService';
+import { generateSummary, generateTitleForNote, generateChatResponse } from './services/geminiService';
 import NoteList from './components/NoteList';
 import NoteEditor from './components/NoteEditor';
 import Studio from './components/Studio';
-
-type ViewMode = 'editor' | 'studio';
+import ChatView from './components/ChatView';
 
 function simpleHash(str: string): string {
   let hash = 0;
@@ -29,7 +28,9 @@ function App() {
   const [isLoadingAI, setIsLoadingAI] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('editor');
   
-  // State to queue notes for title generation
+  const [chatHistory, setChatHistory] = useLocalStorage<ChatMessage[]>('ai-notes-chathistory', []);
+  const [isChatting, setIsChatting] = useState(false);
+  
   const [notesNeedingTitle, setNotesNeedingTitle] = useState<Map<string, string>>(new Map());
 
   const activeNote = useMemo(
@@ -37,7 +38,6 @@ function App() {
     [notes, activeNoteId]
   );
 
-  // Effect to process the title generation queue
   useEffect(() => {
     if (notesNeedingTitle.size === 0) {
       return;
@@ -50,7 +50,6 @@ function App() {
           if (generatedTitle) {
             setNotes(prevNotes =>
               prevNotes.map(note => {
-                // Apply title only if the note is the correct one AND still has no title
                 if (note.id === id && !note.title) {
                   return { ...note, title: generatedTitle };
                 }
@@ -61,7 +60,6 @@ function App() {
         } catch (error) {
           console.error(`Failed to generate title for note ${id}:`, error);
         } finally {
-          // Remove from queue regardless of success/failure to prevent retries on the same content
           setNotesNeedingTitle(prevMap => {
             const newMap = new Map(prevMap);
             newMap.delete(id);
@@ -102,7 +100,6 @@ function App() {
       
       if (shouldGenerateTitle) {
         setNotesNeedingTitle(prevMap => {
-          // Only add if not already being processed to avoid duplicate calls
           if (!prevMap.has(id)) {
             const newMap = new Map(prevMap);
             newMap.set(id, updatedNote.content);
@@ -119,6 +116,11 @@ function App() {
   const handleSelectNote = (id: string) => {
     setActiveNoteId(id);
     setViewMode('editor');
+  };
+
+  const handleShowChat = () => {
+    setViewMode('chat');
+    setActiveNoteId(null);
   };
 
   const handleToggleTodo = (id: string) => {
@@ -180,6 +182,67 @@ function App() {
       }
   };
 
+  const handleSendMessage = async (message: string) => {
+    if (!message.trim()) return;
+
+    const userMessage: ChatMessage = {
+      id: crypto.randomUUID(),
+      role: 'user',
+      content: message,
+    };
+
+    const newHistory = [...chatHistory, userMessage];
+    setChatHistory(newHistory);
+    setIsChatting(true);
+
+    try {
+      const responseContent = await generateChatResponse(notes, newHistory, message);
+      const modelMessage: ChatMessage = {
+        id: crypto.randomUUID(),
+        role: 'model',
+        content: responseContent,
+      };
+      setChatHistory(prev => [...prev, modelMessage]);
+    } catch (error) {
+      console.error("Chat failed:", error);
+      const errorMessage: ChatMessage = {
+        id: crypto.randomUUID(),
+        role: 'model',
+        content: "Sorry, I encountered an error. Please try again.",
+      };
+      setChatHistory(prev => [...prev, errorMessage]);
+    } finally {
+      setIsChatting(false);
+    }
+  };
+
+  const renderMainView = () => {
+    switch (viewMode) {
+      case 'studio':
+        return (
+          <Studio
+            suggestedTodos={aiSummary?.todos || []}
+            myTodos={myTodos}
+            knowledgeCards={aiSummary?.knowledgeCards || []}
+            onToggleTodo={handleToggleTodo}
+            onAdoptTodo={handleAdoptTodo}
+            onCardToNote={handleCardToNote}
+          />
+        );
+      case 'chat':
+        return (
+          <ChatView
+            chatHistory={chatHistory}
+            isChatting={isChatting}
+            onSendMessage={handleSendMessage}
+          />
+        );
+      case 'editor':
+      default:
+        return <NoteEditor note={activeNote} onUpdateNote={handleUpdateNote} />;
+    }
+  };
+
   return (
     <div className="h-screen w-screen flex antialiased text-slate-800 dark:text-slate-200">
       <div className="w-full max-w-xs md:w-1/3 md:max-w-sm lg:w-1/4 border-r border-slate-200 dark:border-slate-700">
@@ -190,24 +253,12 @@ function App() {
           onNewNote={() => handleNewNote()}
           onDeleteNote={handleDeleteNote}
           onShowStudio={handleShowStudio}
+          onShowChat={handleShowChat}
           isLoadingAI={isLoadingAI}
           viewMode={viewMode}
         />
       </div>
-      <main className="flex-1">
-        {viewMode === 'studio' ? (
-          <Studio 
-            suggestedTodos={aiSummary?.todos || []}
-            myTodos={myTodos}
-            knowledgeCards={aiSummary?.knowledgeCards || []}
-            onToggleTodo={handleToggleTodo}
-            onAdoptTodo={handleAdoptTodo}
-            onCardToNote={handleCardToNote}
-          />
-        ) : (
-          <NoteEditor note={activeNote} onUpdateNote={handleUpdateNote} />
-        )}
-      </main>
+      <main className="flex-1">{renderMainView()}</main>
     </div>
   );
 }

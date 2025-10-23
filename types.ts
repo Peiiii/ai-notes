@@ -1,3 +1,4 @@
+export type ViewMode = 'editor' | 'studio' | 'chat';
 
 export interface Note {
   id: string;
@@ -24,4 +25,10 @@ export interface KnowledgeCard {
 export interface AISummary {
   todos: Todo[];
   knowledgeCards: KnowledgeCard[];
+}
+
+export interface ChatMessage {
+  id: string;
+  role: 'user' | 'model';
+  content: string;
 }

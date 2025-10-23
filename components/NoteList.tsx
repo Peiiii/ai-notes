@@ -1,10 +1,9 @@
 import React from 'react';
-import { Note } from '../types';
+import { Note, ViewMode } from '../types';
 import PlusIcon from './icons/PlusIcon';
 import TrashIcon from './icons/TrashIcon';
-import ChevronRightIcon from './icons/ChevronRightIcon';
-
-type ViewMode = 'editor' | 'studio';
+import Squares2X2Icon from './icons/Squares2X2Icon';
+import ChatBubbleLeftRightIcon from './icons/ChatBubbleLeftRightIcon';
 
 interface NoteListProps {
   notes: Note[];
@@ -13,6 +12,7 @@ interface NoteListProps {
   onNewNote: () => void;
   onDeleteNote: (id: string) => void;
   onShowStudio: () => void;
+  onShowChat: () => void;
   isLoadingAI: boolean;
   viewMode: ViewMode;
 }
@@ -24,11 +24,19 @@ const NoteList: React.FC<NoteListProps> = ({
   onNewNote,
   onDeleteNote,
   onShowStudio,
+  onShowChat,
   isLoadingAI,
   viewMode,
 }) => {
   const sortedNotes = [...notes].sort((a, b) => b.createdAt - a.createdAt);
-  const isStudioActive = viewMode === 'studio';
+
+  const getButtonClasses = (buttonViewMode: ViewMode) => {
+    return `flex flex-1 items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${
+      viewMode === buttonViewMode
+        ? 'bg-indigo-600 text-white'
+        : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-600'
+    }`;
+  };
 
   return (
     <div className="h-full bg-slate-100 dark:bg-slate-800 flex flex-col">
@@ -36,28 +44,27 @@ const NoteList: React.FC<NoteListProps> = ({
         <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">AI Notes</h1>
         <p className="text-sm text-slate-500 dark:text-slate-400">Your intelligent companion</p>
       </div>
-      <div className="p-4 flex items-center gap-2">
+      <div className="p-4 flex flex-col gap-3">
         <button
           onClick={onNewNote}
-          className="flex flex-1 items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all"
+          className="flex w-full items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all"
         >
           <PlusIcon className="w-5 h-5" />
           New Note
         </button>
-        <button
-          onClick={onShowStudio}
-          className={`flex flex-1 items-center justify-center gap-1 px-4 py-2 text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${
-            isStudioActive 
-              ? 'bg-indigo-600 text-white' 
-              : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-600'
-          }`}
-        >
-          <span>Studio</span>
-          <ChevronRightIcon className="w-4 h-4" />
-          {isLoadingAI && (
-            <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin ml-1"></div>
-          )}
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={onShowChat} className={getButtonClasses('chat')}>
+            <ChatBubbleLeftRightIcon className="w-5 h-5" />
+            <span>Companion</span>
+          </button>
+          <button onClick={onShowStudio} className={getButtonClasses('studio')}>
+            <Squares2X2Icon className="w-5 h-5" />
+            <span>Studio</span>
+            {isLoadingAI && viewMode === 'studio' && (
+              <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin ml-1"></div>
+            )}
+          </button>
+        </div>
       </div>
       <div className="flex-1 overflow-y-auto px-4 pb-4">
         <ul className="space-y-2">

@@ -34,15 +34,15 @@ const Studio: React.FC<StudioProps> = ({
   onAdoptTodo,
   onCardToNote,
 }) => {
-  const hasContent = suggestedTodos.length > 0 || myTodos.length > 0 || knowledgeCards.length > 0;
+  const hasSummaryContent = suggestedTodos.length > 0 || myTodos.length > 0 || knowledgeCards.length > 0;
 
   return (
-    <div className="p-6 md:p-8 h-full overflow-y-auto bg-slate-50 dark:bg-slate-800/50">
-      <div className="max-w-4xl mx-auto">
+    <div className="h-full flex flex-col p-6 md:p-8 overflow-y-auto">
+      <div className="max-w-4xl mx-auto w-full">
         <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">Studio</h1>
         <p className="text-slate-500 dark:text-slate-400 mb-8">Your notes, synthesized. Ideas, tasks, and new perspectives.</p>
 
-        {!hasContent ? (
+        {!hasSummaryContent ? (
           <div className="text-center py-16">
             <h2 className="text-xl font-semibold text-slate-600 dark:text-slate-300">Nothing here yet</h2>
             <p className="text-slate-500 dark:text-slate-400 mt-2">Create some notes and visit the Studio to see what the AI finds.</p>
@@ -55,7 +55,7 @@ const Studio: React.FC<StudioProps> = ({
                 To-Do List
               </h2>
               {myTodos.length === 0 && suggestedTodos.length === 0 && (
-                 <p className="text-slate-500 dark:text-slate-400">No actionable tasks found in your notes.</p>
+                <p className="text-slate-500 dark:text-slate-400">No actionable tasks found in your notes.</p>
               )}
               {myTodos.length > 0 && (
                 <div className="mb-6">
