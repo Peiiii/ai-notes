@@ -191,18 +191,18 @@ function App() {
       content: message,
     };
 
-    const newHistory = [...chatHistory, userMessage];
-    setChatHistory(newHistory);
+    const updatedHistory = [...chatHistory, userMessage];
+    setChatHistory(updatedHistory);
     setIsChatting(true);
 
     try {
-      const responseContent = await generateChatResponse(notes, newHistory, message);
+      const responseContent = await generateChatResponse(notes, updatedHistory, message);
       const modelMessage: ChatMessage = {
         id: crypto.randomUUID(),
         role: 'model',
         content: responseContent,
       };
-      setChatHistory(prev => [...prev, modelMessage]);
+      setChatHistory([...updatedHistory, modelMessage]);
     } catch (error) {
       console.error("Chat failed:", error);
       const errorMessage: ChatMessage = {
@@ -210,7 +210,7 @@ function App() {
         role: 'model',
         content: "Sorry, I encountered an error. Please try again.",
       };
-      setChatHistory(prev => [...prev, errorMessage]);
+      setChatHistory([...updatedHistory, errorMessage]);
     } finally {
       setIsChatting(false);
     }

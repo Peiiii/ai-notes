@@ -108,7 +108,23 @@ const Studio: React.FC<StudioProps> = ({
                           <h3 className="font-bold text-lg text-slate-800 dark:text-slate-100 flex-1">{card.title}</h3>
                         </div>
                         <p className="text-sm text-slate-600 dark:text-slate-300 mb-4 flex-1 leading-relaxed">{card.content}</p>
-                        <div className="text-right mt-auto">
+                        
+                        {card.sources && card.sources.length > 0 && (
+                          <div className="mt-auto pt-3 border-t border-black/10 dark:border-white/10">
+                            <h4 className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2">Sources</h4>
+                            <ul className="space-y-1">
+                              {card.sources.map((source, index) => (
+                                <li key={index} className="text-xs">
+                                  <a href={source} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline truncate block">
+                                    {source}
+                                  </a>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        <div className="text-right mt-4">
                             <button onClick={() => onCardToNote(card)} className="inline-flex items-center text-xs font-semibold text-slate-600 dark:text-slate-300 bg-black/5 dark:bg-white/10 px-2.5 py-1.5 rounded-md hover:bg-black/10 dark:hover:bg-white/20 transition-colors">
                                 <DocumentPlusIcon className="w-4 h-4 mr-1.5" />
                                 Create Note

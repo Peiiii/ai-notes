@@ -20,6 +20,7 @@ export interface KnowledgeCard {
   type: KnowledgeCardType;
   title: string;
   content: string;
+  sources?: string[];
 }
 
 export interface AISummary {

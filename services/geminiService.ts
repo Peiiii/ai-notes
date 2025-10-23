@@ -38,6 +38,13 @@ const summarySchema = {
                     content: {
                         type: Type.STRING,
                         description: "The detailed content of the card, providing value to the user."
+                    },
+                    sources: {
+                        type: Type.ARRAY,
+                        description: "An array of URL strings citing the sources for encyclopedia cards. This is mandatory for the 'encyclopedia' type.",
+                        items: {
+                            type: Type.STRING
+                        }
                     }
                 },
                 required: ["type", "title", "content"]
@@ -64,7 +71,7 @@ Analyze the following collection of notes. Your task is to extract two types of 
 **Instructions for Knowledge Cards:**
 Generate a variety of cards from the following categories. Be creative and insightful.
 
--   **encyclopedia**: If a note mentions a specific concept, person, or place, create a brief encyclopedia-style card explaining it. Title should be the concept, content is the explanation.
+-   **encyclopedia**: If a note mentions a significant, widely-recognized concept (like 'inflation' in economics, 'photosynthesis' in biology, a historical event, or a famous person), create an encyclopedia-style card. The title must be the concept itself. The content should not be a generic definition, but a concise summary of its most critical, universally acknowledged key points or facts. Focus on impactful information that provides genuine insight. Crucially, you MUST also provide a 'sources' array containing URLs to authoritative sources (like academic sites, established encyclopedias, or reputable news organizations) that verify this information. This is mandatory for encyclopedia cards.
 -   **creative_story**: Based on a theme or a line in the notes, write a very short, imaginative story or scene. Title should be catchy.
 -   **note_synthesis**: If multiple notes seem to be about a related topic, create a card that synthesizes the key points from them into a single summary. Title should reflect the synthesized topic.
 -   **new_theory**: If the notes hint at a new methodology, framework, or abstract idea, formulate it into a concise theory or principle. Title should name the theory.
