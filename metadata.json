@@ -1,0 +1,5 @@
+{
+  "name": "AI Notes Companion",
+  "description": "A smart note-taking application that allows you to jot down thoughts, ideas, and tasks. With a single click, the integrated AI analyzes all your notes to automatically generate a consolidated list of to-do items and creative ideas, helping you stay organized and inspired.",
+  "requestFramePermissions": []
+}
