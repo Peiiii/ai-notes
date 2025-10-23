@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Note } from '../types';
-import ChatBubbleBottomCenterTextIcon from './icons/ChatBubbleBottomCenterTextIcon';
+import ThoughtBubbleIcon from './icons/ThoughtBubbleIcon';
 import ThreadChatView from './ThreadChatView';
 
 interface NoteEditorProps {
@@ -56,28 +56,28 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
 
   return (
     <div className="h-full flex bg-white dark:bg-slate-800/50">
-        <div className="relative p-6 md:p-8 h-full flex flex-col flex-1">
-            <div className="absolute top-4 right-4 z-10">
+        <div className="p-6 md:p-8 h-full flex flex-col flex-1">
+            <div className="flex items-center gap-4 mb-4 pb-2 border-b border-slate-200 dark:border-slate-700">
+                <input
+                    type="text"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    onBlur={handleBlur}
+                    placeholder="Note Title"
+                    className="flex-1 text-3xl font-bold bg-transparent focus:outline-none text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500"
+                />
                 <button 
                     onClick={onToggleThread}
                     title={isThreadVisible ? "Hide Thread" : "Show Thread"}
-                    className={`p-2 rounded-full transition-colors ${
+                    className={`p-2 rounded-full transition-colors flex-shrink-0 ${
                         isThreadVisible 
                         ? 'bg-blue-600 text-white' 
                         : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600'
                     }`}
                 >
-                    <ChatBubbleBottomCenterTextIcon className="w-5 h-5" />
+                    <ThoughtBubbleIcon className="w-5 h-5" />
                 </button>
             </div>
-            <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                onBlur={handleBlur}
-                placeholder="Note Title"
-                className="text-3xl font-bold bg-transparent focus:outline-none mb-4 pb-2 border-b border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500"
-            />
             <textarea
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
