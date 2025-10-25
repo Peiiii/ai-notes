@@ -47,5 +47,7 @@ export interface WikiEntry {
   term: string;
   content: string;
   createdAt: number;
-  sourceNoteId: string;
+  sourceNoteId: string; // The note that started this specific tree of wikis
+  parentId: string | null; // The ID of the parent WikiEntry, null if it's a root
+  suggestedTopics?: string[]; // AI-suggested topics for further exploration
 }

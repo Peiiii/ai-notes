@@ -270,12 +270,15 @@ model:`;
 }
 
 export async function generateWikiEntry(term: string, contextContent: string): Promise<string> {
-    const prompt = `Based on the language used in the "Context Text" below, provide a concise, encyclopedia-style summary for the following "Term".
-Focus on key facts and a clear explanation. Your response should be formatted in clean, simple markdown.
-Do not include a title or repeat the term in a heading. Just provide the summary content directly.
-IMPORTANT: Respond ONLY in the primary language of the "Context Text".
+    const prompt = `You are a domain expert with a talent for clear and concise explanations. Your task is to provide a high-quality, professional, and in-depth encyclopedia-style summary for the given "Term", tailored for a learning context.
 
-Context Text:
+**Instructions:**
+1.  **Content Quality:** The summary must be comprehensive, covering the most critical aspects, key principles, and relevant context. Go beyond a simple definition.
+2.  **Structure:** Use clean, simple markdown for formatting. Utilize paragraphs, lists, and bold text to create a well-structured and readable entry.
+3.  **Language:** Respond ONLY in the primary language used in the provided "Context Text".
+4.  **Format:** Do NOT include a main title (like '# Term'). The response should begin directly with the content of the summary.
+
+Context Text (for language detection):
 ---
 ${contextContent.substring(0, 2000)}
 ---
@@ -284,13 +287,84 @@ Term: "${term}"`;
 
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-2.5-pro', // Using a more powerful model for higher quality
             contents: prompt,
         });
         return response.text.trim();
     } catch (error) {
         console.error(`Error generating wiki for "${term}":`, error);
         throw new Error("Failed to generate wiki entry from AI.");
+    }
+}
+
+const topicsSchema = {
+    type: Type.ARRAY,
+    items: { type: Type.STRING }
+};
+
+export async function generateRelatedTopics(wikiContent: string): Promise<string[]> {
+    const prompt = `Based on the content of the following wiki article, suggest 3-5 related topics for further exploration. These topics should encourage discovery of adjacent concepts or deeper aspects of the current topic. The topics should be concise (2-5 words each).
+
+IMPORTANT: The suggested topics MUST be in the primary language used in the article.
+
+Return the result as a JSON array of strings. Do not include any other text.
+
+Example format: ["Quantum Entanglement", "The History of the Silk Road", "Stoic Philosophy in Modern Life"]
+
+Article Content:
+---
+${wikiContent.substring(0, 4000)}
+---
+`;
+
+    try {
+        const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: topicsSchema,
+            },
+        });
+        const jsonText = response.text.trim();
+        return JSON.parse(jsonText);
+    } catch (error) {
+        console.error("Error generating related topics:", error);
+        return [];
+    }
+}
+
+
+export async function generateSubTopics(selection: string, contextContent: string): Promise<string[]> {
+    const prompt = `Based on the user's "Selection" and the surrounding "Context", suggest 3-5 alternative or more specific topics for exploration in a wiki. The topics should be concise (2-5 words each) and directly related to the selection, offering different angles or deeper dives.
+
+IMPORTANT: The suggested topics MUST be in the primary language used in the context.
+
+Return the result as a JSON array of strings. Do not include any other text.
+
+Example: If selection is "Renaissance Art", suggestions could be ["High Renaissance Masters", "The Medici Family's Patronage", "Linear Perspective in Painting"].
+
+Context:
+---
+${contextContent.substring(0, 2000)}
+---
+
+Selection: "${selection}"
+`;
+    try {
+        const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: topicsSchema,
+            },
+        });
+        const jsonText = response.text.trim();
+        return JSON.parse(jsonText);
+    } catch (error) {
+        console.error("Error generating sub-topics:", error);
+        return [];
     }
 }
 
@@ -317,18 +391,13 @@ ${notesContent}
 ---
 `;
 
-    const schema = {
-        type: Type.ARRAY,
-        items: { type: Type.STRING }
-    };
-
     try {
         const response = await ai.models.generateContent({
             model: "gemini-2.5-flash",
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
-                responseSchema: schema,
+                responseSchema: topicsSchema,
             },
         });
         const jsonText = response.text.trim();
