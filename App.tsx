@@ -1,12 +1,13 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Note, AISummary, Todo, KnowledgeCard, ChatMessage, ViewMode, PulseReport } from './types';
+import { Note, AISummary, Todo, KnowledgeCard, ChatMessage, ViewMode, PulseReport, WikiEntry } from './types';
 import useLocalStorage from './hooks/useLocalStorage';
-import { generateSummary, generateTitleForNote, generateChatResponse, generatePulseReport, generateThreadResponse } from './services/geminiService';
+import { generateSummary, generateTitleForNote, generateChatResponse, generatePulseReport, generateThreadResponse, generateWikiEntry, generateWikiTopics } from './services/geminiService';
 import NoteList from './components/NoteList';
 import NoteEditor from './components/NoteEditor';
 import Studio from './components/Studio';
 import ChatView from './components/ChatView';
 import PulseReportModal from './components/PulseReportModal';
+import WikiStudio from './components/WikiStudio';
 
 function simpleHash(str: string): string {
   let hash = 0;
@@ -34,14 +35,17 @@ function App() {
   const [isChatting, setIsChatting] = useState(false);
   
   const [notesNeedingTitle, setNotesNeedingTitle] = useState<Map<string, string>>(new Map());
+  const [generatingTitleIds, setGeneratingTitleIds] = useState<Set<string>>(new Set());
 
   const [isLoadingPulse, setIsLoadingPulse] = useState(false);
   const [lastPulseTimestamp, setLastPulseTimestamp] = useLocalStorage<number | null>('ai-notes-pulse-timestamp', null);
   const [pulseReports, setPulseReports] = useLocalStorage<PulseReport[]>('ai-notes-pulse-reports', []);
   const [viewingPulseReport, setViewingPulseReport] = useState<PulseReport | null>(null);
   
-  const [isThreadVisible, setIsThreadVisible] = useState(false);
-  const [isChattingInThread, setIsChattingInThread] = useState(false);
+  const [wikis, setWikis] = useLocalStorage<WikiEntry[]>('ai-notes-wikis', []);
+  const [isGeneratingWiki, setIsGeneratingWiki] = useState(false);
+  const [wikiTopics, setWikiTopics] = useState<string[]>([]);
+  const [isLoadingWikiTopics, setIsLoadingWikiTopics] = useState(false);
 
   const activeNote = useMemo(
     () => notes.find((note) => note.id === activeNoteId) || null,
@@ -64,7 +68,17 @@ function App() {
       return;
     }
 
-    notesNeedingTitle.forEach((content, id) => {
+    const notesToProcess = new Map(notesNeedingTitle);
+    setNotesNeedingTitle(new Map()); // Clear the processing queue immediately
+
+    // Add notes to the generating set for UI feedback
+    setGeneratingTitleIds(prevSet => {
+        const newSet = new Set(prevSet);
+        notesToProcess.forEach((_, id) => newSet.add(id));
+        return newSet;
+    });
+
+    notesToProcess.forEach((content, id) => {
       (async () => {
         try {
           const generatedTitle = await generateTitleForNote(content);
@@ -81,10 +95,11 @@ function App() {
         } catch (error) {
           console.error(`Failed to generate title for note ${id}:`, error);
         } finally {
-          setNotesNeedingTitle(prevMap => {
-            const newMap = new Map(prevMap);
-            newMap.delete(id);
-            return newMap;
+          // Remove from generating set once done, regardless of success or failure
+          setGeneratingTitleIds(prevSet => {
+            const newSet = new Set(prevSet);
+            newSet.delete(id);
+            return newSet;
           });
         }
       })();
@@ -101,14 +116,12 @@ function App() {
     setNotes(prevNotes => [newNote, ...prevNotes]);
     setActiveNoteId(newNote.id);
     setViewMode('editor');
-    setIsThreadVisible(false);
   };
 
   const handleDeleteNote = (id: string) => {
     setNotes(notes.filter((note) => note.id !== id));
     if (activeNoteId === id) {
       setActiveNoteId(null);
-      setIsThreadVisible(false);
     }
   };
 
@@ -122,8 +135,9 @@ function App() {
       const shouldGenerateTitle = updatedNote && !updatedNote.title && updatedNote.content.length > TITLE_GENERATION_LENGTH_THRESHOLD;
       
       if (shouldGenerateTitle) {
+        // Prevent adding if already queued or currently being generated
         setNotesNeedingTitle(prevMap => {
-          if (!prevMap.has(id)) {
+          if (!prevMap.has(id) && !generatingTitleIds.has(id)) {
             const newMap = new Map(prevMap);
             newMap.set(id, updatedNote.content);
             return newMap;
@@ -139,14 +153,29 @@ function App() {
   const handleSelectNote = (id: string) => {
     setActiveNoteId(id);
     setViewMode('editor');
-    setIsThreadVisible(false);
   };
 
   const handleShowChat = () => {
     setViewMode('chat');
     setActiveNoteId(null);
-    setIsThreadVisible(false);
   };
+  
+  const handleShowWikiStudio = async () => {
+    setViewMode('wiki_studio');
+    setActiveNoteId(null);
+    if (notes.length > 0 && wikiTopics.length === 0) {
+      setIsLoadingWikiTopics(true);
+      try {
+        const topics = await generateWikiTopics(notes);
+        setWikiTopics(topics);
+      } catch (error) {
+        console.error("Failed to fetch wiki topics", error);
+        setWikiTopics([]); // Set empty on error
+      } finally {
+        setIsLoadingWikiTopics(false);
+      }
+    }
+  }
 
   const handleToggleTodo = (id: string) => {
     setMyTodos(myTodos.map(todo => 
@@ -172,13 +201,11 @@ function App() {
     setNotes(prevNotes => [newNote, ...prevNotes]);
     setActiveNoteId(newNote.id);
     setViewMode('editor');
-    setIsThreadVisible(false);
   };
   
   const handleShowStudio = async () => {
       setViewMode('studio');
       setActiveNoteId(null);
-      setIsThreadVisible(false);
 
       const currentNotesHash = JSON.stringify(notes);
       
@@ -250,68 +277,6 @@ function App() {
       setIsChatting(false);
     }
   };
-  
-  const handleToggleThread = () => {
-    if (activeNoteId) {
-        setIsThreadVisible(prev => !prev);
-    }
-  };
-
-  const handleSendThreadMessage = async (message: string) => {
-      if (!message.trim() || !activeNote) return;
-
-      const userMessage: ChatMessage = {
-        id: crypto.randomUUID(),
-        role: 'user',
-        content: message,
-      };
-      
-      const updatedHistoryForAI = [...(activeNote.threadHistory || []), userMessage];
-
-      // Optimistically update UI with user message
-      setNotes(prevNotes => prevNotes.map(note => 
-          note.id === activeNote.id ? { ...note, threadHistory: updatedHistoryForAI } : note
-      ));
-      
-      setIsChattingInThread(true);
-
-      try {
-          const responseContent = await generateThreadResponse(activeNote, notes, updatedHistoryForAI, message);
-          
-          const modelMessage: ChatMessage = {
-              id: crypto.randomUUID(),
-              role: 'model',
-              content: responseContent,
-          };
-
-          // Update with model's response
-          setNotes(prevNotes => prevNotes.map(note => {
-              if (note.id === activeNote.id) {
-                  const finalHistory = [...updatedHistoryForAI, modelMessage];
-                  return { ...note, threadHistory: finalHistory };
-              }
-              return note;
-          }));
-
-      } catch (error) {
-        console.error("Thread chat failed:", error);
-        const errorMessage: ChatMessage = {
-          id: crypto.randomUUID(),
-          role: 'model',
-          content: "Sorry, I encountered an error in this thread. Please try again.",
-        };
-         setNotes(prevNotes => prevNotes.map(note => {
-          if (note.id === activeNote.id) {
-              const finalHistory = [...updatedHistoryForAI, errorMessage];
-              return { ...note, threadHistory: finalHistory };
-          }
-          return note;
-        }));
-      } finally {
-        setIsChattingInThread(false);
-      }
-  };
-
 
   const handleGeneratePulse = async (isAuto = false) => {
     setIsLoadingPulse(true);
@@ -342,6 +307,27 @@ function App() {
     setViewingPulseReport(null);
   }
 
+  const handleGenerateWiki = async (term: string, sourceNoteId: string, contextContent: string): Promise<WikiEntry> => {
+    setIsGeneratingWiki(true);
+    try {
+      const content = await generateWikiEntry(term, contextContent);
+      const newWiki: WikiEntry = {
+        id: crypto.randomUUID(),
+        term,
+        content,
+        createdAt: Date.now(),
+        sourceNoteId: sourceNoteId,
+      };
+      setWikis(prev => [...prev, newWiki]);
+      return newWiki;
+    } catch (error) {
+        console.error("Wiki generation failed:", error);
+        alert("Failed to generate Wiki entry. Please try again.");
+        throw error;
+    } finally {
+        setIsGeneratingWiki(false);
+    }
+  }
 
   const renderMainView = () => {
     switch (viewMode) {
@@ -368,15 +354,22 @@ function App() {
             onSendMessage={handleSendMessage}
           />
         );
+      case 'wiki_studio':
+        return (
+          <WikiStudio 
+            notes={notes}
+            onSelectNote={handleSelectNote}
+            onGenerateWiki={handleGenerateWiki}
+            isGeneratingWiki={isGeneratingWiki}
+            aiTopics={wikiTopics}
+            isLoadingTopics={isLoadingWikiTopics}
+          />
+        );
       case 'editor':
       default:
         return <NoteEditor 
           note={activeNote} 
           onUpdateNote={handleUpdateNote}
-          isThreadVisible={isThreadVisible}
-          onToggleThread={handleToggleThread}
-          onSendThreadMessage={handleSendThreadMessage}
-          isChattingInThread={isChattingInThread}
         />;
     }
   };
@@ -392,7 +385,9 @@ function App() {
           onDeleteNote={handleDeleteNote}
           onShowStudio={handleShowStudio}
           onShowChat={handleShowChat}
+          onShowWikiStudio={handleShowWikiStudio}
           isLoadingAI={isLoadingAI}
+          generatingTitleIds={generatingTitleIds}
           viewMode={viewMode}
         />
       </div>

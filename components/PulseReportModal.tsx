@@ -2,6 +2,14 @@ import React from 'react';
 import { PulseReport } from '../types';
 import XMarkIcon from './icons/XMarkIcon';
 
+declare global {
+  interface Window {
+    marked: {
+      parse: (markdown: string) => string;
+    };
+  }
+}
+
 interface PulseReportModalProps {
   report: PulseReport | null;
   onClose: () => void;
@@ -33,8 +41,8 @@ const PulseReportModal: React.FC<PulseReportModalProps> = ({ report, onClose }) 
         </div>
         <div className="p-6 overflow-y-auto">
           <div 
-            className="prose prose-slate dark:prose-invert max-w-none whitespace-pre-wrap"
-            dangerouslySetInnerHTML={{ __html: report.content.replace(/\n/g, '<br />') }} // Simple markdown newlines
+            className="prose prose-slate dark:prose-invert max-w-none"
+            dangerouslySetInnerHTML={{ __html: window.marked.parse(report.content) }}
           >
           </div>
         </div>

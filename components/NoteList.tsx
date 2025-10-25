@@ -4,6 +4,7 @@ import PlusIcon from './icons/PlusIcon';
 import TrashIcon from './icons/TrashIcon';
 import Squares2X2Icon from './icons/Squares2X2Icon';
 import ChatBubbleLeftRightIcon from './icons/ChatBubbleLeftRightIcon';
+import BookOpenIcon from './icons/BookOpenIcon';
 
 interface NoteListProps {
   notes: Note[];
@@ -13,7 +14,9 @@ interface NoteListProps {
   onDeleteNote: (id: string) => void;
   onShowStudio: () => void;
   onShowChat: () => void;
+  onShowWikiStudio: () => void;
   isLoadingAI: boolean;
+  generatingTitleIds: Set<string>;
   viewMode: ViewMode;
 }
 
@@ -25,7 +28,9 @@ const NoteList: React.FC<NoteListProps> = ({
   onDeleteNote,
   onShowStudio,
   onShowChat,
+  onShowWikiStudio,
   isLoadingAI,
+  generatingTitleIds,
   viewMode,
 }) => {
   const sortedNotes = [...notes].sort((a, b) => b.createdAt - a.createdAt);
@@ -52,10 +57,14 @@ const NoteList: React.FC<NoteListProps> = ({
           <PlusIcon className="w-5 h-5" />
           New Note
         </button>
-        <div className="flex items-center gap-2">
+        <div className="grid grid-cols-3 items-center gap-2">
           <button onClick={onShowChat} className={getButtonClasses('chat')}>
             <ChatBubbleLeftRightIcon className="w-5 h-5" />
             <span>Companion</span>
+          </button>
+           <button onClick={onShowWikiStudio} className={getButtonClasses('wiki_studio')}>
+            <BookOpenIcon className="w-5 h-5" />
+            <span>Wiki</span>
           </button>
           <button onClick={onShowStudio} className={getButtonClasses('studio')}>
             <Squares2X2Icon className="w-5 h-5" />
@@ -70,6 +79,7 @@ const NoteList: React.FC<NoteListProps> = ({
         <ul className="space-y-2">
           {sortedNotes.map((note) => {
             const hasTitle = !!note.title;
+            const isGeneratingTitle = !hasTitle && generatingTitleIds.has(note.id);
             const displayTitle = hasTitle ? note.title : (note.content || 'New Note');
             const displaySubtitle = hasTitle ? (note.content || 'No content') : new Date(note.createdAt).toLocaleDateString();
 
@@ -92,19 +102,25 @@ const NoteList: React.FC<NoteListProps> = ({
                         {displaySubtitle}
                       </p>
                     </div>
-                    <div
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDeleteNote(note.id);
-                      }}
-                      className={`ml-2 p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity ${
-                        note.id === activeNoteId && viewMode === 'editor'
-                          ? 'text-blue-200 hover:bg-white/20 hover:text-white'
-                          : 'text-slate-500 hover:bg-red-100 hover:text-red-600 dark:text-slate-400 dark:hover:bg-red-900/50 dark:hover:text-red-400'
-                      }`}
-                    >
-                      <TrashIcon className="w-4 h-4" />
-                    </div>
+                    {isGeneratingTitle ? (
+                      <div className="ml-2 p-1 flex items-center justify-center">
+                        <div className="w-4 h-4 border-2 border-slate-400 dark:border-slate-500 border-t-transparent rounded-full animate-spin"></div>
+                      </div>
+                    ) : (
+                      <div
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDeleteNote(note.id);
+                        }}
+                        className={`ml-2 p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity ${
+                          note.id === activeNoteId && viewMode === 'editor'
+                            ? 'text-blue-200 hover:bg-white/20 hover:text-white'
+                            : 'text-slate-500 hover:bg-red-100 hover:text-red-600 dark:text-slate-400 dark:hover:bg-red-900/50 dark:hover:text-red-400'
+                        }`}
+                      >
+                        <TrashIcon className="w-4 h-4" />
+                      </div>
+                    )}
                   </div>
                 </button>
               </li>

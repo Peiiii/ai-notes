@@ -1,189 +1,113 @@
+import { GoogleGenAI, Type } from "@google/genai";
 import { Note, KnowledgeCard, ChatMessage } from '../types';
-import { getAIProvider } from '../providers';
-import type { JsonSchema } from '../providers/AIProvider';
 
-// Provider is chosen via env (AI_PROVIDER / VITE_AI_PROVIDER). Defaults to Gemini.
-const provider = getAIProvider();
+const API_KEY = process.env.API_KEY;
 
-const summarySchema: JsonSchema = {
-  type: 'object',
-  properties: {
-    todos: {
-      type: 'array',
-      description: 'A list of actionable to-do items or tasks extracted from the notes.',
-      items: { type: 'string' },
-    },
-    knowledgeCards: {
-      type: 'array',
-      description: "A list of diverse, categorized knowledge cards generated based on the notes' content.",
-      items: {
-        type: 'object',
-        properties: {
-          type: {
-            type: 'string',
-            description: 'The category of the card. Must be one of the specified enum values.',
-            enum: ['encyclopedia', 'creative_story', 'note_synthesis', 'new_theory', 'idea'],
-          },
-          title: { type: 'string', description: 'A concise, engaging title for the card.' },
-          content: { type: 'string', description: 'The detailed content of the card, providing value to the user.' },
-          sources: { type: 'array', description: "An array of URL strings citing the sources for encyclopedia cards.", items: { type: 'string' } },
+if (!API_KEY) {
+    throw new Error("API_KEY environment variable not set");
+}
+
+const ai = new GoogleGenAI({ apiKey: API_KEY });
+
+const summarySchema = {
+    type: Type.OBJECT,
+    properties: {
+        todos: {
+            type: Type.ARRAY,
+            description: "A list of actionable to-do items or tasks extracted from the notes.",
+            items: {
+                type: Type.STRING
+            }
         },
-        required: ['type', 'title', 'content'],
-      },
+        knowledgeCards: {
+            type: Type.ARRAY,
+            description: "A list of diverse, categorized knowledge cards generated based on the notes' content.",
+            items: {
+                type: Type.OBJECT,
+                properties: {
+                    type: {
+                        type: Type.STRING,
+                        description: "The category of the card. Must be one of the specified enum values.",
+                        enum: ['encyclopedia', 'creative_story', 'note_synthesis', 'new_theory', 'idea']
+                    },
+                    title: {
+                        type: Type.STRING,
+                        description: "A concise, engaging title for the card."
+                    },
+                    content: {
+                        type: Type.STRING,
+                        description: "The detailed content of the card, providing value to the user."
+                    },
+                    sources: {
+                        type: Type.ARRAY,
+                        description: "An array of URL strings citing the sources for encyclopedia cards. This is mandatory for the 'encyclopedia' type.",
+                        items: {
+                            type: Type.STRING
+                        }
+                    }
+                },
+                required: ["type", "title", "content"]
+            }
+        }
     },
-  },
-  required: ['todos', 'knowledgeCards'],
+    required: ["todos", "knowledgeCards"]
 };
 
 export async function generateSummary(notes: Note[]): Promise<{ todos: string[]; knowledgeCards: Omit<KnowledgeCard, 'id'>[] }> {
-  if (notes.length === 0) {
-    return { todos: [], knowledgeCards: [] };
-  }
+    if (notes.length === 0) {
+        return { todos: [], knowledgeCards: [] };
+    }
 
-  const notesContent = notes
-    .map(note => `Title: ${note.title || 'Untitled'}\nContent: ${note.content}`)
-    .join('\n\n---\n\n');
+    const notesContent = notes
+        .map(note => `Title: ${note.title || 'Untitled'}\nContent: ${note.content}`)
+        .join('\n\n---\n\n');
 
-  const prompt = `
-You are an AI assistant that analyzes notes and generates knowledge cards. Your task:
+    const prompt = `
+Analyze the following collection of notes. Your task is to extract two types of information:
+1.  Actionable to-do items.
+2.  A diverse set of "Knowledge Cards" based on the content.
 
-1. Extract actionable to-do items from the notes
-2. Generate diverse knowledge cards from 5 categories
+**Instructions for Knowledge Cards:**
+Generate a variety of cards from the following categories. Be creative and insightful.
 
-KNOWLEDGE CARD CATEGORIES (MUST generate at least one of each):
-- encyclopedia: For well-known concepts, historical events, famous people, scientific principles. MUST include sources array with URLs.
-- creative_story: Short imaginative stories based on note themes
-- note_synthesis: Combine related ideas from multiple notes into summaries
-- new_theory: Extract or formulate new methodologies, frameworks, principles
-- idea: Standalone creative insights or suggestions
+-   **encyclopedia**: If a note mentions a significant, widely-recognized concept (like 'inflation' in economics, 'photosynthesis' in biology, a historical event, or a famous person), create an encyclopedia-style card. The title must be the concept itself. The content should not be a generic definition, but a concise summary of its most critical, universally acknowledged key points or facts. Focus on impactful information that provides genuine insight. Crucially, you MUST also provide a 'sources' array containing URLs to authoritative sources (like academic sites, established encyclopedias, or reputable news organizations) that verify this information. This is mandatory for encyclopedia cards.
+-   **creative_story**: Based on a theme or a line in the notes, write a very short, imaginative story or scene. Title should be catchy.
+-   **note_synthesis**: If multiple notes seem to be about a related topic, create a card that synthesizes the key points from them into a single summary. Title should reflect the synthesized topic.
+-   **new_theory**: If the notes hint at a new methodology, framework, or abstract idea, formulate it into a concise theory or principle. Title should name the theory.
+-   **idea**: For simple, standalone creative sparks or suggestions that don't fit other categories. Title should be the core idea.
 
-CRITICAL REQUIREMENTS:
-- Generate EXACTLY 5 knowledge cards (one from each category)
-- If content doesn't naturally fit a category, be creative and adapt
-- Each card needs: type, title, content
-- Encyclopedia cards MUST include sources array with URLs
-- Be creative and insightful
-- Use the same language as the notes
-- Return ONLY valid JSON
+**General Rules:**
+-   IMPORTANT: Respond in the primary language used in the provided notes.
+-   Return the result as a single JSON object.
 
-IMPORTANT: You MUST generate knowledge cards. If you cannot find content for a category, create a generic but relevant card for that category.
-
-EXAMPLE OUTPUT FORMAT:
-{
-  "todos": ["task1", "task2"],
-  "knowledgeCards": [
-    {"type": "encyclopedia", "title": "Concept Name", "content": "Description", "sources": ["url1", "url2"]},
-    {"type": "creative_story", "title": "Story Title", "content": "Story content"},
-    {"type": "note_synthesis", "title": "Synthesis Title", "content": "Synthesis content"},
-    {"type": "new_theory", "title": "Theory Name", "content": "Theory content"},
-    {"type": "idea", "title": "Idea Title", "content": "Idea content"}
-  ]
-}
-
-Notes to analyze:
+Here are the notes:
 ${notesContent}
 `;
 
-  try {
-    const summary = await provider.generateJson<{ todos: string[]; knowledgeCards: Omit<KnowledgeCard, 'id'>[] }>(
-      prompt,
-      summarySchema,
-      { schemaName: 'SummarySchema' }
-    );
-    
-    // Ensure we have knowledge cards
-    if (!summary.knowledgeCards || summary.knowledgeCards.length === 0) {
-      console.warn('AI returned empty knowledge cards, generating fallback cards');
-      summary.knowledgeCards = [
-        {
-          type: 'idea',
-          title: 'Note Analysis',
-          content: 'Based on your notes, consider exploring these themes further and connecting related ideas.',
-        },
-        {
-          type: 'note_synthesis',
-          title: 'Key Themes',
-          content: 'Your notes contain several interesting themes that could be developed further.',
-        },
-        {
-          type: 'creative_story',
-          title: 'The Journey',
-          content: 'Every note is a step in your intellectual journey, building towards greater understanding.',
-        },
-        {
-          type: 'new_theory',
-          title: 'Personal Framework',
-          content: 'Your notes suggest a unique perspective that could be developed into a personal framework.',
-        },
-        {
-          type: 'encyclopedia',
-          title: 'Knowledge Base',
-          content: 'Your notes represent a growing knowledge base that can be referenced and built upon.',
-          sources: ['https://en.wikipedia.org/wiki/Knowledge_management'],
-        },
-      ];
+    try {
+        const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: summarySchema,
+            },
+        });
+
+        const jsonText = response.text.trim();
+        const summary = JSON.parse(jsonText);
+        return summary;
+    } catch (error) {
+        console.error("Error generating summary with Gemini:", error);
+        throw new Error("Failed to get summary from AI.");
     }
-    
-    // Ensure we have at least one card of each type
-    const existingTypes = new Set(summary.knowledgeCards.map(card => card.type));
-    const allTypes: Array<'encyclopedia' | 'creative_story' | 'note_synthesis' | 'new_theory' | 'idea'> = ['encyclopedia', 'creative_story', 'note_synthesis', 'new_theory', 'idea'];
-    const missingTypes = allTypes.filter(type => !existingTypes.has(type));
-    
-    if (missingTypes.length > 0) {
-      console.warn(`Missing knowledge card types: ${missingTypes.join(', ')}`);
-      const fallbackCards = missingTypes.map(type => {
-        switch (type) {
-          case 'encyclopedia':
-            return {
-              type: 'encyclopedia' as const,
-              title: 'Knowledge Base',
-              content: 'Your notes represent a growing knowledge base that can be referenced and built upon.',
-              sources: ['https://en.wikipedia.org/wiki/Knowledge_management'],
-            };
-          case 'creative_story':
-            return {
-              type: 'creative_story' as const,
-              title: 'The Journey',
-              content: 'Every note is a step in your intellectual journey, building towards greater understanding.',
-            };
-          case 'note_synthesis':
-            return {
-              type: 'note_synthesis' as const,
-              title: 'Key Themes',
-              content: 'Your notes contain several interesting themes that could be developed further.',
-            };
-          case 'new_theory':
-            return {
-              type: 'new_theory' as const,
-              title: 'Personal Framework',
-              content: 'Your notes suggest a unique perspective that could be developed into a personal framework.',
-            };
-          case 'idea':
-            return {
-              type: 'idea' as const,
-              title: 'Note Analysis',
-              content: 'Based on your notes, consider exploring these themes further and connecting related ideas.',
-            };
-          default:
-            return null;
-        }
-      }).filter(Boolean);
-      
-      summary.knowledgeCards.push(...fallbackCards);
-    }
-    
-    return summary;
-  } catch (error) {
-    console.error('Error generating summary:', error);
-    throw new Error('Failed to get summary from AI.');
-  }
 }
 
 export async function generateTitleForNote(content: string): Promise<string> {
-  if (!content) {
-    return '';
-  }
-  const prompt = `Based on the following note content, generate a very short, concise, and relevant title (max 5 words).
+    if (!content) {
+        return "";
+    }
+    const prompt = `Based on the following note content, generate a very short, concise, and relevant title (max 5 words).
 IMPORTANT: Respond in the same language as the provided Content. Do not include any quotation marks or labels.
 
 Content:
@@ -192,24 +116,28 @@ ${content}
 ---
 
 Title:`;
-  try {
-    const text = await provider.generateText(prompt);
-    // Remove quotes and trim whitespace
-    return text.replace(/[\"']/g, '').trim();
-  } catch (error) {
-    console.error('Error generating title:', error);
-    return '';
-  }
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+        });
+        // Remove quotes and trim whitespace
+        return response.text.replace(/["']/g, '').trim();
+    } catch (error) {
+        console.error("Error generating title with Gemini:", error);
+        return ""; // Return empty string on failure to avoid breaking UI
+    }
 }
 
 export async function generateChatResponse(notes: Note[], history: ChatMessage[], question: string): Promise<string> {
-  const notesContent = notes.map(note => `Title: ${note.title || 'Untitled'}\nContent: ${note.content}`).join('\n\n---\n\n');
-  // Take the last 10 messages to keep the context focused
-  const historyContent = history.slice(-10).map(msg => `${msg.role}: ${msg.content}`).join('\n');
+    const notesContent = notes.map(note => `Title: ${note.title || 'Untitled'}\nContent: ${note.content}`).join('\n\n---\n\n');
+    
+    // Take the last 10 messages to keep the context focused
+    const historyContent = history.slice(-10).map(msg => `${msg.role}: ${msg.content}`).join('\n');
 
-  const prompt = `You are an AI assistant for a note-taking app. Your purpose is to help the user understand and synthesize their own notes.
+    const prompt = `You are an AI assistant for a note-taking app. Your purpose is to help the user understand and synthesize their own notes.
 You have access to the user's entire collection of notes and the recent conversation history.
-Answer the user's question based only on the information provided in their notes. Do not make things up.
+Answer the user's question based *only* on the information provided in their notes. Do not make things up.
 If the notes don't contain the answer, say so politely. Be helpful, concise, and conversational.
 
 --- CONVERSATION HISTORY ---
@@ -223,88 +151,92 @@ user: ${question}
 
 model:`;
 
-  try {
-    const text = await provider.generateText(prompt);
-    return text.trim();
-  } catch (error) {
-    console.error('Error generating chat response:', error);
-    throw new Error('Failed to get chat response from AI.');
-  }
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+        });
+        return response.text.trim();
+    } catch (error) {
+        console.error("Error generating chat response:", error);
+        throw new Error("Failed to get chat response from AI.");
+    }
 }
 
-const pulseReportSchema: JsonSchema = {
-  type: 'object',
-  properties: {
-    title: { type: 'string', description: "A compelling title for the report, like 'Your Weekly Pulse' or 'Thought Trajectory'." },
-    content: { type: 'string', description: "A narrative report, written in markdown, summarizing the user's thought evolution." },
-  },
-  required: ['title', 'content'],
+
+const pulseReportSchema = {
+    type: Type.OBJECT,
+    properties: {
+        title: {
+            type: Type.STRING,
+            description: "A compelling title for the report, like 'Your Weekly Pulse' or 'Thought Trajectory'.",
+        },
+        content: {
+            type: Type.STRING,
+            description: "A narrative report, written in markdown, summarizing the user's thought evolution."
+        }
+    },
+    required: ["title", "content"]
 };
 
+
 export async function generatePulseReport(notes: Note[]): Promise<{ title: string; content: string }> {
-  if (notes.length === 0) {
-    return { title: 'Not Enough Data', content: 'Write at least one note to generate your first Pulse report.' };
-  }
+    if (notes.length === 0) {
+        return { title: "Not Enough Data", content: "Write at least one note to generate your first Pulse report." };
+    }
 
-  const notesContent = notes
-    .map(note => `Date: ${new Date(note.createdAt).toISOString().split('T')[0]}\nTitle: ${note.title || 'Untitled'}\nContent: ${note.content}`)
-    .join('\n\n---\n\n');
-
-  const prompt = `
+    const notesContent = notes
+        .map(note => `Date: ${new Date(note.createdAt).toISOString().split('T')[0]}\nTitle: ${note.title || 'Untitled'}\nContent: ${note.content}`)
+        .join('\n\n---\n\n');
+    
+    const prompt = `
 You are a highly perceptive thought analyst. Your task is to analyze a user's entire collection of notes and generate a short, insightful "Pulse Report" about their intellectual journey.
 The report should be a narrative, not just a list. Be insightful and help the user see the bigger picture of their own thinking.
 
-Analyze the following aspects:
-1. Theme Evolution: Identify the main topics. Have they shifted over time? Is there a new, emerging focus this week compared to older notes?
-2. New Connections: Find surprising links between different notes, even if they were written far apart in time. Point out how a new idea might be an evolution of an older one.
-3. Forgotten Threads: Resurface a significant idea, task, or topic from an older note that the user hasn't touched on recently. Gently remind them of it.
-4. Exploration Suggestions: Based on their recurring interests, suggest one or two new questions or directions for them to explore.
+**Analyze the following aspects:**
+1.  **Theme Evolution:** Identify the main topics. Have they shifted over time? Is there a new, emerging focus this week compared to older notes?
+2.  **New Connections:** Find surprising links between different notes, even if they were written far apart in time. Point out how a new idea might be an evolution of an older one.
+3.  **Forgotten Threads:** Resurface a significant idea, task, or topic from an older note that the user hasn't touched on recently. Gently remind them of it.
+4.  **Exploration Suggestions:** Based on their recurring interests, suggest one or two new questions or directions for them to explore.
 
-Formatting Rules:
-- Use Markdown for formatting (e.g., # for title, ## for subtitles, * for lists).
-- The tone should be encouraging, insightful, and like a personal analyst.
-- IMPORTANT: Respond in the primary language used in the provided notes.
-- Return the result as a single JSON object.
-
- Output Constraints:
- - The JSON must include non-empty "title" and non-empty "content" fields.
- - "title" should be concise (3-12 words/短句) and descriptive, not empty.
- - "content" must be meaningful markdown text with at least 200 characters; do not return empty strings.
+**Formatting Rules:**
+-   Use Markdown for formatting (e.g., # for title, ## for subtitles, * for lists).
+-   The tone should be encouraging, insightful, and like a personal analyst.
+-   IMPORTANT: Respond in the primary language used in the provided notes.
+-   Return the result as a single JSON object.
 
 Here are all the notes:
 ${notesContent}
 `;
 
-  try {
-    const result = await provider.generateJson<{ title: string; content: string }>(
-      prompt,
-      pulseReportSchema,
-      { schemaName: 'PulseReport' }
-    );
-    // Fallback if model returns empty fields
-    if (!result.title?.trim() || !result.content?.trim()) {
-      return {
-        title: 'Not Enough Data',
-        content: 'Write more notes or ensure your notes contain clear themes so a Pulse Report can be generated.',
-      };
+    try {
+        const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: pulseReportSchema,
+            },
+        });
+        const jsonText = response.text.trim();
+        return JSON.parse(jsonText);
+    } catch (error) {
+        console.error("Error generating Pulse Report with Gemini:", error);
+        throw new Error("Failed to generate Pulse Report from AI.");
     }
-    return result;
-  } catch (error) {
-    console.error('Error generating Pulse Report:', error);
-    throw new Error('Failed to generate Pulse Report from AI.');
-  }
 }
 
 export async function generateThreadResponse(activeNote: Note, allNotes: Note[], history: ChatMessage[], question: string): Promise<string> {
-  const allNotesContext = allNotes
-    .filter(note => note.id !== activeNote.id)
-    .map(note => `Title: ${note.title || 'Untitled'}\nContent: ${note.content}`)
-    .join('\n\n---\n\n');
+    const allNotesContext = allNotes
+        .filter(note => note.id !== activeNote.id) // Exclude the active note
+        .map(note => `Title: ${note.title || 'Untitled'}\nContent: ${note.content}`)
+        .join('\n\n---\n\n');
 
-  const activeNoteContext = `Title: ${activeNote.title || 'Untitled'}\nContent: ${activeNote.content}`;
-  const historyContent = history.slice(-10).map(msg => `${msg.role}: ${msg.content}`).join('\n');
+    const activeNoteContext = `Title: ${activeNote.title || 'Untitled'}\nContent: ${activeNote.content}`;
 
-  const prompt = `You are an AI assistant integrated into a note-taking app, acting as a collaborative partner on a specific note.
+    const historyContent = history.slice(-10).map(msg => `${msg.role}: ${msg.content}`).join('\n');
+
+    const prompt = `You are an AI assistant integrated into a note-taking app, acting as a collaborative partner on a specific note.
 Your primary focus is the "CURRENT NOTE IN FOCUS". Your secondary context is the "ENTIRE NOTE LIBRARY".
 Your goal is to help the user iterate, research, and expand on the ideas within the current note.
 
@@ -325,11 +257,93 @@ user: ${question}
 
 model:`;
 
-  try {
-    const text = await provider.generateText(prompt);
-    return text.trim();
-  } catch (error) {
-    console.error('Error generating thread response:', error);
-    throw new Error('Failed to get thread response from AI.');
-  }
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+        });
+        return response.text.trim();
+    } catch (error) {
+        console.error("Error generating thread response:", error);
+        throw new Error("Failed to get thread response from AI.");
+    }
+}
+
+export async function generateWikiEntry(term: string, contextContent: string): Promise<string> {
+    const prompt = `Based on the language used in the "Context Text" below, provide a concise, encyclopedia-style summary for the following "Term".
+Focus on key facts and a clear explanation. Your response should be formatted in clean, simple markdown.
+Do not include a title or repeat the term in a heading. Just provide the summary content directly.
+IMPORTANT: Respond ONLY in the primary language of the "Context Text".
+
+Context Text:
+---
+${contextContent.substring(0, 2000)}
+---
+
+Term: "${term}"`;
+
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+        });
+        return response.text.trim();
+    } catch (error) {
+        console.error(`Error generating wiki for "${term}":`, error);
+        throw new Error("Failed to generate wiki entry from AI.");
+    }
+}
+
+export async function generateWikiTopics(notes: Note[]): Promise<string[]> {
+    if (notes.length === 0) {
+        return [];
+    }
+    const notesContent = notes
+        .slice(0, 10) // Limit to recent notes for performance
+        .map(note => `Title: ${note.title || 'Untitled'}\nContent: ${note.content}`)
+        .join('\n\n---\n\n');
+
+    const prompt = `Based on the following user notes, suggest 5 interesting, non-obvious, and thought-provoking topics or concepts for them to explore in a wiki format. The topics should be concise (2-5 words each). They should be broad enough for an interesting summary but specific enough to be actionable.
+
+IMPORTANT: The suggested topics MUST be in the primary language used in the notes provided below.
+
+Return the result as a JSON array of strings. Do not include any other text.
+
+Example format: ["Quantum Entanglement", "The History of the Silk Road", "Stoic Philosophy in Modern Life"]
+
+Notes:
+---
+${notesContent}
+---
+`;
+
+    const schema = {
+        type: Type.ARRAY,
+        items: { type: Type.STRING }
+    };
+
+    try {
+        const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: schema,
+            },
+        });
+        const jsonText = response.text.trim();
+        return JSON.parse(jsonText);
+    } catch (error) {
+        console.error("Error generating wiki topics:", error);
+        // Fallback to a simpler, non-JSON call if schema fails
+        try {
+             const fallbackPrompt = `${prompt}\nIMPORTANT: Respond ONLY with a valid JSON array of strings.`;
+             const fallbackResponse = await ai.models.generateContent({model: "gemini-2.5-flash", contents: fallbackPrompt});
+             const cleanedText = fallbackResponse.text.trim().replace(/```json|```/g, '');
+             return JSON.parse(cleanedText);
+        } catch(fallbackError) {
+            console.error("Fallback for wiki topics also failed:", fallbackError);
+            return []; // Return empty on error
+        }
+    }
 }

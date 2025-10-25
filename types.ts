@@ -1,4 +1,4 @@
-export type ViewMode = 'editor' | 'studio' | 'chat' | 'pulse';
+export type ViewMode = 'editor' | 'studio' | 'chat' | 'pulse' | 'wiki_studio';
 
 export interface Note {
   id: string;
@@ -40,4 +40,12 @@ export interface PulseReport {
   title: string;
   content: string;
   createdAt: number;
+}
+
+export interface WikiEntry {
+  id: string;
+  term: string;
+  content: string;
+  createdAt: number;
+  sourceNoteId: string;
 }
