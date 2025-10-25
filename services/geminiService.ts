@@ -45,24 +45,42 @@ export async function generateSummary(notes: Note[]): Promise<{ todos: string[];
     .join('\n\n---\n\n');
 
   const prompt = `
-Analyze the following collection of notes. Your task is to extract two types of information:
-1.  Actionable to-do items.
-2.  A diverse set of "Knowledge Cards" based on the content.
+You are an AI assistant that analyzes notes and generates knowledge cards. Your task:
 
-Instructions for Knowledge Cards:
-Generate a variety of cards from the following categories. Be creative and insightful.
+1. Extract actionable to-do items from the notes
+2. Generate diverse knowledge cards from 5 categories
 
-- encyclopedia: If a note mentions a significant, widely-recognized concept (like 'inflation' in economics, 'photosynthesis' in biology, a historical event, or a famous person), create an encyclopedia-style card. The title must be the concept itself. The content should not be a generic definition, but a concise summary of its most critical, universally acknowledged key points or facts. Focus on impactful information that provides genuine insight. Crucially, you MUST also provide a 'sources' array containing URLs to authoritative sources (like academic sites, established encyclopedias, or reputable news organizations) that verify this information. This is mandatory for encyclopedia cards.
-- creative_story: Based on a theme or a line in the notes, write a very short, imaginative story or scene. Title should be catchy.
-- note_synthesis: If multiple notes seem to be about a related topic, create a card that synthesizes the key points from them into a single summary. Title should reflect the synthesized topic.
-- new_theory: If the notes hint at a new methodology, framework, or abstract idea, formulate it into a concise theory or principle. Title should name the theory.
-- idea: For simple, standalone creative sparks or suggestions that don't fit other categories. Title should be the core idea.
+KNOWLEDGE CARD CATEGORIES (MUST generate at least one of each):
+- encyclopedia: For well-known concepts, historical events, famous people, scientific principles. MUST include sources array with URLs.
+- creative_story: Short imaginative stories based on note themes
+- note_synthesis: Combine related ideas from multiple notes into summaries
+- new_theory: Extract or formulate new methodologies, frameworks, principles
+- idea: Standalone creative insights or suggestions
 
-General Rules:
-- IMPORTANT: Respond in the primary language used in the provided notes.
-- Return the result as a single JSON object.
+CRITICAL REQUIREMENTS:
+- Generate EXACTLY 5 knowledge cards (one from each category)
+- If content doesn't naturally fit a category, be creative and adapt
+- Each card needs: type, title, content
+- Encyclopedia cards MUST include sources array with URLs
+- Be creative and insightful
+- Use the same language as the notes
+- Return ONLY valid JSON
 
-Here are the notes:
+IMPORTANT: You MUST generate knowledge cards. If you cannot find content for a category, create a generic but relevant card for that category.
+
+EXAMPLE OUTPUT FORMAT:
+{
+  "todos": ["task1", "task2"],
+  "knowledgeCards": [
+    {"type": "encyclopedia", "title": "Concept Name", "content": "Description", "sources": ["url1", "url2"]},
+    {"type": "creative_story", "title": "Story Title", "content": "Story content"},
+    {"type": "note_synthesis", "title": "Synthesis Title", "content": "Synthesis content"},
+    {"type": "new_theory", "title": "Theory Name", "content": "Theory content"},
+    {"type": "idea", "title": "Idea Title", "content": "Idea content"}
+  ]
+}
+
+Notes to analyze:
 ${notesContent}
 `;
 
@@ -72,6 +90,88 @@ ${notesContent}
       summarySchema,
       { schemaName: 'SummarySchema' }
     );
+    
+    // Ensure we have knowledge cards
+    if (!summary.knowledgeCards || summary.knowledgeCards.length === 0) {
+      console.warn('AI returned empty knowledge cards, generating fallback cards');
+      summary.knowledgeCards = [
+        {
+          type: 'idea',
+          title: 'Note Analysis',
+          content: 'Based on your notes, consider exploring these themes further and connecting related ideas.',
+        },
+        {
+          type: 'note_synthesis',
+          title: 'Key Themes',
+          content: 'Your notes contain several interesting themes that could be developed further.',
+        },
+        {
+          type: 'creative_story',
+          title: 'The Journey',
+          content: 'Every note is a step in your intellectual journey, building towards greater understanding.',
+        },
+        {
+          type: 'new_theory',
+          title: 'Personal Framework',
+          content: 'Your notes suggest a unique perspective that could be developed into a personal framework.',
+        },
+        {
+          type: 'encyclopedia',
+          title: 'Knowledge Base',
+          content: 'Your notes represent a growing knowledge base that can be referenced and built upon.',
+          sources: ['https://en.wikipedia.org/wiki/Knowledge_management'],
+        },
+      ];
+    }
+    
+    // Ensure we have at least one card of each type
+    const existingTypes = new Set(summary.knowledgeCards.map(card => card.type));
+    const allTypes: Array<'encyclopedia' | 'creative_story' | 'note_synthesis' | 'new_theory' | 'idea'> = ['encyclopedia', 'creative_story', 'note_synthesis', 'new_theory', 'idea'];
+    const missingTypes = allTypes.filter(type => !existingTypes.has(type));
+    
+    if (missingTypes.length > 0) {
+      console.warn(`Missing knowledge card types: ${missingTypes.join(', ')}`);
+      const fallbackCards = missingTypes.map(type => {
+        switch (type) {
+          case 'encyclopedia':
+            return {
+              type: 'encyclopedia' as const,
+              title: 'Knowledge Base',
+              content: 'Your notes represent a growing knowledge base that can be referenced and built upon.',
+              sources: ['https://en.wikipedia.org/wiki/Knowledge_management'],
+            };
+          case 'creative_story':
+            return {
+              type: 'creative_story' as const,
+              title: 'The Journey',
+              content: 'Every note is a step in your intellectual journey, building towards greater understanding.',
+            };
+          case 'note_synthesis':
+            return {
+              type: 'note_synthesis' as const,
+              title: 'Key Themes',
+              content: 'Your notes contain several interesting themes that could be developed further.',
+            };
+          case 'new_theory':
+            return {
+              type: 'new_theory' as const,
+              title: 'Personal Framework',
+              content: 'Your notes suggest a unique perspective that could be developed into a personal framework.',
+            };
+          case 'idea':
+            return {
+              type: 'idea' as const,
+              title: 'Note Analysis',
+              content: 'Based on your notes, consider exploring these themes further and connecting related ideas.',
+            };
+          default:
+            return null;
+        }
+      }).filter(Boolean);
+      
+      summary.knowledgeCards.push(...fallbackCards);
+    }
+    
     return summary;
   } catch (error) {
     console.error('Error generating summary:', error);
