@@ -56,7 +56,7 @@ const WikiBreadcrumb: React.FC<WikiBreadcrumbProps> = ({ history, wikis, setHist
     };
 
     return (
-        <div className="flex items-center flex-wrap gap-2 p-2 bg-slate-100 dark:bg-slate-800 rounded-md mb-6">
+        <div className="flex items-center flex-wrap gap-2 p-2 bg-slate-100 dark:bg-slate-800 rounded-md">
             {history.map((item, index) => (
                 <React.Fragment key={item.id}>
                     <BreadcrumbItem item={item} isLast={index === history.length - 1} />

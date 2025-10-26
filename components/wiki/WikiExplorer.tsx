@@ -169,9 +169,17 @@ const WikiExplorer: React.FC<WikiExplorerProps> = ({
                 </div>
             </div>
         )}
-        <div className="flex-1 overflow-y-auto p-6 md:p-8">
+
+        {/* Header Section */}
+        <div className="px-6 md:px-8 pt-6 md:pt-8 pb-4 border-b border-slate-200 dark:border-slate-700">
             <div className="max-w-4xl mx-auto w-full">
                 <WikiBreadcrumb history={history} wikis={wikis} setHistory={setHistory} />
+            </div>
+        </div>
+
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto p-6 md:p-8">
+            <div className="max-w-4xl mx-auto w-full">
                 
                 <div className="flex items-start justify-between gap-4 mb-2">
                   <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
