@@ -18,7 +18,7 @@ interface WikiStudioProps {
 }
 
 const WikiStudio: React.FC<WikiStudioProps> = (props) => {
-  const { notes, initialHistory, onGenerateWiki } = props;
+  const { notes, wikis, initialHistory, onGenerateWiki } = props;
   const [history, setHistory] = useState<ExplorationItem[]>(initialHistory || []);
   const [loadingState, setLoadingState] = useState<{ type: 'topic'; id: string } | null>(null);
 
@@ -30,6 +30,10 @@ const WikiStudio: React.FC<WikiStudioProps> = (props) => {
 
   const handleStartWithNote = (note: Note) => {
     setHistory([note]);
+  };
+
+  const handleSelectWiki = (wiki: WikiEntry) => {
+    setHistory([wiki]);
   };
 
   const handleStartWithTopic = async (topic: string) => {
@@ -59,10 +63,12 @@ const WikiStudio: React.FC<WikiStudioProps> = (props) => {
     return (
       <WikiStudioHome
         notes={notes}
+        wikis={wikis}
         aiTopics={props.aiTopics}
         isLoadingTopics={props.isLoadingTopics}
         onStartWithNote={handleStartWithNote}
         onStartWithTopic={handleStartWithTopic}
+        onSelectWiki={handleSelectWiki}
         loadingState={loadingState}
       />
     );
