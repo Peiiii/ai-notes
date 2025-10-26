@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Note, WikiEntry } from '../types';
 import BookOpenIcon from './icons/BookOpenIcon';
 
@@ -18,6 +17,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
 }) => {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (note) {
@@ -28,6 +28,14 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
       setContent('');
     }
   }, [note]);
+
+  useEffect(() => {
+    // Auto-resize the textarea based on its content
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto'; // Reset height to recalculate
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+    }
+  }, [content]);
 
   const handleBlur = () => {
     if (note) {
@@ -51,8 +59,8 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
   const rootWikisFromThisNote = wikis.filter(w => w.sourceNoteId === note.id && w.parentId === null);
 
   return (
-    <div className="h-full flex flex-col bg-white dark:bg-slate-800/50">
-      <div className="p-6 md:p-8 flex-1 flex flex-col">
+    <div className="h-full overflow-y-auto bg-white dark:bg-slate-800/50">
+      <div className="p-6 md:p-8">
           <div className="flex items-center gap-4 mb-4 pb-2 border-b border-slate-200 dark:border-slate-700">
               <input
                   type="text"
@@ -64,33 +72,35 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
               />
           </div>
           <textarea
+              ref={textareaRef}
               value={content}
               onChange={(e) => setContent(e.target.value)}
               onBlur={handleBlur}
               placeholder="Start writing..."
-              className="flex-1 w-full bg-transparent text-lg text-slate-700 dark:text-slate-300 placeholder-slate-400 dark:placeholder-slate-500 resize-none focus:outline-none leading-relaxed"
+              className="w-full bg-transparent text-lg text-slate-700 dark:text-slate-300 placeholder-slate-400 dark:placeholder-slate-500 resize-none focus:outline-none leading-relaxed"
+              rows={1}
           />
-      </div>
-      {rootWikisFromThisNote.length > 0 && (
-          <div className="p-6 md:p-8 border-t border-slate-200 dark:border-slate-700 flex-shrink-0 bg-slate-50 dark:bg-slate-800">
-              <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-300 mb-3 flex items-center gap-2">
-                <BookOpenIcon className="w-5 h-5"/>
-                Explorations from this note
-              </h3>
-              <div className="space-y-2">
-                  {rootWikisFromThisNote.map(wiki => (
-                      <button 
-                        key={wiki.id} 
-                        onClick={() => onViewWikiInStudio(wiki.id)}
-                        className="w-full text-left p-2 rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
-                      >
-                          <p className="font-medium text-sm text-slate-800 dark:text-slate-100">{wiki.term}</p>
-                          <p className="text-xs text-slate-500 dark:text-slate-400">Started on {new Date(wiki.createdAt).toLocaleDateString()}</p>
-                      </button>
-                  ))}
+          {rootWikisFromThisNote.length > 0 && (
+              <div className="mt-12 pt-8 border-t border-slate-200 dark:border-slate-700">
+                  <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-300 mb-3 flex items-center gap-2">
+                    <BookOpenIcon className="w-5 h-5"/>
+                    Explorations from this note
+                  </h3>
+                  <div className="space-y-2">
+                      {rootWikisFromThisNote.map(wiki => (
+                          <button 
+                            key={wiki.id} 
+                            onClick={() => onViewWikiInStudio(wiki.id)}
+                            className="w-full text-left p-2 rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                          >
+                              <p className="font-medium text-sm text-slate-800 dark:text-slate-100">{wiki.term}</p>
+                              <p className="text-xs text-slate-500 dark:text-slate-400">Started on {new Date(wiki.createdAt).toLocaleDateString()}</p>
+                          </button>
+                      ))}
+                  </div>
               </div>
-          </div>
-      )}
+          )}
+      </div>
     </div>
   );
 };
