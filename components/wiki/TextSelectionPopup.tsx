@@ -1,24 +1,16 @@
 
-import React, { useState, useRef, useCallback, useEffect } from 'react';
-import BookOpenIcon from '../icons/BookOpenIcon';
-import ThoughtBubbleIcon from '../icons/ThoughtBubbleIcon';
+import React, { useState, useRef, useCallback, useEffect, ReactNode } from 'react';
 
 interface TextSelectionPopupProps {
   children: React.ReactNode;
-  onExplore: (text: string) => void;
-  onSuggest: (text: string) => void;
+  renderPopupContent: (selection: { text: string; close: () => void }) => ReactNode;
   isDisabled?: boolean;
-  isLoadingExplore?: boolean;
-  isLoadingSuggest?: boolean;
 }
 
 const TextSelectionPopup: React.FC<TextSelectionPopupProps> = ({
   children,
-  onExplore,
-  onSuggest,
+  renderPopupContent,
   isDisabled = false,
-  isLoadingExplore = false,
-  isLoadingSuggest = false,
 }) => {
   const [popup, setPopup] = useState<{ top: number; left: number; text: string } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -27,7 +19,6 @@ const TextSelectionPopup: React.FC<TextSelectionPopupProps> = ({
   const handleMouseUp = useCallback(() => {
     if (isDisabled) return;
 
-    // A small delay to allow other click events to fire (like closing other popups)
     setTimeout(() => {
         const selection = window.getSelection();
         const selectionText = selection?.toString().trim();
@@ -39,7 +30,7 @@ const TextSelectionPopup: React.FC<TextSelectionPopupProps> = ({
             if (containerRef.current && selectedNode && containerRef.current.contains(selectedNode)) {
                 const rect = range.getBoundingClientRect();
                 setPopup({
-                    top: rect.bottom + window.scrollY,
+                    top: rect.bottom + window.scrollY + 8,
                     left: rect.left + window.scrollX + rect.width / 2,
                     text: selectionText,
                 });
@@ -54,7 +45,6 @@ const TextSelectionPopup: React.FC<TextSelectionPopupProps> = ({
 
   const handleClickOutside = useCallback((event: MouseEvent) => {
     if (popupRef.current && !popupRef.current.contains(event.target as Node)) {
-        // Check if the click is on a new selection to avoid immediate closing
         const selection = window.getSelection();
         if (!selection || selection.toString().trim().length === 0) {
             setPopup(null);
@@ -71,19 +61,7 @@ const TextSelectionPopup: React.FC<TextSelectionPopupProps> = ({
     };
   }, [handleMouseUp, handleClickOutside]);
 
-  const handleExplore = () => {
-    if (popup) {
-      onExplore(popup.text);
-      setPopup(null);
-    }
-  };
-
-  const handleSuggest = () => {
-    if (popup) {
-      onSuggest(popup.text);
-      setPopup(null);
-    }
-  };
+  const closePopup = () => setPopup(null);
 
   return (
     <div ref={containerRef}>
@@ -93,17 +71,9 @@ const TextSelectionPopup: React.FC<TextSelectionPopupProps> = ({
           ref={popupRef}
           onMouseUp={(e) => e.stopPropagation()}
           style={{ top: `${popup.top}px`, left: `${popup.left}px`, transform: 'translateX(-50%)' }}
-          className="fixed z-10 animate-in fade-in zoom-in-95 duration-150 flex items-center bg-slate-800 rounded-lg shadow-lg"
+          className="fixed z-10"
         >
-          <button onClick={handleExplore} disabled={isDisabled} className="flex items-center gap-2 text-sm px-3 py-1.5 text-white hover:bg-slate-700 rounded-l-lg disabled:bg-slate-600 disabled:cursor-not-allowed">
-            {isLoadingExplore ? <div className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin"></div> : <BookOpenIcon className="w-4 h-4" />}
-            Explore
-          </button>
-          <div className="w-px h-4 bg-slate-600"></div>
-          <button onClick={handleSuggest} disabled={isDisabled} className="flex items-center gap-2 text-sm px-3 py-1.5 text-white hover:bg-slate-700 rounded-r-lg disabled:bg-slate-600 disabled:cursor-not-allowed">
-            {isLoadingSuggest ? <div className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin"></div> : <ThoughtBubbleIcon className="w-4 h-4" />}
-            Suggest Topics
-          </button>
+          {renderPopupContent({ text: popup.text, close: closePopup })}
         </div>
       )}
     </div>

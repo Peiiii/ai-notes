@@ -1,5 +1,6 @@
 
 import React from 'react';
+import Modal from '../Modal';
 
 interface SubTopicsModalProps {
   subTopics: { title: string; topics: string[] } | null;
@@ -8,22 +9,16 @@ interface SubTopicsModalProps {
 }
 
 const SubTopicsModal: React.FC<SubTopicsModalProps> = ({ subTopics, onClose, onSelectTopic }) => {
-  if (!subTopics) return null;
-
   return (
-    <div 
-      className="fixed inset-0 bg-black/60 z-20 flex items-center justify-center p-4 animate-in fade-in" 
-      onClick={onClose}
-    >
+    <Modal isOpen={!!subTopics} onClose={onClose}>
       <div 
-        className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-md p-5 animate-in fade-in zoom-in-95" 
-        onClick={e => e.stopPropagation()}
+        className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-md p-5"
       >
         <h3 className="font-semibold text-slate-800 dark:text-slate-100">
-          Explore topics related to "{subTopics.title}"
+          Explore topics related to "{subTopics?.title}"
         </h3>
         <div className="mt-4 space-y-2">
-          {subTopics.topics.map(topic => (
+          {subTopics?.topics.map(topic => (
             <button 
               key={topic} 
               onClick={() => onSelectTopic(topic)} 
@@ -34,7 +29,7 @@ const SubTopicsModal: React.FC<SubTopicsModalProps> = ({ subTopics, onClose, onS
           ))}
         </div>
       </div>
-    </div>
+    </Modal>
   );
 };
 

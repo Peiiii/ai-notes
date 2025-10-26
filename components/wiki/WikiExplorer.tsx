@@ -6,6 +6,8 @@ import HoverPopup from '../HoverPopup';
 import WikiStudioHome from './WikiStudioHome';
 import TextSelectionPopup from './TextSelectionPopup';
 import SubTopicsModal from './SubTopicsModal';
+import BookOpenIcon from '../icons/BookOpenIcon';
+import ThoughtBubbleIcon from '../icons/ThoughtBubbleIcon';
 
 declare global {
   interface Window {
@@ -186,11 +188,42 @@ const WikiExplorer: React.FC<WikiExplorerProps> = ({
                     </div>
                     
                     <TextSelectionPopup
-                        onExplore={generateNewWiki}
-                        onSuggest={handleSuggestTopics}
+                        renderPopupContent={({ text, close }) => (
+                            <div className="animate-in fade-in zoom-in-95 duration-150 flex items-center bg-slate-800 rounded-lg shadow-lg">
+                                <button
+                                    onClick={() => {
+                                        generateNewWiki(text);
+                                        close();
+                                    }}
+                                    disabled={!!loadingState}
+                                    className="flex items-center gap-2 text-sm px-3 py-1.5 text-white hover:bg-slate-700 rounded-l-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {loadingState?.type === 'explore' ? (
+                                        <div className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin"></div>
+                                    ) : (
+                                        <BookOpenIcon className="w-4 h-4" />
+                                    )}
+                                    Explore
+                                </button>
+                                <div className="w-px h-4 bg-slate-600"></div>
+                                <button
+                                    onClick={() => {
+                                        handleSuggestTopics(text);
+                                        close();
+                                    }}
+                                    disabled={!!loadingState}
+                                    className="flex items-center gap-2 text-sm px-3 py-1.5 text-white hover:bg-slate-700 rounded-r-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {loadingState?.type === 'subtopics' ? (
+                                        <div className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin"></div>
+                                    ) : (
+                                        <ThoughtBubbleIcon className="w-4 h-4" />
+                                    )}
+                                    Suggest Topics
+                                </button>
+                            </div>
+                        )}
                         isDisabled={!!loadingState || currentItem.id === WIKI_ROOT_ID}
-                        isLoadingExplore={loadingState?.type === 'explore'}
-                        isLoadingSuggest={loadingState?.type === 'subtopics'}
                     >
                         <div
                             className="prose prose-lg prose-slate dark:prose-invert max-w-none"
