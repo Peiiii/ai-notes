@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Note } from '../types';
 import useLocalStorage from './useLocalStorage';
-import { generateTitleForNote } from '../services/geminiService';
+import { generateTitleForNote } from '../services/aiService';
 
 const TITLE_GENERATION_LENGTH_THRESHOLD = 70;
 

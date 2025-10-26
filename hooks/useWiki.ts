@@ -5,7 +5,7 @@ import {
     generateWikiEntry, 
     generateWikiTopics,
     generateRelatedTopics,
-} from '../services/geminiService';
+} from '../services/aiService';
 
 export function useWiki(notes: Note[]) {
     const [wikis, setWikis] = useLocalStorage<WikiEntry[]>('ai-notes-wikis', []);

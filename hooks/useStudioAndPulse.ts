@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { AISummary, Todo, KnowledgeCard, Note, PulseReport } from '../types';
 import useLocalStorage from './useLocalStorage';
-import { generateSummary, generatePulseReport } from '../services/geminiService';
+import { generateSummary, generatePulseReport } from '../services/aiService';
 
 function simpleHash(str: string): string {
   let hash = 0;

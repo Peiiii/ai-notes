@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Note, KnowledgeCard, ViewMode, WikiEntry } from './types';
-import { generateSubTopics } from './services/geminiService';
+import { generateSubTopics } from './services/aiService';
 import { useNotes } from './hooks/useNotes';
 import { useChat } from './hooks/useChat';
 import { useStudioAndPulse } from './hooks/useStudioAndPulse';

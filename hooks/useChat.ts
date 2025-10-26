@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ChatMessage, Note } from '../types';
 import useLocalStorage from './useLocalStorage';
-import { generateChatResponse } from '../services/geminiService';
+import { generateChatResponse } from '../services/aiService';
 
 export function useChat() {
     const [chatHistory, setChatHistory] = useLocalStorage<ChatMessage[]>('ai-notes-chathistory', []);
