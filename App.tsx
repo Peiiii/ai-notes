@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
-import { Note, KnowledgeCard, ViewMode, WikiEntry } from './types';
-import { generateSubTopics } from './services/wikiAIService';
-import { useNotes } from './hooks/useNotes';
-import { useChat } from './hooks/useChat';
-import { useStudioAndPulse } from './hooks/useStudioAndPulse';
-import { useWiki } from './hooks/useWiki';
+
+import React from 'react';
+import { PresenterProvider, usePresenter } from './presenter';
+import { useAppStore } from './stores/appStore';
+import { useNotesStore } from './stores/notesStore';
+import { useChatStore } from './stores/chatStore';
+import { useStudioStore } from './stores/studioStore';
+import { useWikiStore } from './stores/wikiStore';
 
 import NoteList from './components/NoteList';
 import NoteEditor from './components/NoteEditor';
@@ -13,126 +14,17 @@ import ChatView from './components/ChatView';
 import PulseReportModal from './components/PulseReportModal';
 import WikiStudio from './components/wiki/WikiStudio';
 
-function App() {
-  const [viewMode, setViewMode] = useState<ViewMode>('editor');
+function AppContent() {
+  const presenter = usePresenter();
 
-  const {
-    notes,
-    activeNoteId,
-    setActiveNoteId,
-    activeNote,
-    generatingTitleIds,
-    createNewNote,
-    deleteNoteById,
-    updateNoteContent,
-  } = useNotes();
+  // Subscribe to state from stores
+  const { viewMode, activeNoteId, initialWikiHistory, viewingPulseReport } = useAppStore();
+  const { notes, generatingTitleIds } = useNotesStore();
+  const { chatHistory, isChatting } = useChatStore();
+  const { aiSummary, myTodos, isLoadingAI, isLoadingPulse, pulseReports } = useStudioStore();
+  const { wikis, wikiTopics, isLoadingWikiTopics } = useWikiStore();
 
-  const {
-    chatHistory,
-    isChatting,
-    sendChatMessage,
-  } = useChat();
-
-  const {
-    aiSummary,
-    myTodos,
-    isLoadingAI,
-    isLoadingPulse,
-    pulseReports,
-    viewingPulseReport,
-    setViewingPulseReport,
-    generateNewSummary,
-    toggleTodo,
-    adoptTodo,
-    generateNewPulseReport,
-  } = useStudioAndPulse(notes);
-
-  const {
-    wikis,
-    wikiTopics,
-    isLoadingWikiTopics,
-    initialWikiHistory,
-    setInitialWikiHistory,
-    fetchWikiTopics,
-    generateWiki,
-    updateWikiWithTopics,
-    regenerateWiki,
-    deleteWikisBySourceNoteId,
-  } = useWiki(notes);
-
-  // --- Handlers that orchestrate hooks ---
-
-  const handleNewNote = () => {
-    const newNote = createNewNote();
-    setActiveNoteId(newNote.id);
-    setViewMode('editor');
-  };
-
-  const handleDeleteNote = (id: string) => {
-    // Call functions from two different hooks
-    deleteNoteById(id);
-    deleteWikisBySourceNoteId(id);
-    if (activeNoteId === id) {
-      setActiveNoteId(null);
-    }
-  };
-
-  const handleSelectNote = (id: string) => {
-    setActiveNoteId(id);
-    setViewMode('editor');
-  };
-
-  const handleShowChat = () => {
-    setViewMode('chat');
-    setActiveNoteId(null);
-  };
-
-  const handleShowStudio = () => {
-    setViewMode('studio');
-    setActiveNoteId(null);
-    generateNewSummary();
-  };
-
-  const handleShowWikiStudio = () => {
-    setInitialWikiHistory(null); // Clear any deep links
-    setViewMode('wiki_studio');
-    setActiveNoteId(null);
-    fetchWikiTopics();
-  };
-
-  const handleCardToNote = (card: KnowledgeCard) => {
-    const newNote = createNewNote({ title: card.title, content: card.content });
-    setActiveNoteId(newNote.id);
-    setViewMode('editor');
-  };
-
-  const handleSendMessage = (message: string) => {
-    sendChatMessage(message, notes);
-  };
-
-  const handleViewWikiInStudio = (wikiId: string) => {
-    const targetWiki = wikis.find(w => w.id === wikiId);
-    if (!targetWiki) return;
-
-    const sourceNote = notes.find(n => n.id === targetWiki.sourceNoteId);
-    if (!sourceNote) return;
-
-    const historyPath: WikiEntry[] = [targetWiki];
-    let current = targetWiki;
-    while (current.parentId) {
-      const parent = wikis.find(w => w.id === current.parentId);
-      if (parent) {
-        historyPath.unshift(parent);
-        current = parent;
-      } else {
-        break; // Parent not found, stop traversing
-      }
-    }
-
-    setInitialWikiHistory([sourceNote, ...historyPath]);
-    setViewMode('wiki_studio');
-    setActiveNoteId(null);
-  };
+  const activeNote = notes.find((note) => note.id === activeNoteId) || null;
 
   const renderMainView = () => {
     switch (viewMode) {
@@ -142,13 +34,13 @@ function App() {
             suggestedTodos={aiSummary?.todos || []}
             myTodos={myTodos}
             knowledgeCards={aiSummary?.knowledgeCards || []}
-            onToggleTodo={toggleTodo}
-            onAdoptTodo={adoptTodo}
-            onCardToNote={handleCardToNote}
-            isLoadingPulse={isLoadingPulse}
-            onGeneratePulse={generateNewPulseReport}
             pulseReports={pulseReports}
-            onViewPulseReport={setViewingPulseReport}
+            onToggleTodo={presenter.studioManager.toggleTodo}
+            onAdoptTodo={presenter.studioManager.adoptTodo}
+            onCardToNote={presenter.handleCardToNote}
+            isLoadingPulse={isLoadingPulse}
+            onGeneratePulse={() => presenter.studioManager.generateNewPulseReport()}
+            onViewPulseReport={presenter.appManager.setViewingPulseReport}
           />
         );
       case 'chat':
@@ -156,7 +48,7 @@ function App() {
           <ChatView
             chatHistory={chatHistory}
             isChatting={isChatting}
-            onSendMessage={handleSendMessage}
+            onSendMessage={presenter.chatManager.sendChatMessage}
           />
         );
       case 'wiki_studio':
@@ -164,22 +56,23 @@ function App() {
           <WikiStudio
             notes={notes}
             wikis={wikis}
-            onGenerateWiki={generateWiki}
-            onRegenerateWiki={regenerateWiki}
-            onGenerateSubTopics={generateSubTopics}
+            onGenerateWiki={presenter.wikiManager.generateWiki}
+            onRegenerateWiki={presenter.wikiManager.regenerateWiki}
+            // Fix: Property 'generateSubTopics' does not exist on type 'WikiManager'. This is fixed by adding the method to WikiManager.
+            onGenerateSubTopics={presenter.wikiManager.generateSubTopics}
             aiTopics={wikiTopics}
             isLoadingTopics={isLoadingWikiTopics}
             initialHistory={initialWikiHistory}
-            onUpdateWiki={updateWikiWithTopics}
+            onUpdateWiki={presenter.wikiManager.updateWikiWithTopics}
           />
         );
       case 'editor':
       default:
         return <NoteEditor
           note={activeNote}
-          onUpdateNote={updateNoteContent}
+          onUpdateNote={presenter.notesManager.updateNoteContent}
           wikis={wikis}
-          onViewWikiInStudio={handleViewWikiInStudio}
+          onViewWikiInStudio={presenter.handleViewWikiInStudio}
         />;
     }
   };
@@ -190,20 +83,32 @@ function App() {
         <NoteList
           notes={notes}
           activeNoteId={activeNoteId}
-          onSelectNote={handleSelectNote}
-          onNewNote={handleNewNote}
-          onDeleteNote={handleDeleteNote}
-          onShowStudio={handleShowStudio}
-          onShowChat={handleShowChat}
-          onShowWikiStudio={handleShowWikiStudio}
+          onSelectNote={presenter.handleSelectNote}
+          onNewNote={presenter.handleNewNote}
+          onDeleteNote={presenter.handleDeleteNote}
+          onShowStudio={presenter.handleShowStudio}
+          onShowChat={presenter.handleShowChat}
+          onShowWikiStudio={presenter.handleShowWikiStudio}
           isLoadingAI={isLoadingAI}
           generatingTitleIds={generatingTitleIds}
           viewMode={viewMode}
         />
       </div>
       <main className="flex-1">{renderMainView()}</main>
-      <PulseReportModal report={viewingPulseReport} onClose={() => setViewingPulseReport(null)} />
+      <PulseReportModal 
+        report={viewingPulseReport} 
+        onClose={() => presenter.appManager.setViewingPulseReport(null)} 
+      />
     </div>
+  );
+}
+
+
+function App() {
+  return (
+    <PresenterProvider>
+      <AppContent />
+    </PresenterProvider>
   );
 }
 

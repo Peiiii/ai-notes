@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Note, ViewMode } from '../types';
 import PlusIcon from './icons/PlusIcon';

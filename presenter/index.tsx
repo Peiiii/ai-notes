@@ -1,0 +1,122 @@
+
+import React, { createContext, useContext, useEffect, useRef } from 'react';
+import { useAppStore } from '../stores/appStore';
+import { useNotesStore } from '../stores/notesStore';
+// Fix: Import useWikiStore
+import { useWikiStore } from '../stores/wikiStore';
+import { AppManager } from '../managers/AppManager';
+import { NotesManager } from '../managers/NotesManager';
+import { ChatManager } from '../managers/ChatManager';
+import { StudioManager } from '../managers/StudioManager';
+import { WikiManager } from '../managers/WikiManager';
+import { KnowledgeCard, Note, WikiEntry } from '../types';
+
+export class Presenter {
+  appManager = new AppManager();
+  notesManager = new NotesManager();
+  chatManager = new ChatManager();
+  studioManager = new StudioManager();
+  wikiManager = new WikiManager();
+
+  // --- Orchestration Methods ---
+
+  handleNewNote = () => {
+    const newNote = this.notesManager.createNewNote();
+    this.appManager.setActiveNoteId(newNote.id);
+    this.appManager.setViewMode('editor');
+  };
+
+  handleDeleteNote = (id: string) => {
+    const { activeNoteId } = useAppStore.getState();
+    this.notesManager.deleteNoteById(id);
+    this.wikiManager.deleteWikisBySourceNoteId(id);
+    if (activeNoteId === id) {
+      this.appManager.setActiveNoteId(null);
+    }
+  };
+
+  handleSelectNote = (id: string) => {
+    this.appManager.setActiveNoteId(id);
+    this.appManager.setViewMode('editor');
+  };
+
+  handleShowChat = () => {
+    this.appManager.setViewMode('chat');
+    this.appManager.setActiveNoteId(null);
+  };
+
+  handleShowStudio = () => {
+    this.appManager.setViewMode('studio');
+    this.appManager.setActiveNoteId(null);
+    this.studioManager.generateNewSummary();
+  };
+
+  handleShowWikiStudio = () => {
+    this.appManager.setInitialWikiHistory(null);
+    this.appManager.setViewMode('wiki_studio');
+    this.appManager.setActiveNoteId(null);
+    this.wikiManager.fetchWikiTopics();
+  };
+
+  handleCardToNote = (card: KnowledgeCard) => {
+    const newNote = this.notesManager.createNewNote({ title: card.title, content: card.content });
+    this.appManager.setActiveNoteId(newNote.id);
+    this.appManager.setViewMode('editor');
+  };
+
+  handleViewWikiInStudio = (wikiId: string) => {
+    const { wikis } = useWikiStore.getState();
+    const { notes } = useNotesStore.getState();
+
+    const targetWiki = wikis.find(w => w.id === wikiId);
+    if (!targetWiki) return;
+
+    const sourceNote = notes.find(n => n.id === targetWiki.sourceNoteId);
+    if (!sourceNote) return;
+
+    const historyPath: WikiEntry[] = [targetWiki];
+    let current = targetWiki;
+    while (current.parentId) {
+      const parent = wikis.find(w => w.id === current.parentId);
+      if (parent) {
+        historyPath.unshift(parent);
+        current = parent;
+      } else {
+        break;
+      }
+    }
+
+    this.appManager.setInitialWikiHistory([sourceNote, ...historyPath]);
+    this.appManager.setViewMode('wiki_studio');
+    this.appManager.setActiveNoteId(null);
+  };
+}
+
+const PresenterContext = createContext<Presenter | null>(null);
+
+export const PresenterProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // Fix: Initialize useRef with null to match the Context type and avoid type mismatch.
+  const presenterRef = useRef<Presenter | null>(null);
+  if (presenterRef.current === null) {
+    presenterRef.current = new Presenter();
+  }
+
+  useEffect(() => {
+    // Run initializations
+    presenterRef.current?.studioManager.init();
+  }, [])
+
+  return (
+    <PresenterContext.Provider value={presenterRef.current}>
+      {children}
+    </PresenterContext.Provider>
+  );
+};
+
+export const usePresenter = () => {
+  const context = useContext(PresenterContext);
+  if (!context) {
+    throw new Error('usePresenter must be used within a PresenterProvider');
+  }
+  return context;
+};
