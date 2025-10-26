@@ -1,6 +1,7 @@
-import React, { useState, useRef } from 'react';
+import React from 'react';
 import { Note, WikiEntry } from '../../types';
 import ChevronRightIcon from '../icons/ChevronRightIcon';
+import HoverPopup from '../HoverPopup';
 
 type ExplorationItem = Note | WikiEntry;
 
@@ -11,23 +12,6 @@ interface WikiBreadcrumbProps {
 }
 
 const WikiBreadcrumb: React.FC<WikiBreadcrumbProps> = ({ history, wikis, setHistory }) => {
-    const [activeBreadcrumb, setActiveBreadcrumb] = useState<string | null>(null);
-    const hidePopupTimeout = useRef<number | null>(null);
-
-    const handleShowPopup = (itemId: string) => {
-        if (hidePopupTimeout.current) {
-            clearTimeout(hidePopupTimeout.current);
-            hidePopupTimeout.current = null;
-        }
-        setActiveBreadcrumb(itemId);
-    };
-
-    const handleHidePopup = () => {
-        hidePopupTimeout.current = window.setTimeout(() => {
-            setActiveBreadcrumb(null);
-        }, 150);
-    };
-
     const BreadcrumbItem = ({ item, isLast }: { item: ExplorationItem; isLast: boolean }) => {
         const children = 'id' in item ? wikis.filter(w => w.parentId === item.id) : [];
         const title = 'term' in item ? item.term : item.title || 'Untitled Note';
@@ -39,40 +23,44 @@ const WikiBreadcrumb: React.FC<WikiBreadcrumbProps> = ({ history, wikis, setHist
             }
         }
         
-        const itemId = 'id' in item ? item.id : null;
+        const trigger = (
+            <button
+                onClick={handleItemClick}
+                className={`text-sm font-medium ${isLast ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
+            >
+                {title}
+            </button>
+        );
+
+        if (children.length === 0) {
+            return trigger;
+        }
+
+        const content = (
+            <div 
+                className="w-64 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 z-20 p-2 animate-in fade-in zoom-in-95"
+            >
+                <button onClick={handleItemClick} className="w-full text-left block px-3 py-2 text-sm font-semibold rounded-md text-slate-800 dark:text-slate-100 bg-slate-100 dark:bg-slate-700/50 mb-1">{title}</button>
+                <div className="border-t border-slate-200 dark:border-slate-700 my-1 -mx-2"></div>
+                {children.map(child => (
+                    <button
+                        key={child.id}
+                        onClick={() => setHistory(prev => [...prev.slice(0, prev.findIndex(h => h.id === item.id) + 1), child])}
+                        className="w-full text-left block px-3 py-2 text-sm rounded-md text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+                    >
+                        {child.term}
+                    </button>
+                ))}
+            </div>
+        );
 
         return (
-            <div
+            <HoverPopup 
+                trigger={trigger}
+                content={content}
+                popupClassName="absolute top-full left-0 mt-2 z-20"
                 className="relative"
-                onMouseEnter={() => itemId && children.length > 0 && handleShowPopup(itemId)}
-                onMouseLeave={handleHidePopup}
-            >
-                <button
-                    onClick={handleItemClick}
-                    className={`text-sm font-medium ${isLast ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
-                >
-                    {title}
-                </button>
-                {activeBreadcrumb === item.id && children.length > 0 && (
-                    <div 
-                        className="absolute top-full left-0 mt-2 w-64 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 z-20 p-2 animate-in fade-in zoom-in-95"
-                        onMouseEnter={() => itemId && handleShowPopup(itemId)}
-                        onMouseLeave={handleHidePopup}
-                    >
-                        <button onClick={handleItemClick} className="w-full text-left block px-3 py-2 text-sm font-semibold rounded-md text-slate-800 dark:text-slate-100 bg-slate-100 dark:bg-slate-700/50 mb-1">{title}</button>
-                        <div className="border-t border-slate-200 dark:border-slate-700 my-1 -mx-2"></div>
-                        {children.map(child => (
-                            <button
-                                key={child.id}
-                                onClick={() => setHistory(prev => [...prev.slice(0, prev.findIndex(h => h.id === item.id) + 1), child])}
-                                className="w-full text-left block px-3 py-2 text-sm rounded-md text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
-                            >
-                                {child.term}
-                            </button>
-                        ))}
-                    </div>
-                )}
-            </div>
+            />
         );
     };
 

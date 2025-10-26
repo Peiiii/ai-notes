@@ -4,6 +4,7 @@ import BookOpenIcon from '../icons/BookOpenIcon';
 import SparklesIcon from '../icons/SparklesIcon';
 import ThoughtBubbleIcon from '../icons/ThoughtBubbleIcon';
 import WikiBreadcrumb from './WikiBreadcrumb';
+import HoverPopup from '../HoverPopup';
 
 declare global {
   interface Window {
@@ -311,22 +312,30 @@ const WikiExplorer: React.FC<WikiExplorerProps> = ({
                 <div className="max-w-4xl mx-auto w-full">
                     <div className="flex items-start justify-between gap-4 mb-2">
                         <h1 className="text-3xl font-bold text-slate-900 dark:text-white">{currentItem.term}</h1>
-                        <div className="relative group flex-shrink-0">
-                            <button disabled={!!loadingState} className="text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 px-3 py-1.5 rounded-md bg-slate-100 dark:bg-slate-700/50 disabled:opacity-50 flex items-center gap-2">
-                                {loadingState?.type === 'regenerate' && <div className="w-4 h-4 border-2 border-slate-400 dark:border-slate-500 border-t-transparent rounded-full animate-spin"></div>}
-                                Regenerate
-                            </button>
-                            <div className="absolute top-full right-0 mt-2 w-64 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 z-20 p-2 hidden group-hover:block animate-in fade-in zoom-in-95">
-                                <p className="text-xs text-slate-500 dark:text-slate-400 px-2 pb-2">Choose an option:</p>
-                                <button onClick={() => handleRegen(false)} className="w-full text-left block px-3 py-2 text-sm rounded-md hover:bg-slate-100 dark:hover:bg-slate-700">
-                                    <span className="font-semibold block">Update This Entry</span>
-                                    <span className="text-xs text-slate-500 dark:text-slate-400">Regenerate content for this topic only.</span>
-                                </button>
-                                <button onClick={() => handleRegen(true)} className="w-full text-left block px-3 py-2 text-sm rounded-md hover:bg-slate-100 dark:hover:bg-slate-700">
-                                    <span className="font-semibold block">Update & Clear Branch</span>
-                                    <span className="text-xs text-slate-500 dark:text-slate-400">Regenerate and delete all sub-topics created from this entry.</span>
-                                </button>
-                            </div>
+                        <div className="flex-shrink-0">
+                           <HoverPopup
+                                trigger={
+                                    <button disabled={!!loadingState} className="text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 px-3 py-1.5 rounded-md bg-slate-100 dark:bg-slate-700/50 disabled:opacity-50 flex items-center gap-2">
+                                        {loadingState?.type === 'regenerate' && <div className="w-4 h-4 border-2 border-slate-400 dark:border-slate-500 border-t-transparent rounded-full animate-spin"></div>}
+                                        Regenerate
+                                    </button>
+                                }
+                                content={
+                                    <div className="w-64 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 p-2 animate-in fade-in zoom-in-95">
+                                        <p className="text-xs text-slate-500 dark:text-slate-400 px-2 pb-2">Choose an option:</p>
+                                        <button onClick={() => handleRegen(false)} className="w-full text-left block px-3 py-2 text-sm rounded-md hover:bg-slate-100 dark:hover:bg-slate-700">
+                                            <span className="font-semibold block">Update This Entry</span>
+                                            <span className="text-xs text-slate-500 dark:text-slate-400">Regenerate content for this topic only.</span>
+                                        </button>
+                                        <button onClick={() => handleRegen(true)} className="w-full text-left block px-3 py-2 text-sm rounded-md hover:bg-slate-100 dark:hover:bg-slate-700">
+                                            <span className="font-semibold block">Update & Clear Branch</span>
+                                            <span className="text-xs text-slate-500 dark:text-slate-400">Regenerate and delete all sub-topics created from this entry.</span>
+                                        </button>
+                                    </div>
+                                }
+                                popupClassName="absolute top-full right-0 mt-2 z-20"
+                                className="relative"
+                            />
                         </div>
                     </div>
                     <div
