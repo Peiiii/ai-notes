@@ -1,9 +1,9 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Note, WikiEntry } from '../types';
-import BookOpenIcon from './icons/BookOpenIcon';
-import SparklesIcon from './icons/SparklesIcon';
-import ChevronRightIcon from './icons/ChevronRightIcon';
-import ThoughtBubbleIcon from './icons/ThoughtBubbleIcon';
+import React, { useState, useRef, useEffect } from 'react';
+import { Note, WikiEntry } from '../../types';
+import BookOpenIcon from '../icons/BookOpenIcon';
+import SparklesIcon from '../icons/SparklesIcon';
+import ThoughtBubbleIcon from '../icons/ThoughtBubbleIcon';
+import WikiBreadcrumb from './WikiBreadcrumb';
 
 declare global {
   interface Window {
@@ -14,35 +14,30 @@ declare global {
 }
 
 type ExplorationItem = Note | WikiEntry;
-type LoadingState = { type: 'topic'; id: string } | { type: 'subtopics' } | { type: 'explore' } | { type: 'further'; id: string } | { type: 'regenerate' };
+type LoadingState = { type: 'subtopics' } | { type: 'explore' } | { type: 'further'; id: string } | { type: 'regenerate' };
 
-interface WikiStudioProps {
+interface WikiExplorerProps {
   notes: Note[];
   wikis: WikiEntry[];
+  history: ExplorationItem[];
+  setHistory: React.Dispatch<React.SetStateAction<ExplorationItem[]>>;
   onGenerateWiki: (term: string, sourceNoteId: string, parentId: string | null, contextContent: string) => Promise<WikiEntry>;
   onRegenerateWiki: (wikiId: string, clearChildren: boolean) => Promise<void>;
   onGenerateSubTopics: (selection: string, contextContent: string) => Promise<string[]>;
   onUpdateWiki: (wikiId: string) => void;
-  aiTopics: string[];
-  isLoadingTopics: boolean;
-  initialHistory: (Note | WikiEntry)[] | null;
 }
 
-const WikiStudio: React.FC<WikiStudioProps> = ({
-  notes,
+const WikiExplorer: React.FC<WikiExplorerProps> = ({
   wikis,
+  history,
+  setHistory,
   onGenerateWiki,
   onRegenerateWiki,
   onGenerateSubTopics,
   onUpdateWiki,
-  aiTopics,
-  isLoadingTopics,
-  initialHistory,
 }) => {
-  const [history, setHistory] = useState<ExplorationItem[]>(initialHistory || []);
   const [selectionPopup, setSelectionPopup] = useState<{ top: number; left: number; text: string } | null>(null);
   const [subTopics, setSubTopics] = useState<{ title: string; topics: string[] } | null>(null);
-  const [activeBreadcrumb, setActiveBreadcrumb] = useState<string | null>(null);
   const [loadingState, setLoadingState] = useState<LoadingState | null>(null);
   
   const contentRef = useRef<HTMLDivElement>(null);
@@ -51,17 +46,9 @@ const WikiStudio: React.FC<WikiStudioProps> = ({
   const currentItem = history.length > 0 ? history[history.length - 1] : null;
 
   useEffect(() => {
-    if (initialHistory) {
-      setHistory(initialHistory);
-    }
-  }, [initialHistory]);
-
-
-  useEffect(() => {
     // Close popups if the history changes
     setSelectionPopup(null);
     setSubTopics(null);
-    setActiveBreadcrumb(null);
     
     // Fetch related topics if they don't exist
     if (currentItem && 'term' in currentItem && (!currentItem.suggestedTopics || currentItem.suggestedTopics.length === 0)) {
@@ -69,28 +56,6 @@ const WikiStudio: React.FC<WikiStudioProps> = ({
     }
 
   }, [history, currentItem, onUpdateWiki]);
-
-  const handleStartWithNote = (note: Note) => {
-    setHistory([note]);
-  };
-
-  const handleStartWithTopic = async (topic: string) => {
-    const sourceNoteId = notes.length > 0 ? notes[0].id : 'no-source';
-    if (sourceNoteId === 'no-source') {
-        alert("Please create a note before starting from a topic.");
-        return;
-    }
-    setLoadingState({ type: 'topic', id: topic });
-    try {
-        const contextContent = notes.map(n => `${n.title} ${n.content}`).join('\n');
-        const newWikiEntry = await onGenerateWiki(topic, sourceNoteId, null, contextContent);
-        setHistory([newWikiEntry]);
-    } catch (e) {
-        console.error("Failed to start with topic", e);
-    } finally {
-        setLoadingState(null);
-    }
-  };
 
   const generateNewWiki = async (term: string, from: 'explore' | 'further') => {
     if (!currentItem || loadingState) return;
@@ -160,129 +125,11 @@ const WikiStudio: React.FC<WikiStudioProps> = ({
       }
     }
   }
-
-  // Home View
-  if (!currentItem) {
-    return (
-      <div className="h-full flex flex-col p-6 md:p-8 overflow-y-auto">
-        <div className="max-w-4xl mx-auto w-full">
-          <div className="text-center mb-12">
-            <BookOpenIcon className="w-16 h-16 mx-auto mb-4 text-indigo-500" />
-            <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Infinite Wiki</h1>
-            <p className="text-slate-500 dark:text-slate-400 mt-2">Start a journey of discovery. Begin with one of your notes or an AI-suggested topic.</p>
-          </div>
-          <div className="grid md:grid-cols-2 gap-8">
-            <div className="bg-white dark:bg-slate-800/50 p-6 rounded-lg shadow-sm">
-              <h2 className="text-xl font-semibold mb-4 text-slate-800 dark:text-slate-100">Start from a Note</h2>
-              {notes.length > 0 ? (
-                <div className="max-h-60 overflow-y-auto pr-2 space-y-2">
-                  {notes.map(note => (
-                    <button key={note.id} onClick={() => handleStartWithNote(note)} className="w-full text-left p-3 rounded-md bg-slate-100 dark:bg-slate-700/50 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
-                      <p className="font-semibold truncate">{note.title || 'Untitled Note'}</p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{note.content || 'No content'}</p>
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-slate-500 dark:text-slate-400">You don't have any notes yet. Create one to start an exploration.</p>
-              )}
-            </div>
-            <div className="bg-white dark:bg-slate-800/50 p-6 rounded-lg shadow-sm">
-              <h2 className="text-xl font-semibold mb-4 flex items-center gap-2 text-slate-800 dark:text-slate-100">
-                <SparklesIcon className="w-5 h-5 text-purple-500" />
-                Start from a Topic
-              </h2>
-               {isLoadingTopics ? (
-                 <div className="flex items-center justify-center h-40">
-                    <div className="w-6 h-6 border-2 border-slate-300 border-t-transparent rounded-full animate-spin"></div>
-                 </div>
-               ) : aiTopics.length > 0 ? (
-                 <div className="space-y-2">
-                    {aiTopics.map((topic, index) => {
-                      const isLoading = loadingState?.type === 'topic' && loadingState.id === topic;
-                      return (
-                        <button 
-                            key={index} 
-                            onClick={() => handleStartWithTopic(topic)}
-                            disabled={!!loadingState}
-                            className="w-full text-left p-3 rounded-md bg-slate-100 dark:bg-slate-700/50 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors flex items-center justify-between disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            <p className="font-semibold">{topic}</p>
-                            {isLoading && (
-                                <div className="w-4 h-4 border-2 border-slate-400 dark:border-slate-500 border-t-transparent rounded-full animate-spin"></div>
-                            )}
-                        </button>
-                      )
-                    })}
-                 </div>
-               ) : (
-                 <p className="text-sm text-slate-500 dark:text-slate-400">Create some notes, and we'll suggest topics for you here!</p>
-               )}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  const Breadcrumb = () => {
-    const BreadcrumbItem = ({ item, isLast }: { item: ExplorationItem; isLast: boolean }) => {
-      const children = 'id' in item ? wikis.filter(w => w.parentId === item.id) : [];
-      const title = 'term' in item ? item.term : item.title || 'Untitled Note';
-
-      const handleItemClick = () => {
-        const itemIndex = history.findIndex(h => h.id === item.id);
-        if (itemIndex !== -1) {
-          setHistory(prev => prev.slice(0, itemIndex + 1));
-        }
-      }
-
-      return (
-        <div 
-          className="relative group"
-          onMouseEnter={() => 'id' in item && setActiveBreadcrumb(item.id)}
-          onMouseLeave={() => setActiveBreadcrumb(null)}
-        >
-          <button 
-            onClick={handleItemClick}
-            className={`text-sm font-medium ${isLast ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
-          >
-            {title}
-          </button>
-          {activeBreadcrumb === item.id && children.length > 0 && (
-             <div className="absolute top-full left-0 mt-2 w-64 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 z-20 p-2 animate-in fade-in zoom-in-95">
-                <button onClick={handleItemClick} className="w-full text-left block px-3 py-2 text-sm font-semibold rounded-md text-slate-800 dark:text-slate-100 bg-slate-100 dark:bg-slate-700/50 mb-1">{title}</button>
-                <div className="border-t border-slate-200 dark:border-slate-700 my-1 -mx-2"></div>
-                {children.map(child => (
-                   <button 
-                     key={child.id} 
-                     onClick={() => setHistory(prev => [...prev.slice(0, prev.findIndex(h => h.id === item.id) + 1), child])}
-                     className="w-full text-left block px-3 py-2 text-sm rounded-md text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
-                   >
-                      {child.term}
-                   </button>
-                ))}
-             </div>
-          )}
-        </div>
-      );
-    };
-
-    return (
-      <div className="flex items-center flex-wrap gap-2 p-2 bg-slate-100 dark:bg-slate-800 rounded-md mb-6">
-        {history.map((item, index) => (
-          <React.Fragment key={item.id}>
-            <BreadcrumbItem item={item} isLast={index === history.length - 1} />
-            {index < history.length - 1 && <ChevronRightIcon className="w-4 h-4 text-slate-400 dark:text-slate-500" />}
-          </React.Fragment>
-        ))}
-      </div>
-    );
-  };
+  
+  if (!currentItem) return null; // Should be handled by parent component
   
   const childWikis = 'id' in currentItem ? wikis.filter(w => w.parentId === currentItem.id) : [];
 
-  // Explorer View
   return (
      <div 
         className="h-full flex flex-col"
@@ -322,7 +169,7 @@ const WikiStudio: React.FC<WikiStudioProps> = ({
         )}
         <div className="flex-1 overflow-y-auto p-6 md:p-8">
             <div className="max-w-4xl mx-auto w-full">
-                <Breadcrumb />
+                <WikiBreadcrumb history={history} wikis={wikis} setHistory={setHistory} />
                 
                 <div className="flex items-start justify-between gap-4 mb-2">
                   <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
@@ -400,4 +247,4 @@ const WikiStudio: React.FC<WikiStudioProps> = ({
   )
 };
 
-export default WikiStudio;
+export default WikiExplorer;

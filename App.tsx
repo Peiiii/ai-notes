@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Note, KnowledgeCard, ViewMode, WikiEntry } from './types';
-import { generateSubTopics } from './services/aiService';
+import { generateSubTopics } from './services/wikiAIService';
 import { useNotes } from './hooks/useNotes';
 import { useChat } from './hooks/useChat';
 import { useStudioAndPulse } from './hooks/useStudioAndPulse';
@@ -11,7 +11,7 @@ import NoteEditor from './components/NoteEditor';
 import Studio from './components/Studio';
 import ChatView from './components/ChatView';
 import PulseReportModal from './components/PulseReportModal';
-import WikiStudio from './components/WikiStudio';
+import WikiStudio from './components/wiki/WikiStudio';
 
 function App() {
   const [viewMode, setViewMode] = useState<ViewMode>('editor');
