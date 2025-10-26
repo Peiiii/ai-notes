@@ -9,7 +9,7 @@ import { ChatManager } from '../managers/ChatManager';
 import { StudioManager } from '../managers/StudioManager';
 import { WikiManager } from '../managers/WikiManager';
 import { ParliamentManager } from '../managers/ParliamentManager';
-import { KnowledgeCard, Note, WikiEntry, WIKI_ROOT_ID } from '../types';
+import { KnowledgeCard, Note, WikiEntry, WIKI_ROOT_ID, DebateSynthesis } from '../types';
 
 export class Presenter {
   appManager = new AppManager();
@@ -91,6 +91,27 @@ export class Presenter {
     this.appManager.setInitialWikiHistory(historyPath);
     this.appManager.setViewMode('wiki_studio');
     this.appManager.setActiveNoteId(null);
+  };
+
+  handleSaveDebateSynthesisAsNote = (topic: string, synthesis: DebateSynthesis) => {
+    const title = `Synthesis on: ${topic}`;
+    const content = `
+## Core Tension
+${synthesis.coreTension}
+
+## Key Arguments: The Pragmatist
+${synthesis.keyPointsPragmatist.map(p => `- ${p}`).join('\n')}
+
+## Key Arguments: The Visionary
+${synthesis.keyPointsVisionary.map(p => `- ${p}`).join('\n')}
+
+## Proposed Next Steps
+${synthesis.nextSteps.map(p => `- ${p}`).join('\n')}
+    `.trim();
+
+    const newNote = this.notesManager.createNewNote({ title, content });
+    this.appManager.setActiveNoteId(newNote.id);
+    this.appManager.setViewMode('editor');
   };
 }
 

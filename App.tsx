@@ -82,6 +82,7 @@ function AppContent() {
             currentDebate={currentDebate}
             onStartDebate={presenter.parliamentManager.startDebate}
             onResetDebate={presenter.parliamentManager.resetDebate}
+            onSaveSynthesis={presenter.handleSaveDebateSynthesisAsNote}
           />
         );
       case 'editor':

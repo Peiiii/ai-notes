@@ -2,7 +2,7 @@
 import { useParliamentStore } from '../stores/parliamentStore';
 import { useNotesStore } from '../stores/notesStore';
 import { ChatMessage } from '../types';
-import { generateDebateTopics, generateDebateTurn } from '../services/parliamentAIService';
+import { generateDebateTopics, generateDebateTurn, generateDebateSynthesis } from '../services/parliamentAIService';
 
 const PERSONAS = [
     {
@@ -72,16 +72,20 @@ export class ParliamentManager {
                 }));
             }
 
-            // Conclude the debate
+            // Conclude the debate with a synthesis
             await new Promise(res => setTimeout(res, 1500));
-            const conclusionMessage: ChatMessage = {
+            const finalHistory = useParliamentStore.getState().debateHistory;
+            const synthesis = await generateDebateSynthesis(topic, finalHistory);
+
+            const synthesisMessage: ChatMessage = {
                 id: crypto.randomUUID(),
                 role: 'model',
-                content: "The debate has concluded.",
-                persona: "Moderator"
+                content: "Here is a synthesis of the discussion.", // Fallback text
+                persona: "Moderator",
+                synthesisContent: synthesis,
             };
             useParliamentStore.setState(state => ({
-                debateHistory: [...state.debateHistory, conclusionMessage]
+                debateHistory: [...state.debateHistory, synthesisMessage]
             }));
 
         } catch (error) {

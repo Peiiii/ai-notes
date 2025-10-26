@@ -33,11 +33,19 @@ export interface AISummary {
   knowledgeCards: KnowledgeCard[];
 }
 
+export interface DebateSynthesis {
+  keyPointsPragmatist: string[];
+  keyPointsVisionary: string[];
+  coreTension: string;
+  nextSteps: string[];
+}
+
 export interface ChatMessage {
   id: string;
   role: 'user' | 'model';
   content: string;
   persona?: string;
+  synthesisContent?: DebateSynthesis;
 }
 
 export interface PulseReport {

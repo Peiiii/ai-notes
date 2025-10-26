@@ -27,6 +27,7 @@ const capabilityConfig = {
   wikiTopics:     { provider: 'gemini', model: 'lite' as ModelTier },
   debateTopics:   { provider: 'gemini', model: 'fast' as ModelTier },
   debateTurn:     { provider: 'gemini', model: 'pro'  as ModelTier },
+  debateSynthesis:{ provider: 'gemini', model: 'pro'  as ModelTier },
 };
 
 // Helper function to get the configured provider and model for a capability

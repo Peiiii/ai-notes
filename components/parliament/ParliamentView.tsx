@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Note, ChatMessage } from '../../types';
+import { Note, ChatMessage, DebateSynthesis } from '../../types';
 import ParliamentHome from './ParliamentHome';
 import DebateTranscript from './DebateTranscript';
 
@@ -13,6 +13,7 @@ interface ParliamentViewProps {
   currentDebate: { topic: string; noteId?: string } | null;
   onStartDebate: (topic: string, noteId?: string) => void;
   onResetDebate: () => void;
+  onSaveSynthesis: (topic: string, synthesis: DebateSynthesis) => void;
 }
 
 const ParliamentView: React.FC<ParliamentViewProps> = (props) => {
