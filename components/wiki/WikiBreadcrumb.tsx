@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Note, WikiEntry } from '../../types';
 import ChevronRightIcon from '../icons/ChevronRightIcon';
 
@@ -12,6 +12,21 @@ interface WikiBreadcrumbProps {
 
 const WikiBreadcrumb: React.FC<WikiBreadcrumbProps> = ({ history, wikis, setHistory }) => {
     const [activeBreadcrumb, setActiveBreadcrumb] = useState<string | null>(null);
+    const hidePopupTimeout = useRef<number | null>(null);
+
+    const handleShowPopup = (itemId: string) => {
+        if (hidePopupTimeout.current) {
+            clearTimeout(hidePopupTimeout.current);
+            hidePopupTimeout.current = null;
+        }
+        setActiveBreadcrumb(itemId);
+    };
+
+    const handleHidePopup = () => {
+        hidePopupTimeout.current = window.setTimeout(() => {
+            setActiveBreadcrumb(null);
+        }, 150);
+    };
 
     const BreadcrumbItem = ({ item, isLast }: { item: ExplorationItem; isLast: boolean }) => {
         const children = 'id' in item ? wikis.filter(w => w.parentId === item.id) : [];
@@ -23,12 +38,14 @@ const WikiBreadcrumb: React.FC<WikiBreadcrumbProps> = ({ history, wikis, setHist
                 setHistory(prev => prev.slice(0, itemIndex + 1));
             }
         }
+        
+        const itemId = 'id' in item ? item.id : null;
 
         return (
             <div
-                className="relative group"
-                onMouseEnter={() => 'id' in item && setActiveBreadcrumb(item.id)}
-                onMouseLeave={() => setActiveBreadcrumb(null)}
+                className="relative"
+                onMouseEnter={() => itemId && children.length > 0 && handleShowPopup(itemId)}
+                onMouseLeave={handleHidePopup}
             >
                 <button
                     onClick={handleItemClick}
@@ -37,7 +54,11 @@ const WikiBreadcrumb: React.FC<WikiBreadcrumbProps> = ({ history, wikis, setHist
                     {title}
                 </button>
                 {activeBreadcrumb === item.id && children.length > 0 && (
-                    <div className="absolute top-full left-0 mt-2 w-64 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 z-20 p-2 animate-in fade-in zoom-in-95">
+                    <div 
+                        className="absolute top-full left-0 mt-2 w-64 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 z-20 p-2 animate-in fade-in zoom-in-95"
+                        onMouseEnter={() => itemId && handleShowPopup(itemId)}
+                        onMouseLeave={handleHidePopup}
+                    >
                         <button onClick={handleItemClick} className="w-full text-left block px-3 py-2 text-sm font-semibold rounded-md text-slate-800 dark:text-slate-100 bg-slate-100 dark:bg-slate-700/50 mb-1">{title}</button>
                         <div className="border-t border-slate-200 dark:border-slate-700 my-1 -mx-2"></div>
                         {children.map(child => (
