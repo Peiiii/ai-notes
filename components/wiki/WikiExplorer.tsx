@@ -1,11 +1,11 @@
-import React, { useState, useRef, useEffect } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Note, WikiEntry, WIKI_ROOT_ID, LoadingState } from '../../types';
-import BookOpenIcon from '../icons/BookOpenIcon';
-import SparklesIcon from '../icons/SparklesIcon';
-import ThoughtBubbleIcon from '../icons/ThoughtBubbleIcon';
 import WikiBreadcrumb from './WikiBreadcrumb';
 import HoverPopup from '../HoverPopup';
 import WikiStudioHome from './WikiStudioHome';
+import TextSelectionPopup from './TextSelectionPopup';
+import SubTopicsModal from './SubTopicsModal';
 
 declare global {
   interface Window {
@@ -40,30 +40,24 @@ const WikiExplorer: React.FC<WikiExplorerProps> = ({
   aiTopics,
   isLoadingTopics,
 }) => {
-  const [selectionPopup, setSelectionPopup] = useState<{ top: number; left: number; text: string } | null>(null);
   const [subTopics, setSubTopics] = useState<{ title: string; topics: string[] } | null>(null);
   const [loadingState, setLoadingState] = useState<LoadingState | null>(null);
-  
-  const contentRef = useRef<HTMLDivElement>(null);
-  const popupRef = useRef<HTMLDivElement>(null);
   
   const currentItem = history.length > 0 ? history[history.length - 1] : null;
 
   useEffect(() => {
-    setSelectionPopup(null);
     setSubTopics(null);
     if (currentItem && 'term' in currentItem && (!currentItem.suggestedTopics || currentItem.suggestedTopics.length === 0)) {
         if (currentItem.id !== WIKI_ROOT_ID) {
             onUpdateWiki(currentItem.id);
         }
     }
-  }, [history, currentItem, onUpdateWiki]);
+  }, [currentItem, onUpdateWiki]);
 
-  const generateNewWiki = async (term: string, from: 'explore' | 'further') => {
+  const generateNewWiki = async (term: string) => {
     if (!currentItem || loadingState) return;
     
-    const loadingId = from === 'explore' ? (selectionPopup?.text || term) : term;
-    setLoadingState({ type: 'explore', id: loadingId });
+    setLoadingState({ type: 'explore', id: term });
 
     const sourceNoteId = 'sourceNoteId' in currentItem ? currentItem.sourceNoteId : (notes[0]?.id || 'no-source');
     const parentId = currentItem.id;
@@ -74,42 +68,22 @@ const WikiExplorer: React.FC<WikiExplorerProps> = ({
     } catch(e) {
         console.error("Failed to generate next wiki", e);
     } finally {
-      setSelectionPopup(null);
       setSubTopics(null);
       setLoadingState(null);
     }
   };
 
-  const handleSuggestTopics = async () => {
-    if (selectionPopup && !loadingState && currentItem) {
+  const handleSuggestTopics = async (selection: string) => {
+    if (!loadingState && currentItem) {
       setLoadingState({ type: 'subtopics' });
       try {
-        const topics = await onGenerateSubTopics(selectionPopup.text, currentItem.content);
-        setSubTopics({ title: selectionPopup.text, topics });
+        const topics = await onGenerateSubTopics(selection, currentItem.content);
+        setSubTopics({ title: selection, topics });
       } catch(e) {
         console.error("Failed to suggest topics", e);
       } finally {
         setLoadingState(null);
-        setSelectionPopup(null);
       }
-    }
-  };
-
-  const handleMouseUp = (event: React.MouseEvent) => {
-    if (popupRef.current && popupRef.current.contains(event.target as Node)) return;
-    if (currentItem?.id === WIKI_ROOT_ID) return;
-
-    const selection = window.getSelection();
-    const selectionText = selection?.toString().trim();
-    if (selection && selectionText && selectionText.length > 2 && selectionText.length < 100) {
-      const rect = selection.getRangeAt(0).getBoundingClientRect();
-      setSelectionPopup({ 
-        top: rect.bottom + window.scrollY, 
-        left: rect.left + window.scrollX + rect.width / 2, 
-        text: selectionText 
-      });
-    } else {
-      setSelectionPopup(null);
     }
   };
 
@@ -155,39 +129,12 @@ const WikiExplorer: React.FC<WikiExplorerProps> = ({
   if (!currentItem) return null;
   
   return (
-     <div className="h-full flex flex-col" onMouseUp={handleMouseUp}>
-        {selectionPopup && (
-         <div 
-            ref={popupRef}
-            onMouseUp={(e) => e.stopPropagation()}
-            style={{ top: `${selectionPopup.top}px`, left: `${selectionPopup.left}px`, transform: 'translateX(-50%)' }}
-            className="fixed z-10 animate-in fade-in zoom-in-95 duration-150 flex items-center bg-slate-800 rounded-lg shadow-lg"
-          >
-              <button onClick={() => generateNewWiki(selectionPopup.text, 'explore')} disabled={!!loadingState} className="flex items-center gap-2 text-sm px-3 py-1.5 text-white hover:bg-slate-700 rounded-l-lg disabled:bg-slate-600 disabled:cursor-not-allowed">
-                  {loadingState?.type === 'explore' ? <div className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin"></div> : <BookOpenIcon className="w-4 h-4" />}
-                  Explore
-              </button>
-              <div className="w-px h-4 bg-slate-600"></div>
-              <button onClick={handleSuggestTopics} disabled={!!loadingState} className="flex items-center gap-2 text-sm px-3 py-1.5 text-white hover:bg-slate-700 rounded-r-lg disabled:bg-slate-600 disabled:cursor-not-allowed">
-                  {loadingState?.type === 'subtopics' ? <div className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin"></div> : <ThoughtBubbleIcon className="w-4 h-4" />}
-                  Suggest Topics
-              </button>
-          </div>
-        )}
-        {subTopics && (
-            <div className="fixed inset-0 bg-black/50 z-20 flex items-center justify-center p-4" onClick={() => setSubTopics(null)}>
-                <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-md p-5" onClick={e => e.stopPropagation()}>
-                    <h3 className="font-semibold text-slate-800 dark:text-slate-100">Explore topics related to "{subTopics.title}"</h3>
-                    <div className="mt-4 space-y-2">
-                        {subTopics.topics.map(topic => (
-                            <button key={topic} onClick={() => generateNewWiki(topic, 'explore')} className="w-full text-left p-3 rounded-md bg-slate-100 dark:bg-slate-700/50 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
-                                {topic}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-            </div>
-        )}
+     <div className="h-full flex flex-col">
+        <SubTopicsModal
+            subTopics={subTopics}
+            onClose={() => setSubTopics(null)}
+            onSelectTopic={generateNewWiki}
+        />
 
         <div className="px-6 md:px-8 pt-6 md:pt-8 pb-4 border-b border-slate-200 dark:border-slate-700">
             <div className="max-w-4xl mx-auto w-full">
@@ -237,11 +184,19 @@ const WikiExplorer: React.FC<WikiExplorerProps> = ({
                             />
                         </div>
                     </div>
-                    <div
-                        ref={contentRef}
-                        className="prose prose-lg prose-slate dark:prose-invert max-w-none"
-                        dangerouslySetInnerHTML={{ __html: window.marked.parse(currentItem.content) }}
-                    ></div>
+                    
+                    <TextSelectionPopup
+                        onExplore={generateNewWiki}
+                        onSuggest={handleSuggestTopics}
+                        isDisabled={!!loadingState || currentItem.id === WIKI_ROOT_ID}
+                        isLoadingExplore={loadingState?.type === 'explore'}
+                        isLoadingSuggest={loadingState?.type === 'subtopics'}
+                    >
+                        <div
+                            className="prose prose-lg prose-slate dark:prose-invert max-w-none"
+                            dangerouslySetInnerHTML={{ __html: window.marked.parse(currentItem.content) }}
+                        ></div>
+                    </TextSelectionPopup>
 
                     {wikis.filter(w => w.parentId === currentItem.id).length > 0 && (
                         <div className="mt-12 pt-8 border-t border-slate-200 dark:border-slate-700">
@@ -263,7 +218,7 @@ const WikiExplorer: React.FC<WikiExplorerProps> = ({
                                 {currentItem.suggestedTopics.map(topic => {
                                     const isLoading = loadingState?.type === 'explore' && loadingState.id === topic;
                                     return (
-                                        <button key={topic} onClick={() => generateNewWiki(topic, 'further')} disabled={!!loadingState} className="px-4 py-2 bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300 rounded-full font-medium text-sm hover:bg-indigo-200 dark:hover:bg-indigo-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
+                                        <button key={topic} onClick={() => generateNewWiki(topic)} disabled={!!loadingState} className="px-4 py-2 bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300 rounded-full font-medium text-sm hover:bg-indigo-200 dark:hover:bg-indigo-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
                                             {isLoading && <div className="w-4 h-4 border-2 border-indigo-400/50 border-t-indigo-400 rounded-full animate-spin"></div>}
                                             {topic}
                                         </button>
