@@ -26,7 +26,7 @@ function AppContent() {
   const { chatHistory, isChatting } = useChatStore();
   const { aiSummary, myTodos, isLoadingAI, isLoadingPulse, pulseReports } = useStudioStore();
   const { wikis, wikiTopics, isLoadingWikiTopics } = useWikiStore();
-  const { topics, isLoadingTopics, debateHistory, isDebating, currentDebate } = useParliamentStore();
+  const { topics, isLoadingTopics, sessionHistory, isSessionActive, currentSession } = useParliamentStore();
 
 
   const activeNote = notes.find((note) => note.id === activeNoteId) || null;
@@ -63,7 +63,6 @@ function AppContent() {
             wikis={wikis}
             onGenerateWiki={presenter.wikiManager.generateWiki}
             onRegenerateWiki={presenter.wikiManager.regenerateWiki}
-            // Fix: Property 'generateSubTopics' does not exist on type 'WikiManager'. This is fixed by adding the method to WikiManager.
             onGenerateSubTopics={presenter.wikiManager.generateSubTopics}
             aiTopics={wikiTopics}
             isLoadingTopics={isLoadingWikiTopics}
@@ -77,11 +76,12 @@ function AppContent() {
             notes={notes}
             topics={topics}
             isLoadingTopics={isLoadingTopics}
-            debateHistory={debateHistory}
-            isDebating={isDebating}
-            currentDebate={currentDebate}
+            sessionHistory={sessionHistory}
+            isSessionActive={isSessionActive}
+            currentSession={currentSession}
             onStartDebate={presenter.parliamentManager.startDebate}
-            onResetDebate={presenter.parliamentManager.resetDebate}
+            onStartPodcast={presenter.parliamentManager.startPodcast}
+            onResetSession={presenter.parliamentManager.resetSession}
             onSaveSynthesis={presenter.handleSaveDebateSynthesisAsNote}
           />
         );

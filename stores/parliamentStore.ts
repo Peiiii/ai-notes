@@ -1,14 +1,18 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { ChatMessage } from '../types';
+import { ChatMessage, ParliamentMode } from '../types';
 
 interface ParliamentState {
   topics: string[];
   isLoadingTopics: boolean;
-  debateHistory: ChatMessage[];
-  isDebating: boolean;
-  currentDebate: { topic: string; noteId?: string } | null;
+  sessionHistory: ChatMessage[];
+  isSessionActive: boolean;
+  currentSession: { 
+    mode: ParliamentMode;
+    topic: string;
+    noteId?: string;
+  } | null;
 }
 
 export const useParliamentStore = create<ParliamentState>()(
@@ -16,9 +20,9 @@ export const useParliamentStore = create<ParliamentState>()(
     () => ({
       topics: [],
       isLoadingTopics: false,
-      debateHistory: [],
-      isDebating: false,
-      currentDebate: null,
+      sessionHistory: [],
+      isSessionActive: false,
+      currentSession: null,
     }),
     {
       name: 'ai-notes-parliament-storage',

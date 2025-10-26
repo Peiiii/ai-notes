@@ -2,6 +2,8 @@ export type ViewMode = 'editor' | 'studio' | 'chat' | 'pulse' | 'wiki_studio' | 
 
 export const WIKI_ROOT_ID = 'wiki_root';
 
+export type ParliamentMode = 'debate' | 'podcast';
+
 export type LoadingState = { type: 'subtopics' } | { type: 'explore'; id: string } | { type: 'regenerate' };
 
 export interface Note {
@@ -44,7 +46,7 @@ export interface ChatMessage {
   id: string;
   role: 'user' | 'model';
   content: string;
-  persona?: string;
+  persona?: 'The Pragmatist' | 'The Visionary' | 'Moderator' | 'Host' | 'Guest Expert';
   synthesisContent?: DebateSynthesis;
 }
 

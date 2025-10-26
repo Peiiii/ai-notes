@@ -62,6 +62,13 @@ const NoteList: React.FC<NoteListProps> = ({
           New Note
         </button>
         <div className="grid grid-cols-2 items-center gap-2">
+           <button onClick={onShowStudio} className={getButtonClasses('studio')}>
+            <Squares2X2Icon className="w-5 h-5" />
+            <span>Studio</span>
+            {isLoadingAI && viewMode === 'studio' && (
+              <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin ml-1"></div>
+            )}
+          </button>
           <button onClick={onShowChat} className={getButtonClasses('chat')}>
             <ChatBubbleLeftRightIcon className="w-5 h-5" />
             <span>Companion</span>
@@ -69,13 +76,6 @@ const NoteList: React.FC<NoteListProps> = ({
            <button onClick={onShowWikiStudio} className={getButtonClasses('wiki_studio')}>
             <BookOpenIcon className="w-5 h-5" />
             <span>Wiki</span>
-          </button>
-          <button onClick={onShowStudio} className={getButtonClasses('studio')}>
-            <Squares2X2Icon className="w-5 h-5" />
-            <span>Studio</span>
-            {isLoadingAI && viewMode === 'studio' && (
-              <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin ml-1"></div>
-            )}
           </button>
           <button onClick={onShowParliament} className={getButtonClasses('parliament')}>
             <UsersIcon className="w-5 h-5" />

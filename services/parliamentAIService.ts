@@ -63,6 +63,70 @@ Based on your persona and the debate so far, provide your next statement. Your r
     return provider.generateText(params);
 }
 
+export async function generatePodcastTurn(
+    topic: string,
+    history: ChatMessage[],
+    persona: 'Host' | 'Guest Expert',
+    turnType: 'intro' | 'question' | 'answer' | 'outro' | 'greeting',
+    noteContext?: string
+): Promise<string> {
+    const historyContent = history.map(msg => `${msg.persona}: ${msg.content}`).join('\n');
+    let personaDefinition = '';
+    let task = '';
+
+    switch (persona) {
+        case 'Host':
+            personaDefinition = "You are Alex, the charismatic and curious host of the popular podcast 'Mindscapes'. You are known for your ability to ask insightful questions, keep the conversation engaging and accessible, and synthesize complex ideas for your audience.";
+            switch (turnType) {
+                case 'intro':
+                    task = "Start the show. Welcome the listeners to 'Mindscapes', introduce today's fascinating topic, and warmly welcome your special guest, the brilliant Dr. Evelyn Reed.";
+                    break;
+                case 'question':
+                    task = "Based on Dr. Reed's last statement and the overall conversation, ask your next question. It should be insightful, open-ended, and guide the conversation into a new, interesting area. Keep it conversational.";
+                    break;
+                case 'outro':
+                    task = "Wrap up the show. Thank Dr. Evelyn Reed for her incredible insights. Provide a brief, powerful summary of the key takeaways for the listeners, and sign off in your signature style.";
+                    break;
+            }
+            break;
+        case 'Guest Expert':
+            personaDefinition = "You are Dr. Evelyn Reed, a renowned expert in your field and a guest on the podcast 'Mindscapes'. You are passionate, articulate, and have a knack for explaining complex topics with clarity and enthusiasm, often using vivid analogies.";
+            switch (turnType) {
+                case 'greeting':
+                    task = "Alex, the host, has just welcomed you to the show. Respond with a brief, warm greeting. Thank him for having you and express your excitement to discuss the topic.";
+                    break;
+                case 'answer':
+                    task = "Answer Alex's last question. Speak with passion and expertise. Provide a clear, detailed explanation, and if possible, use an interesting analogy or a brief anecdote to make your point more memorable.";
+                    break;
+            }
+            break;
+    }
+    
+    const prompt = `You are an AI performing a role in a podcast episode. Strictly adhere to your assigned persona and task.
+
+**Podcast Topic:** ${topic}
+${noteContext ? `\n**Context from User's Note (for your reference):**\n${noteContext}\n` : ''}
+**Your Persona:**
+${personaDefinition}
+
+**Conversation History:**
+${historyContent}
+
+**Your Current Task:**
+${task}
+
+**Instructions:**
+- Respond in a natural, conversational style suitable for a podcast.
+- Keep your response to one or two engaging paragraphs.
+- Respond in the same language as the topic and context.
+- Do not add any extra text like "(Podcast ends)" or your character name. Just provide the dialogue.
+`;
+
+    const { provider, model } = getConfig('podcastTurn');
+    const params: GenerateTextParams = { model, prompt };
+    return provider.generateText(params);
+}
+
 const synthesisSchema = {
     type: Type.OBJECT,
     properties: {
