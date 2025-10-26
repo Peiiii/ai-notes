@@ -1,7 +1,8 @@
+
 import React from 'react';
 import { Note, WikiEntry } from '../../types';
 import ChevronRightIcon from '../icons/ChevronRightIcon';
-import HoverPopup from '../HoverPopup';
+import HoverPopup from '../ui/HoverPopup';
 
 type ExplorationItem = Note | WikiEntry;
 

@@ -1,7 +1,8 @@
+
 import React from 'react';
-import { PulseReport } from '../types';
-import XMarkIcon from './icons/XMarkIcon';
-import Modal from './Modal';
+import { PulseReport } from '../../types';
+import XMarkIcon from '../icons/XMarkIcon';
+import Modal from '../ui/Modal';
 
 declare global {
   interface Window {

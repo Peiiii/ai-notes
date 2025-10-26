@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect, useRef } from 'react';
-import { ChatMessage } from '../types';
-import PaperAirplaneIcon from './icons/PaperAirplaneIcon';
-import UserIcon from './icons/UserIcon';
-import SparklesIcon from './icons/SparklesIcon';
+import { ChatMessage } from '../../types';
+import PaperAirplaneIcon from '../icons/PaperAirplaneIcon';
+import UserIcon from '../icons/UserIcon';
+import SparklesIcon from '../icons/SparklesIcon';
 
 interface ThreadChatViewProps {
   chatHistory: ChatMessage[];

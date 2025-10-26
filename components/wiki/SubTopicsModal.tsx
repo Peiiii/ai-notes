@@ -1,6 +1,6 @@
 
 import React from 'react';
-import Modal from '../Modal';
+import Modal from '../ui/Modal';
 
 interface SubTopicsModalProps {
   subTopics: { title: string; topics: string[] } | null;

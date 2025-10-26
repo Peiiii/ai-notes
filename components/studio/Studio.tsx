@@ -1,14 +1,15 @@
+
 import React from 'react';
-import { Todo, KnowledgeCard, KnowledgeCardType, PulseReport } from '../types';
-import CheckIcon from './icons/CheckIcon';
-import LightbulbIcon from './icons/LightbulbIcon';
-import DocumentPlusIcon from './icons/DocumentPlusIcon';
-import PlusCircleIcon from './icons/PlusCircleIcon';
-import SparklesIcon from './icons/SparklesIcon';
-import BookOpenIcon from './icons/BookOpenIcon';
-import CpuChipIcon from './icons/CpuChipIcon';
-import BeakerIcon from './icons/BeakerIcon';
-import PulseIcon from './icons/PulseIcon';
+import { Todo, KnowledgeCard, KnowledgeCardType, PulseReport } from '../../types';
+import CheckIcon from '../icons/CheckIcon';
+import LightbulbIcon from '../icons/LightbulbIcon';
+import DocumentPlusIcon from '../icons/DocumentPlusIcon';
+import PlusCircleIcon from '../icons/PlusCircleIcon';
+import SparklesIcon from '../icons/SparklesIcon';
+import BookOpenIcon from '../icons/BookOpenIcon';
+import CpuChipIcon from '../icons/CpuChipIcon';
+import BeakerIcon from '../icons/BeakerIcon';
+import PulseIcon from '../icons/PulseIcon';
 
 interface StudioProps {
   suggestedTodos: Todo[];

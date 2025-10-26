@@ -2,9 +2,9 @@
 import React, { useState, useEffect } from 'react';
 import { Note, WikiEntry, WIKI_ROOT_ID, LoadingState } from '../../types';
 import WikiBreadcrumb from './WikiBreadcrumb';
-import HoverPopup from '../HoverPopup';
+import HoverPopup from '../ui/HoverPopup';
 import WikiStudioHome from './WikiStudioHome';
-import TextSelectionPopup from './TextSelectionPopup';
+import TextSelectionPopup from '../ui/TextSelectionPopup';
 import SubTopicsModal from './SubTopicsModal';
 import BookOpenIcon from '../icons/BookOpenIcon';
 import ThoughtBubbleIcon from '../icons/ThoughtBubbleIcon';

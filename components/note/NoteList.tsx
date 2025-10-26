@@ -1,11 +1,11 @@
 
 import React from 'react';
-import { Note, ViewMode } from '../types';
-import PlusIcon from './icons/PlusIcon';
-import TrashIcon from './icons/TrashIcon';
-import Squares2X2Icon from './icons/Squares2X2Icon';
-import ChatBubbleLeftRightIcon from './icons/ChatBubbleLeftRightIcon';
-import BookOpenIcon from './icons/BookOpenIcon';
+import { Note, ViewMode } from '../../types';
+import PlusIcon from '../icons/PlusIcon';
+import TrashIcon from '../icons/TrashIcon';
+import Squares2X2Icon from '../icons/Squares2X2Icon';
+import ChatBubbleLeftRightIcon from '../icons/ChatBubbleLeftRightIcon';
+import BookOpenIcon from '../icons/BookOpenIcon';
 
 interface NoteListProps {
   notes: Note[];

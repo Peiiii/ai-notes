@@ -7,11 +7,11 @@ import { useChatStore } from './stores/chatStore';
 import { useStudioStore } from './stores/studioStore';
 import { useWikiStore } from './stores/wikiStore';
 
-import NoteList from './components/NoteList';
-import NoteEditor from './components/NoteEditor';
-import Studio from './components/Studio';
-import ChatView from './components/ChatView';
-import PulseReportModal from './components/PulseReportModal';
+import NoteList from './components/note/NoteList';
+import NoteEditor from './components/note/NoteEditor';
+import Studio from './components/studio/Studio';
+import ChatView from './components/chat/ChatView';
+import PulseReportModal from './components/studio/PulseReportModal';
 import WikiStudio from './components/wiki/WikiStudio';
 
 function AppContent() {

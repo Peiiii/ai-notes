@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect, useRef } from 'react';
-import { Note, WikiEntry } from '../types';
-import BookOpenIcon from './icons/BookOpenIcon';
+import { Note, WikiEntry } from '../../types';
+import BookOpenIcon from '../icons/BookOpenIcon';
 
 interface NoteEditorProps {
   note: Note | null;
