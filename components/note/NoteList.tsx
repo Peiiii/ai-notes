@@ -37,10 +37,10 @@ const NoteList: React.FC<NoteListProps> = ({
   const sortedNotes = [...notes].sort((a, b) => b.createdAt - a.createdAt);
 
   const getButtonClasses = (buttonViewMode: ViewMode) => {
-    return `flex flex-1 items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${
+    return `flex flex-1 items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-slate-800 focus:ring-indigo-500 ${
       viewMode === buttonViewMode
-        ? 'bg-indigo-600 text-white'
-        : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-600'
+        ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-200'
+        : 'bg-slate-200/80 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
     }`;
   };
 
@@ -53,7 +53,7 @@ const NoteList: React.FC<NoteListProps> = ({
       <div className="p-4 flex flex-col gap-3">
         <button
           onClick={onNewNote}
-          className="flex w-full items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all"
+          className="flex w-full items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-slate-800 focus:ring-indigo-500 transition-all"
         >
           <PlusIcon className="w-5 h-5" />
           New Note
@@ -90,16 +90,16 @@ const NoteList: React.FC<NoteListProps> = ({
                   onClick={() => onSelectNote(note.id)}
                   className={`w-full text-left p-3 rounded-lg transition-colors group ${
                     note.id === activeNoteId && viewMode === 'editor'
-                      ? 'bg-blue-500 text-white'
+                      ? 'bg-indigo-100 dark:bg-indigo-900/50'
                       : 'bg-white dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600'
                   }`}
                 >
                   <div className="flex justify-between items-center">
                     <div className="flex-1 overflow-hidden">
-                      <h3 className={`font-semibold truncate ${note.id === activeNoteId && viewMode === 'editor' ? 'text-white' : 'text-slate-800 dark:text-slate-200'}`}>
+                      <h3 className={`font-semibold truncate ${note.id === activeNoteId && viewMode === 'editor' ? 'text-indigo-900 dark:text-indigo-100' : 'text-slate-800 dark:text-slate-200'}`}>
                         {displayTitle}
                       </h3>
-                      <p className={`text-xs truncate ${note.id === activeNoteId && viewMode === 'editor' ? 'text-blue-200' : 'text-slate-500 dark:text-slate-400'}`}>
+                      <p className={`text-xs truncate ${note.id === activeNoteId && viewMode === 'editor' ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-500 dark:text-slate-400'}`}>
                         {displaySubtitle}
                       </p>
                     </div>
@@ -115,7 +115,7 @@ const NoteList: React.FC<NoteListProps> = ({
                         }}
                         className={`ml-2 p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity ${
                           note.id === activeNoteId && viewMode === 'editor'
-                            ? 'text-blue-200 hover:bg-white/20 hover:text-white'
+                            ? 'text-indigo-500 dark:text-indigo-400 hover:bg-indigo-200/50 dark:hover:bg-indigo-800/50'
                             : 'text-slate-500 hover:bg-red-100 hover:text-red-600 dark:text-slate-400 dark:hover:bg-red-900/50 dark:hover:text-red-400'
                         }`}
                       >

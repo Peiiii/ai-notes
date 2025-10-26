@@ -52,7 +52,7 @@ const ChatView: React.FC<ChatViewProps> = ({
                 <SparklesIcon className="w-5 h-5 text-indigo-500 dark:text-indigo-400" />
               </div>
             )}
-            <div className={`p-3 rounded-lg max-w-lg ${msg.role === 'user' ? 'bg-blue-500 text-white rounded-br-none' : 'bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-bl-none'}`}>
+            <div className={`p-3 rounded-lg max-w-lg ${msg.role === 'user' ? 'bg-indigo-600 text-white rounded-br-none' : 'bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-bl-none'}`}>
               <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
             </div>
             {msg.role === 'user' && (
@@ -86,12 +86,12 @@ const ChatView: React.FC<ChatViewProps> = ({
             onChange={(e) => setChatInput(e.target.value)}
             placeholder="Ask anything about your notes..."
             disabled={isChatting}
-            className="flex-1 w-full bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 rounded-lg px-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="flex-1 w-full bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 rounded-lg px-4 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
           <button
             type="submit"
             disabled={isChatting || !chatInput.trim()}
-            className="p-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-slate-300 dark:disabled:bg-slate-600 disabled:cursor-not-allowed transition-colors"
+            className="p-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-slate-300 dark:disabled:bg-slate-600 disabled:cursor-not-allowed transition-colors"
           >
             <PaperAirplaneIcon className="w-5 h-5" />
           </button>
