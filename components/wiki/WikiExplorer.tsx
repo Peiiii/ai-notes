@@ -128,7 +128,9 @@ const WikiExplorer: React.FC<WikiExplorerProps> = ({
   
   if (!currentItem) return null; // Should be handled by parent component
   
-  const childWikis = 'id' in currentItem ? wikis.filter(w => w.parentId === currentItem.id) : [];
+  const isViewingNote = !('term' in currentItem);
+  const childWikis = !isViewingNote ? wikis.filter(w => w.parentId === currentItem.id) : [];
+  const rootWikisFromNote = isViewingNote ? wikis.filter(w => w.sourceNoteId === currentItem.id && w.parentId === null) : [];
 
   return (
      <div 
@@ -203,6 +205,23 @@ const WikiExplorer: React.FC<WikiExplorerProps> = ({
                     dangerouslySetInnerHTML={{ __html: window.marked.parse(currentItem.content) }}
                 ></div>
 
+                {rootWikisFromNote.length > 0 && (
+                  <div className="mt-12 pt-8 border-t border-slate-200 dark:border-slate-700">
+                      <h3 className="text-xl font-semibold mb-4 text-slate-800 dark:text-slate-100">Explorations from this note</h3>
+                      <div className="flex flex-wrap gap-3">
+                          {rootWikisFromNote.map(wiki => (
+                              <button
+                                  key={wiki.id}
+                                  onClick={() => setHistory(prev => [...prev, wiki])}
+                                  className="px-4 py-2 bg-slate-100 text-slate-700 dark:bg-slate-700/50 dark:text-slate-300 rounded-full font-medium text-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                              >
+                                  {wiki.term}
+                              </button>
+                          ))}
+                      </div>
+                  </div>
+                )}
+                
                 {childWikis.length > 0 && (
                   <div className="mt-12 pt-8 border-t border-slate-200 dark:border-slate-700">
                       <h3 className="text-xl font-semibold mb-4 text-slate-800 dark:text-slate-100">Branches from this topic</h3>
