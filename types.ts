@@ -1,4 +1,4 @@
-export type ViewMode = 'editor' | 'studio' | 'chat' | 'pulse' | 'wiki_studio';
+export type ViewMode = 'editor' | 'studio' | 'chat' | 'pulse' | 'wiki_studio' | 'parliament';
 
 export const WIKI_ROOT_ID = 'wiki_root';
 
@@ -37,6 +37,7 @@ export interface ChatMessage {
   id: string;
   role: 'user' | 'model';
   content: string;
+  persona?: string;
 }
 
 export interface PulseReport {

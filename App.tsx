@@ -6,6 +6,7 @@ import { useNotesStore } from './stores/notesStore';
 import { useChatStore } from './stores/chatStore';
 import { useStudioStore } from './stores/studioStore';
 import { useWikiStore } from './stores/wikiStore';
+import { useParliamentStore } from './stores/parliamentStore';
 
 import NoteList from './components/note/NoteList';
 import NoteEditor from './components/note/NoteEditor';
@@ -13,6 +14,8 @@ import Studio from './components/studio/Studio';
 import ChatView from './components/chat/ChatView';
 import PulseReportModal from './components/studio/PulseReportModal';
 import WikiStudio from './components/wiki/WikiStudio';
+import ParliamentView from './components/parliament/ParliamentView';
+
 
 function AppContent() {
   const presenter = usePresenter();
@@ -23,6 +26,8 @@ function AppContent() {
   const { chatHistory, isChatting } = useChatStore();
   const { aiSummary, myTodos, isLoadingAI, isLoadingPulse, pulseReports } = useStudioStore();
   const { wikis, wikiTopics, isLoadingWikiTopics } = useWikiStore();
+  const { topics, isLoadingTopics, debateHistory, isDebating, currentDebate } = useParliamentStore();
+
 
   const activeNote = notes.find((note) => note.id === activeNoteId) || null;
 
@@ -66,6 +71,19 @@ function AppContent() {
             onUpdateWiki={presenter.wikiManager.updateWikiWithTopics}
           />
         );
+      case 'parliament':
+        return (
+          <ParliamentView
+            notes={notes}
+            topics={topics}
+            isLoadingTopics={isLoadingTopics}
+            debateHistory={debateHistory}
+            isDebating={isDebating}
+            currentDebate={currentDebate}
+            onStartDebate={presenter.parliamentManager.startDebate}
+            onResetDebate={presenter.parliamentManager.resetDebate}
+          />
+        );
       case 'editor':
       default:
         return <NoteEditor
@@ -89,6 +107,7 @@ function AppContent() {
           onShowStudio={presenter.handleShowStudio}
           onShowChat={presenter.handleShowChat}
           onShowWikiStudio={presenter.handleShowWikiStudio}
+          onShowParliament={presenter.handleShowParliament}
           isLoadingAI={isLoadingAI}
           generatingTitleIds={generatingTitleIds}
           viewMode={viewMode}

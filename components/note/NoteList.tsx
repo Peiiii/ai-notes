@@ -6,6 +6,7 @@ import TrashIcon from '../icons/TrashIcon';
 import Squares2X2Icon from '../icons/Squares2X2Icon';
 import ChatBubbleLeftRightIcon from '../icons/ChatBubbleLeftRightIcon';
 import BookOpenIcon from '../icons/BookOpenIcon';
+import UsersIcon from '../icons/UsersIcon';
 
 interface NoteListProps {
   notes: Note[];
@@ -16,6 +17,7 @@ interface NoteListProps {
   onShowStudio: () => void;
   onShowChat: () => void;
   onShowWikiStudio: () => void;
+  onShowParliament: () => void;
   isLoadingAI: boolean;
   generatingTitleIds: Set<string>;
   viewMode: ViewMode;
@@ -30,6 +32,7 @@ const NoteList: React.FC<NoteListProps> = ({
   onShowStudio,
   onShowChat,
   onShowWikiStudio,
+  onShowParliament,
   isLoadingAI,
   generatingTitleIds,
   viewMode,
@@ -58,7 +61,7 @@ const NoteList: React.FC<NoteListProps> = ({
           <PlusIcon className="w-5 h-5" />
           New Note
         </button>
-        <div className="grid grid-cols-3 items-center gap-2">
+        <div className="grid grid-cols-2 items-center gap-2">
           <button onClick={onShowChat} className={getButtonClasses('chat')}>
             <ChatBubbleLeftRightIcon className="w-5 h-5" />
             <span>Companion</span>
@@ -73,6 +76,10 @@ const NoteList: React.FC<NoteListProps> = ({
             {isLoadingAI && viewMode === 'studio' && (
               <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin ml-1"></div>
             )}
+          </button>
+          <button onClick={onShowParliament} className={getButtonClasses('parliament')}>
+            <UsersIcon className="w-5 h-5" />
+            <span>Parliament</span>
           </button>
         </div>
       </div>

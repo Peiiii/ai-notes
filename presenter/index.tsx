@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useRef } from 'react';
 import { useAppStore } from '../stores/appStore';
 import { useNotesStore } from '../stores/notesStore';
@@ -7,6 +8,7 @@ import { NotesManager } from '../managers/NotesManager';
 import { ChatManager } from '../managers/ChatManager';
 import { StudioManager } from '../managers/StudioManager';
 import { WikiManager } from '../managers/WikiManager';
+import { ParliamentManager } from '../managers/ParliamentManager';
 import { KnowledgeCard, Note, WikiEntry, WIKI_ROOT_ID } from '../types';
 
 export class Presenter {
@@ -15,6 +17,7 @@ export class Presenter {
   chatManager = new ChatManager();
   studioManager = new StudioManager();
   wikiManager = new WikiManager();
+  parliamentManager = new ParliamentManager();
 
   // --- Orchestration Methods ---
 
@@ -54,6 +57,12 @@ export class Presenter {
     this.appManager.setViewMode('wiki_studio');
     this.appManager.setActiveNoteId(null);
     this.wikiManager.fetchWikiTopics();
+  };
+
+  handleShowParliament = () => {
+    this.appManager.setViewMode('parliament');
+    this.appManager.setActiveNoteId(null);
+    this.parliamentManager.fetchTopics();
   };
 
   handleCardToNote = (card: KnowledgeCard) => {
