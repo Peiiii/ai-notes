@@ -18,7 +18,7 @@ const PULSE_INTERVAL = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 export class StudioManager {
 
-    init() {
+    init = () => {
         // This can be called once when the app loads to check for auto-pulse
         const { lastPulseTimestamp } = useStudioStore.getState();
         const { notes } = useNotesStore.getState();
@@ -31,7 +31,7 @@ export class StudioManager {
         }
     }
 
-    async generateNewSummary() {
+    generateNewSummary = async () => {
         const notes = useNotesStore.getState().notes;
         const { notesHashAtLastSummary, myTodos } = useStudioStore.getState();
         const currentNotesHash = JSON.stringify(notes);
@@ -87,7 +87,7 @@ export class StudioManager {
         });
     }
     
-    async generateNewPulseReport(isAuto = false) {
+    generateNewPulseReport = async (isAuto = false) => {
         useStudioStore.setState({ isLoadingPulse: true });
         try {
             const notes = useNotesStore.getState().notes;

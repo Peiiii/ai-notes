@@ -48,7 +48,7 @@ export class NotesManager {
         }
     }
 
-    createNewNote({ title = '', content = '' } = {}): Note {
+    createNewNote = ({ title = '', content = '' } = {}): Note => {
         const newNote: Note = {
             id: crypto.randomUUID(),
             title,
@@ -59,7 +59,7 @@ export class NotesManager {
         return newNote;
     }
 
-    deleteNoteById(id: string) {
+    deleteNoteById = (id: string) => {
         useNotesStore.setState(state => ({
             notes: state.notes.filter(note => note.id !== id)
         }));

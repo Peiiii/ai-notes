@@ -10,7 +10,7 @@ import {
 } from '../services/wikiAIService';
 
 export class WikiManager {
-    async fetchWikiTopics() {
+    fetchWikiTopics = async () => {
         const { notes } = useNotesStore.getState();
         const { wikiTopics } = useWikiStore.getState();
         if (notes.length > 0 && wikiTopics.length === 0) {
@@ -119,7 +119,7 @@ export class WikiManager {
         }
     }
 
-    deleteWikisBySourceNoteId(noteId: string) {
+    deleteWikisBySourceNoteId = (noteId: string) => {
         useWikiStore.setState(state => ({
             wikis: state.wikis.filter(w => w.sourceNoteId !== noteId)
         }));
