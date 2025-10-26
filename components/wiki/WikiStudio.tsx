@@ -1,9 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { Note, WikiEntry } from '../../types';
-import WikiStudioHome from './WikiStudioHome';
+import { Note, WikiEntry, WIKI_ROOT_ID } from '../../types';
 import WikiExplorer from './WikiExplorer';
 
 type ExplorationItem = Note | WikiEntry;
+
+// Define the constant root wiki entry for the entire knowledge base
+const rootWiki: WikiEntry = {
+  id: WIKI_ROOT_ID,
+  term: 'Wiki Home',
+  content: 'Welcome to your personal wiki. Explore topics, connect ideas, and build your knowledge base.',
+  createdAt: 0,
+  sourceNoteId: '',
+  parentId: null,
+  suggestedTopics: [],
+};
 
 interface WikiStudioProps {
   notes: Note[];
@@ -14,65 +24,20 @@ interface WikiStudioProps {
   onUpdateWiki: (wikiId: string) => void;
   aiTopics: string[];
   isLoadingTopics: boolean;
-  initialHistory: (Note | WikiEntry)[] | null;
+  initialHistory: WikiEntry[] | null; // History no longer contains notes
 }
 
 const WikiStudio: React.FC<WikiStudioProps> = (props) => {
-  const { notes, wikis, initialHistory, onGenerateWiki } = props;
-  const [history, setHistory] = useState<ExplorationItem[]>(initialHistory || []);
-  const [loadingState, setLoadingState] = useState<{ type: 'topic'; id: string } | null>(null);
+  const { initialHistory } = props;
+  const [history, setHistory] = useState<WikiEntry[]>([rootWiki]);
 
   useEffect(() => {
-    if (initialHistory) {
-      setHistory(initialHistory);
+    if (initialHistory && initialHistory.length > 0) {
+      setHistory([rootWiki, ...initialHistory]);
+    } else {
+      setHistory([rootWiki]);
     }
   }, [initialHistory]);
-
-  const handleStartWithNote = (note: Note) => {
-    setHistory([note]);
-  };
-
-  const handleSelectWiki = (wiki: WikiEntry) => {
-    setHistory([wiki]);
-  };
-
-  const handleStartWithTopic = async (topic: string) => {
-    // Prevent starting a new topic generation if one is already in progress
-    if (loadingState) return;
-
-    const sourceNoteId = notes.length > 0 ? notes[0].id : 'no-source';
-    if (sourceNoteId === 'no-source') {
-        alert("Please create a note before starting from a topic.");
-        return;
-    }
-    setLoadingState({ type: 'topic', id: topic });
-    try {
-        const contextContent = notes.map(n => `${n.title} ${n.content}`).join('\n');
-        const newWikiEntry = await onGenerateWiki(topic, sourceNoteId, null, contextContent);
-        setHistory([newWikiEntry]);
-    } catch (e) {
-        console.error("Failed to start with topic", e);
-    } finally {
-        setLoadingState(null);
-    }
-  };
-
-  const currentItem = history.length > 0 ? history[history.length - 1] : null;
-
-  if (!currentItem) {
-    return (
-      <WikiStudioHome
-        notes={notes}
-        wikis={wikis}
-        aiTopics={props.aiTopics}
-        isLoadingTopics={props.isLoadingTopics}
-        onStartWithNote={handleStartWithNote}
-        onStartWithTopic={handleStartWithTopic}
-        onSelectWiki={handleSelectWiki}
-        loadingState={loadingState}
-      />
-    );
-  }
 
   return (
     <WikiExplorer

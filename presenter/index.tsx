@@ -1,15 +1,13 @@
-
 import React, { createContext, useContext, useEffect, useRef } from 'react';
 import { useAppStore } from '../stores/appStore';
 import { useNotesStore } from '../stores/notesStore';
-// Fix: Import useWikiStore
 import { useWikiStore } from '../stores/wikiStore';
 import { AppManager } from '../managers/AppManager';
 import { NotesManager } from '../managers/NotesManager';
 import { ChatManager } from '../managers/ChatManager';
 import { StudioManager } from '../managers/StudioManager';
 import { WikiManager } from '../managers/WikiManager';
-import { KnowledgeCard, Note, WikiEntry } from '../types';
+import { KnowledgeCard, Note, WikiEntry, WIKI_ROOT_ID } from '../types';
 
 export class Presenter {
   appManager = new AppManager();
@@ -66,19 +64,14 @@ export class Presenter {
 
   handleViewWikiInStudio = (wikiId: string) => {
     const { wikis } = useWikiStore.getState();
-    const { notes } = useNotesStore.getState();
-
     const targetWiki = wikis.find(w => w.id === wikiId);
     if (!targetWiki) return;
-
-    const sourceNote = notes.find(n => n.id === targetWiki.sourceNoteId);
-    if (!sourceNote) return;
 
     const historyPath: WikiEntry[] = [targetWiki];
     let current = targetWiki;
     while (current.parentId) {
       const parent = wikis.find(w => w.id === current.parentId);
-      if (parent) {
+      if (parent && parent.id !== WIKI_ROOT_ID) {
         historyPath.unshift(parent);
         current = parent;
       } else {
@@ -86,7 +79,7 @@ export class Presenter {
       }
     }
 
-    this.appManager.setInitialWikiHistory([sourceNote, ...historyPath]);
+    this.appManager.setInitialWikiHistory(historyPath);
     this.appManager.setViewMode('wiki_studio');
     this.appManager.setActiveNoteId(null);
   };
@@ -95,14 +88,12 @@ export class Presenter {
 const PresenterContext = createContext<Presenter | null>(null);
 
 export const PresenterProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Fix: Initialize useRef with null to match the Context type and avoid type mismatch.
   const presenterRef = useRef<Presenter | null>(null);
   if (presenterRef.current === null) {
     presenterRef.current = new Presenter();
   }
 
   useEffect(() => {
-    // Run initializations
     presenterRef.current?.studioManager.init();
   }, [])
 

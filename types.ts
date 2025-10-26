@@ -1,5 +1,7 @@
 export type ViewMode = 'editor' | 'studio' | 'chat' | 'pulse' | 'wiki_studio';
 
+export const WIKI_ROOT_ID = 'wiki_root';
+
 export interface Note {
   id: string;
   title: string;
