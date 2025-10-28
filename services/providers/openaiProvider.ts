@@ -122,7 +122,7 @@ export const dashscopeProvider = new OpenAICompatibleProvider({
     modelMap: {
         lite: 'qwen-turbo',
         fast: 'qwen-plus',
-        pro: 'qwen-max',
+        pro: 'qwen3-max-preview',
     }
 });
 

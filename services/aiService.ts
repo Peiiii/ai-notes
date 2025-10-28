@@ -1,5 +1,4 @@
-
-import { Note, KnowledgeCard, ChatMessage } from '../types';
+import { Note, KnowledgeCard, ChatMessage, DebateSynthesis } from '../types';
 import { geminiProvider } from './providers/geminiProvider';
 import { openAIProvider, dashscopeProvider, deepseekProvider, openRouterProvider } from './providers/openaiProvider';
 import { LLMProvider, GenerateJsonParams, GenerateTextParams, ModelTier } from './providers/types';
@@ -15,31 +14,139 @@ const providers: { [key: string]: LLMProvider } = {
   openrouter: openRouterProvider,
 };
 
-// --- Capability Configuration ---
-// This is the central control panel for the application's AI.
-// For each capability, specify the provider and the model tier to use.
-// This allows mixing and matching providers for optimal performance and cost.
-const capabilityConfig = {
-  summary:        { provider: 'gemini', model: 'fast' as ModelTier },
-  title:          { provider: 'gemini', model: 'fast' as ModelTier },
-  chat:           { provider: 'gemini', model: 'fast' as ModelTier },
-  pulseReport:    { provider: 'gemini', model: 'pro'  as ModelTier },
-  wikiEntry:      { provider: 'gemini', model: 'lite' as ModelTier },
-  relatedTopics:  { provider: 'gemini', model: 'lite' as ModelTier },
-  subTopics:      { provider: 'gemini', model: 'lite' as ModelTier },
-  wikiTopics:     { provider: 'gemini', model: 'lite' as ModelTier },
-  debateTopics:   { provider: 'gemini', model: 'lite' as ModelTier },
-  debateTurn:     { provider: 'gemini', model: 'lite'  as ModelTier },
-  debateSynthesis:{ provider: 'gemini', model: 'lite'  as ModelTier },
-  podcastTurn:    { provider: 'gemini', model: 'lite'  as ModelTier },
+// --- AI Capability Schemes ---
+// Define different schemes for AI capabilities. A scheme maps each application
+// feature to a specific provider and model. This allows for easy, high-level
+// switching of AI configurations and supports mixing providers within a single scheme.
+
+type CapabilityConfig = {
+  [key: string]: { provider: string; model: ModelTier };
+  summary:        { provider: string; model: ModelTier };
+  title:          { provider: string; model: ModelTier };
+  chat:           { provider: string; model: ModelTier };
+  pulseReport:    { provider: string; model: ModelTier };
+  wikiEntry:      { provider: string; model: ModelTier };
+  relatedTopics:  { provider: string; model: ModelTier };
+  subTopics:      { provider: string; model: ModelTier };
+  wikiTopics:     { provider: string; model: ModelTier };
+  debateTopics:   { provider: string; model: ModelTier };
+  debateTurn:     { provider: string; model: ModelTier };
+  debateSynthesis:{ provider: string; model: ModelTier };
+  podcastTurn:    { provider: string; model: ModelTier };
 };
 
+// A scheme that primarily uses Gemini models.
+const geminiScheme: CapabilityConfig = {
+  summary:        { provider: 'gemini', model: 'fast' },
+  title:          { provider: 'gemini', model: 'fast' },
+  chat:           { provider: 'gemini', model: 'fast' },
+  pulseReport:    { provider: 'gemini', model: 'pro'  },
+  wikiEntry:      { provider: 'gemini', model: 'lite' },
+  relatedTopics:  { provider: 'gemini', model: 'lite' },
+  subTopics:      { provider: 'gemini', model: 'lite' },
+  wikiTopics:     { provider: 'gemini', model: 'lite' },
+  debateTopics:   { provider: 'gemini', model: 'lite' },
+  debateTurn:     { provider: 'gemini', model: 'lite' },
+  debateSynthesis:{ provider: 'gemini', model: 'lite' },
+  podcastTurn:    { provider: 'gemini', model: 'lite' },
+};
+
+// A scheme that primarily uses DashScope models.
+const dashscopeScheme: CapabilityConfig = {
+  summary:        { provider: 'dashscope', model: 'fast' },
+  title:          { provider: 'dashscope', model: 'fast' },
+  chat:           { provider: 'dashscope', model: 'fast' },
+  pulseReport:    { provider: 'dashscope', model: 'pro'  },
+  wikiEntry:      { provider: 'dashscope', model: 'lite' },
+  relatedTopics:  { provider: 'dashscope', model: 'lite' },
+  subTopics:      { provider: 'dashscope', model: 'lite' },
+  wikiTopics:     { provider: 'dashscope', model: 'lite' },
+  debateTopics:   { provider: 'dashscope', model: 'lite' },
+  debateTurn:     { provider: 'dashscope', model: 'lite' },
+  debateSynthesis:{ provider: 'dashscope', model: 'lite' },
+  podcastTurn:    { provider: 'dashscope', model: 'lite' },
+};
+
+// A scheme that primarily uses OpenAI models.
+const openaiScheme: CapabilityConfig = {
+  summary:        { provider: 'openai', model: 'fast' },
+  title:          { provider: 'openai', model: 'fast' },
+  chat:           { provider: 'openai', model: 'fast' },
+  pulseReport:    { provider: 'openai', model: 'pro'  },
+  wikiEntry:      { provider: 'openai', model: 'lite' },
+  relatedTopics:  { provider: 'openai', model: 'lite' },
+  subTopics:      { provider: 'openai', model: 'lite' },
+  wikiTopics:     { provider: 'openai', model: 'lite' },
+  debateTopics:   { provider: 'openai', model: 'lite' },
+  debateTurn:     { provider: 'openai', model: 'lite' },
+  debateSynthesis:{ provider: 'openai', model: 'lite' },
+  podcastTurn:    { provider: 'openai', model: 'lite' },
+};
+
+// A scheme that primarily uses DeepSeek models.
+const deepseekScheme: CapabilityConfig = {
+  summary:        { provider: 'deepseek', model: 'fast' },
+  title:          { provider: 'deepseek', model: 'fast' },
+  chat:           { provider: 'deepseek', model: 'fast' },
+  pulseReport:    { provider: 'deepseek', model: 'pro'  },
+  wikiEntry:      { provider: 'deepseek', model: 'lite' },
+  relatedTopics:  { provider: 'deepseek', model: 'lite' },
+  subTopics:      { provider: 'deepseek', model: 'lite' },
+  wikiTopics:     { provider: 'deepseek', model: 'lite' },
+  debateTopics:   { provider: 'deepseek', model: 'lite' },
+  debateTurn:     { provider: 'deepseek', model: 'lite' },
+  debateSynthesis:{ provider: 'deepseek', model: 'lite' },
+  podcastTurn:    { provider: 'deepseek', model: 'lite' },
+};
+
+// A scheme that primarily uses OpenRouter models.
+const openRouterScheme: CapabilityConfig = {
+  summary:        { provider: 'openrouter', model: 'fast' },
+  title:          { provider: 'openrouter', model: 'fast' },
+  chat:           { provider: 'openrouter', model: 'fast' },
+  pulseReport:    { provider: 'openrouter', model: 'pro'  },
+  wikiEntry:      { provider: 'openrouter', model: 'lite' },
+  relatedTopics:  { provider: 'openrouter', model: 'lite' },
+  subTopics:      { provider: 'openrouter', model: 'lite' },
+  wikiTopics:     { provider: 'openrouter', model: 'lite' },
+  debateTopics:   { provider: 'openrouter', model: 'lite' },
+  debateTurn:     { provider: 'openrouter', model: 'lite' },
+  debateSynthesis:{ provider: 'openrouter', model: 'lite' },
+  podcastTurn:    { provider: 'openrouter', model: 'lite' },
+};
+
+// Example of a future mixed scheme
+// const customMixedScheme: CapabilityConfig = {
+//   summary: { provider: 'gemini', model: 'pro' }, // Use powerful Gemini for big summaries
+//   title:   { provider: 'dashscope', model: 'lite' }, // Use cheap DashScope for titles
+//   chat:    { provider: 'openai', model: 'fast' }, // Use fast OpenAI for chat
+//   // ... etc.
+// };
+
+const allSchemes: Record<string, CapabilityConfig> = {
+    gemini: geminiScheme,
+    dashscope: dashscopeScheme,
+    openai: openaiScheme,
+    deepseek: deepseekScheme,
+    openrouter: openRouterScheme,
+    // custom: customMixedScheme,
+};
+
+// --- Active Scheme Selection ---
+// This is the central control panel for the application's AI.
+// It uses the `AI_SCHEME` environment variable to select a capability scheme.
+// If the variable is not set or invalid, it defaults to 'dashscope'.
+const activeSchemeName = process.env.AI_SCHEME || 'dashscope';
+const capabilityConfig = allSchemes[activeSchemeName] || allSchemes.dashscope;
+
+console.log(`Using AI Scheme: "${activeSchemeName}"`);
+
 // Helper function to get the configured provider and model for a capability
-export function getConfig(capability: keyof typeof capabilityConfig) {
+export function getConfig(capability: keyof CapabilityConfig) {
     const config = capabilityConfig[capability];
     const provider = providers[config.provider];
     if (!provider) {
-        throw new Error(`Provider "${config.provider}" is not registered.`);
+        throw new Error(`Provider "${config.provider}" is not registered for capability "${capability}".`);
     }
     return { provider, model: config.model };
 }
