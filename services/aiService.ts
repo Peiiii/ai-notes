@@ -134,9 +134,10 @@ const allSchemes: Record<string, CapabilityConfig> = {
 
 // --- Active Scheme Selection ---
 // This is the central control panel for the application's AI.
-// It uses the `AI_SCHEME` environment variable to select a capability scheme.
+// It uses the `VITE_AI_SCHEME` environment variable to select a capability scheme.
 // If the variable is not set or invalid, it defaults to 'gemini' to align with the platform's default API key.
-const activeSchemeName = process.env.AI_SCHEME || 'gemini';
+// FIX: Switched from import.meta.env to process.env to resolve Vite client type errors.
+const activeSchemeName = process.env.VITE_AI_SCHEME || 'gemini';
 const capabilityConfig = allSchemes[activeSchemeName] || allSchemes.gemini;
 
 console.log(`Using AI Scheme: "${activeSchemeName}"`);

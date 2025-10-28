@@ -104,10 +104,11 @@ class OpenAICompatibleProvider implements LLMProvider {
 
 // --- Provider Instances ---
 
+// FIX: Switched from import.meta.env to process.env to resolve Vite client type errors.
 export const openAIProvider = new OpenAICompatibleProvider({
     providerName: 'OpenAI',
     apiUrl: 'https://api.openai.com/v1/chat/completions',
-    apiKey: process.env.API_KEY,
+    apiKey: process.env.VITE_OPENAI_API_KEY,
     modelMap: {
         lite: 'gpt-3.5-turbo-0125',
         fast: 'gpt-4o-mini',
@@ -115,10 +116,11 @@ export const openAIProvider = new OpenAICompatibleProvider({
     }
 });
 
+// FIX: Switched from import.meta.env to process.env to resolve Vite client type errors.
 export const dashscopeProvider = new OpenAICompatibleProvider({
     providerName: 'DashScope',
     apiUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
-    apiKey: process.env.DASHSCOPE_API_KEY,
+    apiKey: process.env.VITE_DASHSCOPE_API_KEY,
     modelMap: {
         lite: 'qwen-turbo',
         fast: 'qwen-plus',
@@ -126,10 +128,11 @@ export const dashscopeProvider = new OpenAICompatibleProvider({
     }
 });
 
+// FIX: Switched from import.meta.env to process.env to resolve Vite client type errors.
 export const deepseekProvider = new OpenAICompatibleProvider({
     providerName: 'DeepSeek',
     apiUrl: 'https://api.deepseek.com/v1/chat/completions',
-    apiKey: process.env.DEEPSEEK_API_KEY,
+    apiKey: process.env.VITE_DEEPSEEK_API_KEY,
     modelMap: {
         lite: 'deepseek-chat',
         fast: 'deepseek-chat',
@@ -137,10 +140,11 @@ export const deepseekProvider = new OpenAICompatibleProvider({
     }
 });
 
+// FIX: Switched from import.meta.env to process.env to resolve Vite client type errors.
 export const openRouterProvider = new OpenAICompatibleProvider({
     providerName: 'OpenRouter',
     apiUrl: 'https://openrouter.ai/api/v1/chat/completions',
-    apiKey: process.env.OPENROUTER_API_KEY,
+    apiKey: process.env.VITE_OPENROUTER_API_KEY,
     modelMap: {
         lite: 'mistralai/mistral-7b-instruct:free',
         fast: 'google/gemini-flash-1.5',
