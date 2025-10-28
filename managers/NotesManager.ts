@@ -48,11 +48,12 @@ export class NotesManager {
         }
     }
 
-    createNewNote = ({ title = '', content = '' } = {}): Note => {
+    createNewTextNote = (): Note => {
         const newNote: Note = {
             id: crypto.randomUUID(),
-            title,
-            content,
+            type: 'text',
+            title: '',
+            content: '',
             createdAt: Date.now(),
         };
         useNotesStore.setState(state => ({ notes: [newNote, ...state.notes] }));
@@ -65,14 +66,18 @@ export class NotesManager {
         }));
     }
 
-    updateNoteContent = (id: string, title: string, content: string) => {
+    updateNote = (id: string, updates: Partial<Omit<Note, 'id' | 'createdAt'>>) => {
         useNotesStore.setState(state => {
             const newNotes = state.notes.map(note =>
-                note.id === id ? { ...note, title, content } : note
+                note.id === id ? { ...note, ...updates } : note
             );
 
             const updatedNote = newNotes.find(n => n.id === id);
-            const shouldGenerateTitle = updatedNote && !updatedNote.title && updatedNote.content.length > TITLE_GENERATION_LENGTH_THRESHOLD;
+            const shouldGenerateTitle = updatedNote &&
+                updatedNote.type === 'text' &&
+                !updatedNote.title &&
+                updatedNote.content.length > TITLE_GENERATION_LENGTH_THRESHOLD &&
+                updates.content !== undefined;
             
             if (shouldGenerateTitle && !state.generatingTitleIds.has(id) && !this.notesNeedingTitle.has(id)) {
                 this.notesNeedingTitle.set(id, updatedNote.content);

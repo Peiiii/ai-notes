@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Note, ViewMode } from '../../types';
-import PlusIcon from '../icons/PlusIcon';
+import DocumentPlusIcon from '../icons/DocumentPlusIcon';
 import TrashIcon from '../icons/TrashIcon';
 import Squares2X2Icon from '../icons/Squares2X2Icon';
 import ChatBubbleLeftRightIcon from '../icons/ChatBubbleLeftRightIcon';
@@ -12,7 +12,7 @@ interface NoteListProps {
   notes: Note[];
   activeNoteId: string | null;
   onSelectNote: (id: string) => void;
-  onNewNote: () => void;
+  onNewTextNote: () => void;
   onDeleteNote: (id: string) => void;
   onShowStudio: () => void;
   onShowChat: () => void;
@@ -27,7 +27,7 @@ const NoteList: React.FC<NoteListProps> = ({
   notes,
   activeNoteId,
   onSelectNote,
-  onNewNote,
+  onNewTextNote,
   onDeleteNote,
   onShowStudio,
   onShowChat,
@@ -54,13 +54,15 @@ const NoteList: React.FC<NoteListProps> = ({
         <p className="text-sm text-slate-500 dark:text-slate-400">Your intelligent companion</p>
       </div>
       <div className="p-4 flex flex-col gap-3">
-        <button
-          onClick={onNewNote}
-          className="flex w-full items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-slate-800 focus:ring-indigo-500 transition-all"
-        >
-          <PlusIcon className="w-5 h-5" />
-          New Note
-        </button>
+        <div>
+            <button
+                onClick={onNewTextNote}
+                className="flex w-full items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-slate-800 focus:ring-indigo-500 transition-all"
+            >
+                <DocumentPlusIcon className="w-5 h-5" />
+                New Note
+            </button>
+        </div>
         <div className="grid grid-cols-2 items-center gap-2">
            <button onClick={onShowStudio} className={getButtonClasses('studio')}>
             <Squares2X2Icon className="w-5 h-5" />
@@ -103,12 +105,12 @@ const NoteList: React.FC<NoteListProps> = ({
                 >
                   <div className="flex justify-between items-center">
                     <div className="flex-1 overflow-hidden">
-                      <h3 className={`font-semibold truncate ${note.id === activeNoteId && viewMode === 'editor' ? 'text-indigo-900 dark:text-indigo-100' : 'text-slate-800 dark:text-slate-200'}`}>
-                        {displayTitle}
-                      </h3>
-                      <p className={`text-xs truncate ${note.id === activeNoteId && viewMode === 'editor' ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-500 dark:text-slate-400'}`}>
-                        {displaySubtitle}
-                      </p>
+                        <h3 className={`font-semibold truncate ${note.id === activeNoteId && viewMode === 'editor' ? 'text-indigo-900 dark:text-indigo-100' : 'text-slate-800 dark:text-slate-200'}`}>
+                          {displayTitle}
+                        </h3>
+                        <p className={`text-xs truncate ${note.id === activeNoteId && viewMode === 'editor' ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-500 dark:text-slate-400'}`}>
+                          {displaySubtitle}
+                        </p>
                     </div>
                     {isGeneratingTitle ? (
                       <div className="ml-2 p-1 flex items-center justify-center">

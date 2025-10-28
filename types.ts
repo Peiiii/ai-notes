@@ -6,8 +6,11 @@ export type ParliamentMode = 'debate' | 'podcast';
 
 export type LoadingState = { type: 'subtopics' } | { type: 'explore'; id: string } | { type: 'regenerate' };
 
+export type NoteType = 'text';
+
 export interface Note {
   id: string;
+  type: NoteType;
   title: string;
   content: string;
   createdAt: number;

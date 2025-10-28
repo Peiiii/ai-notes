@@ -15,6 +15,7 @@ import ChatView from './components/chat/ChatView';
 import PulseReportModal from './components/studio/PulseReportModal';
 import WikiStudio from './components/wiki/WikiStudio';
 import ParliamentView from './components/parliament/ParliamentView';
+import ErrorBoundary from './components/ui/ErrorBoundary';
 
 
 function AppContent() {
@@ -89,7 +90,7 @@ function AppContent() {
       default:
         return <NoteEditor
           note={activeNote}
-          onUpdateNote={presenter.notesManager.updateNoteContent}
+          onUpdateNote={(id, title, content) => presenter.notesManager.updateNote(id, { title, content })}
           wikis={wikis}
           onViewWikiInStudio={presenter.handleViewWikiInStudio}
         />;
@@ -103,7 +104,7 @@ function AppContent() {
           notes={notes}
           activeNoteId={activeNoteId}
           onSelectNote={presenter.handleSelectNote}
-          onNewNote={presenter.handleNewNote}
+          onNewTextNote={presenter.handleNewTextNote}
           onDeleteNote={presenter.handleDeleteNote}
           onShowStudio={presenter.handleShowStudio}
           onShowChat={presenter.handleShowChat}
@@ -127,7 +128,9 @@ function AppContent() {
 function App() {
   return (
     <PresenterProvider>
-      <AppContent />
+      <ErrorBoundary>
+        <AppContent />
+      </ErrorBoundary>
     </PresenterProvider>
   );
 }

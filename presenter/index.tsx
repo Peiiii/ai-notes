@@ -21,12 +21,12 @@ export class Presenter {
 
   // --- Orchestration Methods ---
 
-  handleNewNote = () => {
-    const newNote = this.notesManager.createNewNote();
+  handleNewTextNote = () => {
+    const newNote = this.notesManager.createNewTextNote();
     this.appManager.setActiveNoteId(newNote.id);
     this.appManager.setViewMode('editor');
   };
-
+  
   handleDeleteNote = (id: string) => {
     const { activeNoteId } = useAppStore.getState();
     this.notesManager.deleteNoteById(id);
@@ -66,7 +66,8 @@ export class Presenter {
   };
 
   handleCardToNote = (card: KnowledgeCard) => {
-    const newNote = this.notesManager.createNewNote({ title: card.title, content: card.content });
+    const newNote = this.notesManager.createNewTextNote();
+    this.notesManager.updateNote(newNote.id, { title: card.title, content: card.content });
     this.appManager.setActiveNoteId(newNote.id);
     this.appManager.setViewMode('editor');
   };
@@ -109,7 +110,8 @@ ${synthesis.keyPointsVisionary.map(p => `- ${p}`).join('\n')}
 ${synthesis.nextSteps.map(p => `- ${p}`).join('\n')}
     `.trim();
 
-    const newNote = this.notesManager.createNewNote({ title, content });
+    const newNote = this.notesManager.createNewTextNote();
+    this.notesManager.updateNote(newNote.id, { title, content });
     this.appManager.setActiveNoteId(newNote.id);
     this.appManager.setViewMode('editor');
   };
