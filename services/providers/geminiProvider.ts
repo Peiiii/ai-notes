@@ -1,14 +1,9 @@
-
 import { GoogleGenAI } from "@google/genai";
 import { LLMProvider, GenerateTextParams, GenerateJsonParams, ModelTier } from './types';
 
-const API_KEY = process.env.API_KEY;
-
-if (!API_KEY) {
-    throw new Error("API_KEY environment variable not set");
-}
-
-const ai = new GoogleGenAI({ apiKey: API_KEY });
+// FIX: Per coding guidelines, the API key must be obtained from process.env.API_KEY.
+// This also resolves the TypeScript error "Property 'env' does not exist on type 'ImportMeta'".
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 const GEMINI_MODELS: Record<ModelTier, string> = {
     lite: 'gemini-flash-lite-latest',
