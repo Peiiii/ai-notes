@@ -1,7 +1,7 @@
 
 import { Note, KnowledgeCard, ChatMessage } from '../types';
 import { geminiProvider } from './providers/geminiProvider';
-import { openAIProvider } from './providers/openaiProvider';
+import { openAIProvider, dashscopeProvider, deepseekProvider, openRouterProvider } from './providers/openaiProvider';
 import { LLMProvider, GenerateJsonParams, GenerateTextParams, ModelTier } from './providers/types';
 import { Type } from "@google/genai";
 
@@ -10,6 +10,9 @@ import { Type } from "@google/genai";
 const providers: { [key: string]: LLMProvider } = {
   gemini: geminiProvider,
   openai: openAIProvider,
+  dashscope: dashscopeProvider,
+  deepseek: deepseekProvider,
+  openrouter: openRouterProvider,
 };
 
 // --- Capability Configuration ---

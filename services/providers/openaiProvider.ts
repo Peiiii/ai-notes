@@ -1,40 +1,49 @@
-
 import { LLMProvider, GenerateTextParams, GenerateJsonParams, ModelTier } from './types';
 
-const API_KEY = process.env.API_KEY;
-const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
-
-if (!API_KEY) {
-    throw new Error("API_KEY environment variable not set for OpenAI");
-}
-
-// Maps our abstract tiers to specific, recommended OpenAI model identifiers.
-// Models supporting JSON mode are preferred for generateJson.
-const OPENAI_MODELS: Record<ModelTier, string> = {
-    lite: 'gpt-3.5-turbo-0125', // Fast, cheap, and supports JSON mode
-    fast: 'gpt-4o-mini', // A good balance of cost, speed and intelligence
-    pro: 'gpt-4o',       // The most capable model for complex tasks
-};
-
 /**
- * Implements the LLMProvider interface using the OpenAI API.
- * This module is responsible for all direct communication with OpenAI.
+ * A generic provider for any OpenAI-compatible API.
+ * This class is instantiated with specific configurations for different services.
  */
-class OpenAIProvider implements LLMProvider {
+class OpenAICompatibleProvider implements LLMProvider {
+    private apiUrl: string;
+    private apiKey: string;
+    private modelMap: Record<ModelTier, string>;
+    private providerName: string;
+
+    constructor(config: { providerName: string; apiUrl: string; apiKey?: string; modelMap: Record<ModelTier, string> }) {
+        if (!config.apiKey) {
+            // This allows the app to load without all keys being present.
+            // An error will be thrown at runtime if a provider without a key is used.
+            console.warn(`API key is missing for ${config.providerName} provider. It will not be usable unless the corresponding environment variable is set.`);
+        }
+        this.providerName = config.providerName;
+        this.apiUrl = config.apiUrl;
+        this.apiKey = config.apiKey || ''; // Default to empty string if not provided
+        this.modelMap = config.modelMap;
+    }
+    
+    private checkApiKey(): void {
+        if (!this.apiKey) {
+            throw new Error(`API Key for ${this.providerName} is not configured. Please set the corresponding environment variable.`);
+        }
+    }
+
     private async makeApiCall<T>(body: object): Promise<T> {
-        const response = await fetch(OPENAI_API_URL, {
+        this.checkApiKey();
+
+        const response = await fetch(this.apiUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${API_KEY}`,
+                'Authorization': `Bearer ${this.apiKey}`,
             },
             body: JSON.stringify(body),
         });
 
         if (!response.ok) {
             const errorBody = await response.json();
-            console.error("OpenAI API Error:", errorBody);
-            throw new Error(`OpenAI API request failed with status ${response.status}: ${errorBody.error?.message}`);
+            console.error(`${this.providerName} API Error:`, errorBody);
+            throw new Error(`${this.providerName} API request failed with status ${response.status}: ${errorBody.error?.message}`);
         }
 
         return response.json();
@@ -42,7 +51,7 @@ class OpenAIProvider implements LLMProvider {
 
     async generateText(params: GenerateTextParams): Promise<string> {
         const { model, prompt, systemInstruction } = params;
-        const openAIModel = OPENAI_MODELS[model];
+        const apiModel = this.modelMap[model];
 
         const messages: { role: 'system' | 'user', content: string }[] = [];
         if (systemInstruction) {
@@ -52,46 +61,89 @@ class OpenAIProvider implements LLMProvider {
 
         try {
             const response: any = await this.makeApiCall({
-                model: openAIModel,
+                model: apiModel,
                 messages: messages,
             });
             return response.choices[0]?.message?.content?.trim() || "";
         } catch (error) {
-            console.error(`Error generating text with OpenAI model ${openAIModel}:`, error);
-            throw new Error("Failed to get text response from OpenAI.");
+            console.error(`Error generating text with ${this.providerName} model ${apiModel}:`, error);
+            throw new Error(`Failed to get text response from ${this.providerName}.`);
         }
     }
 
     async generateJson<T>(params: GenerateJsonParams): Promise<T> {
         const { model, prompt, systemInstruction } = params;
-        const openAIModel = OPENAI_MODELS[model];
+        const apiModel = this.modelMap[model];
 
         const messages: { role: 'system' | 'user', content: string }[] = [];
-        // For JSON mode, the system instruction is critical for some models
         let systemPrompt = systemInstruction || "";
         systemPrompt += "\nYou must respond in a valid JSON format.";
         messages.push({ role: 'system', content: systemPrompt });
         
-        // Add a reminder in the user prompt as well for reliability
         const userPrompt = `${prompt}\n\nIMPORTANT: Respond with a single, valid JSON object only. Do not include any other text, explanations, or markdown formatting.`;
         messages.push({ role: 'user', content: userPrompt });
 
         try {
             const response: any = await this.makeApiCall({
-                model: openAIModel,
+                model: apiModel,
                 messages: messages,
                 response_format: { type: "json_object" },
             });
             const jsonText = response.choices[0]?.message?.content?.trim();
             if (!jsonText) {
-                throw new Error("OpenAI returned an empty message for JSON request.");
+                throw new Error(`${this.providerName} returned an empty message for JSON request.`);
             }
             return JSON.parse(jsonText) as T;
         } catch (error) {
-            console.error(`Error generating JSON with OpenAI model ${openAIModel}:`, error);
-            throw new Error("Failed to get a valid JSON response from OpenAI.");
+            console.error(`Error generating JSON with ${this.providerName} model ${apiModel}:`, error);
+            throw new Error(`Failed to get a valid JSON response from ${this.providerName}.`);
         }
     }
 }
 
-export const openAIProvider = new OpenAIProvider();
+
+// --- Provider Instances ---
+
+export const openAIProvider = new OpenAICompatibleProvider({
+    providerName: 'OpenAI',
+    apiUrl: 'https://api.openai.com/v1/chat/completions',
+    apiKey: process.env.API_KEY,
+    modelMap: {
+        lite: 'gpt-3.5-turbo-0125',
+        fast: 'gpt-4o-mini',
+        pro: 'gpt-4o',
+    }
+});
+
+export const dashscopeProvider = new OpenAICompatibleProvider({
+    providerName: 'DashScope',
+    apiUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
+    apiKey: process.env.DASHSCOPE_API_KEY,
+    modelMap: {
+        lite: 'qwen-turbo',
+        fast: 'qwen-plus',
+        pro: 'qwen-max',
+    }
+});
+
+export const deepseekProvider = new OpenAICompatibleProvider({
+    providerName: 'DeepSeek',
+    apiUrl: 'https://api.deepseek.com/v1/chat/completions',
+    apiKey: process.env.DEEPSEEK_API_KEY,
+    modelMap: {
+        lite: 'deepseek-chat',
+        fast: 'deepseek-chat',
+        pro: 'deepseek-coder',
+    }
+});
+
+export const openRouterProvider = new OpenAICompatibleProvider({
+    providerName: 'OpenRouter',
+    apiUrl: 'https://openrouter.ai/api/v1/chat/completions',
+    apiKey: process.env.OPENROUTER_API_KEY,
+    modelMap: {
+        lite: 'mistralai/mistral-7b-instruct:free',
+        fast: 'google/gemini-flash-1.5',
+        pro: 'anthropic/claude-3-opus',
+    }
+});
