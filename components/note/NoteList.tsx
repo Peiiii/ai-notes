@@ -7,6 +7,7 @@ import Squares2X2Icon from '../icons/Squares2X2Icon';
 import ChatBubbleLeftRightIcon from '../icons/ChatBubbleLeftRightIcon';
 import BookOpenIcon from '../icons/BookOpenIcon';
 import UsersIcon from '../icons/UsersIcon';
+import CpuChipIcon from '../icons/CpuChipIcon';
 
 interface NoteListProps {
   notes: Note[];
@@ -16,7 +17,7 @@ interface NoteListProps {
   onDeleteNote: (id: string) => void;
   onShowStudio: () => void;
   onShowChat: () => void;
-  onShowWikiStudio: () => void;
+  onShowWiki: () => void;
   onShowParliament: () => void;
   isLoadingAI: boolean;
   generatingTitleIds: Set<string>;
@@ -31,7 +32,7 @@ const NoteList: React.FC<NoteListProps> = ({
   onDeleteNote,
   onShowStudio,
   onShowChat,
-  onShowWikiStudio,
+  onShowWiki,
   onShowParliament,
   isLoadingAI,
   generatingTitleIds,
@@ -50,8 +51,13 @@ const NoteList: React.FC<NoteListProps> = ({
   return (
     <div className="h-full bg-slate-100 dark:bg-slate-800 flex flex-col">
       <div className="p-4 border-b border-slate-200 dark:border-slate-700">
-        <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">AI Notes</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400">Your intelligent companion</p>
+        <div className="flex items-center gap-3">
+            <CpuChipIcon className="w-8 h-8 text-indigo-500 flex-shrink-0" />
+            <div>
+              <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">ThoughtStream</h1>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Capture & Connect Ideas</p>
+            </div>
+        </div>
       </div>
       <div className="p-4 flex flex-col gap-3">
         <div>
@@ -75,7 +81,7 @@ const NoteList: React.FC<NoteListProps> = ({
             <ChatBubbleLeftRightIcon className="w-5 h-5" />
             <span>Companion</span>
           </button>
-           <button onClick={onShowWikiStudio} className={getButtonClasses('wiki_studio')}>
+           <button onClick={onShowWiki} className={getButtonClasses('wiki')}>
             <BookOpenIcon className="w-5 h-5" />
             <span>Wiki</span>
           </button>

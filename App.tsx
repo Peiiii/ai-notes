@@ -57,7 +57,7 @@ function AppContent() {
             onSendMessage={presenter.chatManager.sendChatMessage}
           />
         );
-      case 'wiki_studio':
+      case 'wiki':
         return (
           <WikiStudio
             notes={notes}
@@ -108,7 +108,7 @@ function AppContent() {
           onDeleteNote={presenter.handleDeleteNote}
           onShowStudio={presenter.handleShowStudio}
           onShowChat={presenter.handleShowChat}
-          onShowWikiStudio={presenter.handleShowWikiStudio}
+          onShowWiki={presenter.handleShowWiki}
           onShowParliament={presenter.handleShowParliament}
           isLoadingAI={isLoadingAI}
           generatingTitleIds={generatingTitleIds}

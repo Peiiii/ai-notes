@@ -50,8 +50,17 @@ const Studio: React.FC<StudioProps> = ({
   return (
     <div className="h-full flex flex-col p-6 md:p-8 overflow-y-auto">
       <div className="max-w-4xl mx-auto w-full">
-        <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">Studio</h1>
-        <p className="text-slate-500 dark:text-slate-400 mb-8">Your notes, synthesized. Ideas, tasks, and new perspectives.</p>
+        <div className="bg-white dark:bg-slate-800/50 p-6 rounded-lg shadow-sm mb-8 border border-slate-200 dark:border-slate-700">
+            <div className="flex items-center gap-4">
+                <div className="p-3 bg-indigo-100 dark:bg-indigo-900/50 rounded-lg">
+                    <SparklesIcon className="w-8 h-8 text-indigo-500" />
+                </div>
+                <div>
+                    <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Studio</h1>
+                    <p className="text-slate-500 dark:text-slate-400 mt-1">Manage tasks and synthesize ideas from your notes.</p>
+                </div>
+            </div>
+        </div>
         
         <div className="space-y-12">
           {!hasSummaryContent && !isLoadingPulse && pulseReports.length === 0 ? (

@@ -52,9 +52,9 @@ export class Presenter {
     this.studioManager.generateNewSummary();
   };
 
-  handleShowWikiStudio = () => {
+  handleShowWiki = () => {
     this.appManager.setInitialWikiHistory(null);
-    this.appManager.setViewMode('wiki_studio');
+    this.appManager.setViewMode('wiki');
     this.appManager.setActiveNoteId(null);
     this.wikiManager.fetchWikiTopics();
   };
@@ -90,7 +90,7 @@ export class Presenter {
     }
 
     this.appManager.setInitialWikiHistory(historyPath);
-    this.appManager.setViewMode('wiki_studio');
+    this.appManager.setViewMode('wiki');
     this.appManager.setActiveNoteId(null);
   };
 

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Note, WikiEntry, WIKI_ROOT_ID, LoadingState } from '../../types';
 import BookOpenIcon from '../icons/BookOpenIcon';
@@ -30,9 +31,15 @@ const WikiStudioHome: React.FC<WikiStudioHomeProps> = ({
         <div className="h-full flex flex-col p-6 md:p-8 overflow-y-auto">
             <div className="max-w-4xl mx-auto w-full">
                 <div className="text-center mb-12">
-                    <BookOpenIcon className="w-16 h-16 mx-auto mb-4 text-indigo-500" />
-                    <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Infinite Wiki</h1>
-                    <p className="text-slate-500 dark:text-slate-400 mt-2">Start a journey of discovery. Begin with one of your notes or an AI-suggested topic.</p>
+                    <div className="inline-block p-4 bg-indigo-100 dark:bg-indigo-900/50 rounded-full mb-4">
+                        <BookOpenIcon className="w-16 h-16 text-indigo-600 dark:text-indigo-300" />
+                    </div>
+                    <h1 className="text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+                        <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-500 to-purple-500">
+                            Infinite Wiki
+                        </span>
+                    </h1>
+                    <p className="text-slate-500 dark:text-slate-400 mt-2 max-w-md mx-auto">Explore an endless web of interconnected ideas.</p>
                 </div>
                 <div className="space-y-8">
                     {topLevelWikis.length > 0 && (

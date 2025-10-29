@@ -1,4 +1,4 @@
-export type ViewMode = 'editor' | 'studio' | 'chat' | 'pulse' | 'wiki_studio' | 'parliament';
+export type ViewMode = 'editor' | 'studio' | 'chat' | 'pulse' | 'wiki' | 'parliament';
 
 export const WIKI_ROOT_ID = 'wiki_root';
 

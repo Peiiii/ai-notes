@@ -122,10 +122,16 @@ const ParliamentHome: React.FC<ParliamentHomeProps> = (props) => {
           {setupMode && (
              <button onClick={() => setSetupMode(null)} className="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 mb-2">← Back to modes</button>
           )}
-          <UsersIcon className="w-16 h-16 mx-auto mb-4 text-indigo-500" />
-          <h1 className="text-3xl font-bold text-slate-900 dark:text-white">AI Parliament</h1>
+          <div className="inline-block p-4 bg-slate-200 dark:bg-slate-700 rounded-full mb-4">
+              <UsersIcon className="w-16 h-16 text-slate-600 dark:text-slate-300" />
+          </div>
+          <h1 className="text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+            <span className="bg-clip-text text-transparent bg-gradient-to-r from-slate-600 to-slate-400 dark:from-slate-300 dark:to-slate-500">
+                Mind's Parliament
+            </span>
+          </h1>
           <p className="text-slate-500 dark:text-slate-400 mt-2">
-            {setupMode ? `Choose a starting point for your ${setupMode}.` : 'Explore your ideas from multiple perspectives through automated AI conversations.'}
+            {setupMode ? `Choose a starting point for your ${setupMode}.` : 'Debate your ideas with AI personas.'}
           </p>
         </div>
         <div className="space-y-8">

@@ -10,7 +10,7 @@ interface ErrorBoundaryState {
   errorInfo: React.ErrorInfo | null;
 }
 
-// FIX: To function as a React class component, ErrorBoundary must extend React.Component. This provides access to state, props, and lifecycle methods, resolving the errors.
+// FIX: An Error Boundary must be a class component. The ErrorBoundary was a plain class, causing errors because it lacked `this.state`, `this.props`, and lifecycle methods. It now correctly extends `React.Component` to resolve these issues.
 class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
   constructor(props: ErrorBoundaryProps) {
     super(props);
