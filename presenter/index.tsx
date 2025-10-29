@@ -13,10 +13,14 @@ import { KnowledgeCard, Note, WikiEntry, WIKI_ROOT_ID, DebateSynthesis } from '.
 export class Presenter {
   appManager = new AppManager();
   notesManager = new NotesManager();
-  chatManager = new ChatManager();
+  chatManager: ChatManager;
   studioManager = new StudioManager();
   wikiManager = new WikiManager();
   parliamentManager = new ParliamentManager();
+
+  constructor() {
+    this.chatManager = new ChatManager(this.notesManager);
+  }
 
   // --- Orchestration Methods ---
 
@@ -49,6 +53,7 @@ export class Presenter {
     this.appManager.setViewMode('studio');
     this.appManager.setActiveNoteId(null);
     this.studioManager.generateNewSummary();
+    this.studioManager.generateNewMindMap();
   };
 
   handleShowWiki = () => {
@@ -69,6 +74,10 @@ export class Presenter {
     this.notesManager.updateNote(newNote.id, { title: card.title, content: card.content });
     this.appManager.setActiveNoteId(newNote.id);
     this.appManager.setViewMode('editor');
+  };
+
+  handleSendThreadMessage = (noteId: string, message: string) => {
+    this.chatManager.sendThreadChatMessage(noteId, message);
   };
 
   handleViewWikiInStudio = (wikiId: string) => {

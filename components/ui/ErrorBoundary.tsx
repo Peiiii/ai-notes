@@ -11,10 +11,9 @@ interface ErrorBoundaryState {
 }
 
 class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  // FIX: Initialize state in the constructor for broader compatibility. The previous implementation
-  // using a class property was causing issues where `this.setState` and `this.props` were
-  // not available on the component instance. Using a constructor is the standard and most
-  // reliable way to initialize state in React class components.
+  // FIX: Reverted to using a constructor for state initialization.
+  // The previous implementation using a class property was causing typing errors where `this.props` and `this.setState` were not recognized on the component instance.
+  // A constructor with `super(props)` is the standard, reliable way to set up a React class component's state and context, avoiding potential toolchain-specific issues.
   constructor(props: ErrorBoundaryProps) {
     super(props);
     this.state = {
@@ -38,7 +37,6 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
       return (
         <div className="h-screen w-screen flex items-center justify-center p-4 bg-slate-100 dark:bg-slate-900">
           <div className="max-w-2xl w-full bg-white dark:bg-slate-800 p-8 rounded-lg shadow-lg border border-red-500/30">
-            {/* FIX: Corrected TailwindCSS dark mode class from `dark:red-400` to `dark:text-red-400` */}
             <h1 className="text-2xl font-bold text-red-600 dark:text-red-400">Something went wrong.</h1>
             <p className="mt-2 text-slate-600 dark:text-slate-400">
               An unexpected error occurred in the application. Please try refreshing the page.

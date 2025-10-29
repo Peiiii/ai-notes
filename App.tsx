@@ -23,7 +23,7 @@ function AppContent() {
   // Subscribe to state from stores
   const { viewMode, activeNoteId, initialWikiHistory, viewingPulseReport } = useAppStore();
   const { notes, generatingTitleIds } = useNotesStore();
-  const { chatHistory, isChatting } = useChatStore();
+  const { chatHistory, isChatting, isThreadChatting } = useChatStore();
   const { aiSummary, myTodos, isLoadingAI, isLoadingPulse, pulseReports, mindMapData, isLoadingMindMap } = useStudioStore();
   const { wikis, wikiTopics, isLoadingWikiTopics } = useWikiStore();
   const { topics, isLoadingTopics, sessionHistory, isSessionActive, currentSession } = useParliamentStore();
@@ -95,6 +95,8 @@ function AppContent() {
           onUpdateNote={(id, title, content) => presenter.notesManager.updateNote(id, { title, content })}
           wikis={wikis}
           onViewWikiInStudio={presenter.handleViewWikiInStudio}
+          isThreadChatting={isThreadChatting}
+          onSendThreadChatMessage={presenter.handleSendThreadMessage}
         />;
     }
   };

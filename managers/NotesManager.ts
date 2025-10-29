@@ -1,5 +1,5 @@
 import { useNotesStore } from '../stores/notesStore';
-import { Note } from '../types';
+import { Note, ChatMessage } from '../types';
 import { generateTitleForNote } from '../services/aiService';
 
 const TITLE_GENERATION_LENGTH_THRESHOLD = 70;
@@ -85,5 +85,15 @@ export class NotesManager {
 
             return { notes: newNotes };
         });
+    }
+
+    appendThreadMessage = (noteId: string, message: ChatMessage) => {
+        useNotesStore.setState(state => ({
+            notes: state.notes.map(note => 
+                note.id === noteId 
+                    ? { ...note, threadHistory: [...(note.threadHistory || []), message] } 
+                    : note
+            )
+        }));
     }
 }

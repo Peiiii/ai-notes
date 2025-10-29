@@ -24,6 +24,7 @@ type CapabilityConfig = {
   summary:        { provider: string; model: ModelTier };
   title:          { provider: string; model: ModelTier };
   chat:           { provider: string; model: ModelTier };
+  threadChat:     { provider: string; model: ModelTier };
   pulseReport:    { provider: string; model: ModelTier };
   wikiEntry:      { provider: string; model: ModelTier };
   relatedTopics:  { provider: string; model: ModelTier };
@@ -41,6 +42,7 @@ const geminiScheme: CapabilityConfig = {
   summary:        { provider: 'gemini', model: 'fast' },
   title:          { provider: 'gemini', model: 'fast' },
   chat:           { provider: 'gemini', model: 'fast' },
+  threadChat:     { provider: 'gemini', model: 'fast' },
   pulseReport:    { provider: 'gemini', model: 'pro'  },
   wikiEntry:      { provider: 'gemini', model: 'lite' },
   relatedTopics:  { provider: 'gemini', model: 'lite' },
@@ -58,6 +60,7 @@ const dashscopeScheme: CapabilityConfig = {
   summary:        { provider: 'dashscope', model: 'fast' },
   title:          { provider: 'dashscope', model: 'fast' },
   chat:           { provider: 'dashscope', model: 'fast' },
+  threadChat:     { provider: 'dashscope', model: 'fast' },
   pulseReport:    { provider: 'dashscope', model: 'pro'  },
   wikiEntry:      { provider: 'dashscope', model: 'lite' },
   relatedTopics:  { provider: 'dashscope', model: 'lite' },
@@ -75,6 +78,7 @@ const openaiScheme: CapabilityConfig = {
   summary:        { provider: 'openai', model: 'fast' },
   title:          { provider: 'openai', model: 'fast' },
   chat:           { provider: 'openai', model: 'fast' },
+  threadChat:     { provider: 'openai', model: 'fast' },
   pulseReport:    { provider: 'openai', model: 'pro'  },
   wikiEntry:      { provider: 'openai', model: 'lite' },
   relatedTopics:  { provider: 'openai', model: 'lite' },
@@ -92,6 +96,7 @@ const deepseekScheme: CapabilityConfig = {
   summary:        { provider: 'deepseek', model: 'fast' },
   title:          { provider: 'deepseek', model: 'fast' },
   chat:           { provider: 'deepseek', model: 'fast' },
+  threadChat:     { provider: 'deepseek', model: 'fast' },
   pulseReport:    { provider: 'deepseek', model: 'pro'  },
   wikiEntry:      { provider: 'deepseek', model: 'lite' },
   relatedTopics:  { provider: 'deepseek', model: 'lite' },
@@ -109,6 +114,7 @@ const openRouterScheme: CapabilityConfig = {
   summary:        { provider: 'openrouter', model: 'fast' },
   title:          { provider: 'openrouter', model: 'fast' },
   chat:           { provider: 'openrouter', model: 'fast' },
+  threadChat:     { provider: 'openrouter', model: 'fast' },
   pulseReport:    { provider: 'openrouter', model: 'pro'  },
   wikiEntry:      { provider: 'openrouter', model: 'lite' },
   relatedTopics:  { provider: 'openrouter', model: 'lite' },
@@ -266,6 +272,31 @@ user: ${question}
 model:`;
     
     const { provider, model } = getConfig('chat');
+    const params: GenerateTextParams = { model, prompt };
+    return provider.generateText(params);
+}
+
+export async function generateThreadChatResponse(note: Note, question: string): Promise<string> {
+    const noteContent = `Title: ${note.title || 'Untitled'}\nContent: ${note.content}`;
+    const history = note.threadHistory || [];
+    const historyContent = history.slice(-10).map(msg => `${msg.role}: ${msg.content}`).join('\n');
+
+    const prompt = `You are an AI assistant focused on a single note. Your purpose is to help the user with the content of *this specific note*.
+You can help them rewrite, brainstorm, summarize, or answer questions about it. Be helpful and conversational.
+Base your answer *only* on the note's content and the recent conversation history provided.
+
+--- CONVERSATION HISTORY ---
+${historyContent}
+
+--- NOTE CONTENT ---
+${noteContent}
+
+--- USER'S QUESTION ---
+user: ${question}
+
+model:`;
+    
+    const { provider, model } = getConfig('threadChat');
     const params: GenerateTextParams = { model, prompt };
     return provider.generateText(params);
 }

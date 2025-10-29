@@ -6,6 +6,7 @@ import { ChatMessage } from '../types';
 interface ChatState {
   chatHistory: ChatMessage[];
   isChatting: boolean;
+  isThreadChatting: boolean;
 }
 
 export const useChatStore = create<ChatState>()(
@@ -13,6 +14,7 @@ export const useChatStore = create<ChatState>()(
     () => ({
       chatHistory: [],
       isChatting: false,
+      isThreadChatting: false,
     }),
     { 
         name: 'ai-notes-chathistory',
