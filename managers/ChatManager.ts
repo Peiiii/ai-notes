@@ -1,11 +1,9 @@
 import { useChatStore } from '../stores/chatStore';
 import { useNotesStore } from '../stores/notesStore';
 import { useCommandStore } from '../stores/commandStore';
-import { ChatMessage, Note } from '../types';
-// FIX: Imported `generateThreadChatResponse` to resolve reference error.
+import { ChatMessage, Note, ToolCall } from '../types';
 import { getAgentResponse, searchNotesInCorpus, generateThreadChatResponse } from '../services/aiService';
 import { NotesManager } from './NotesManager';
-import { FunctionCall } from '@google/genai';
 
 export class ChatManager {
     private notesManager: NotesManager;
@@ -41,10 +39,8 @@ export class ChatManager {
             let sourceNotesForFinalAnswer: Note[] = [];
 
             // Agent loop
-            while (true) {
-                // Pass the command on the first turn of the loop
-                const response = await getAgentResponse(currentHistory, command);
-                command = undefined; // Ensure command is only sent once
+            for (let i = 0; i < 5; i++) { // Add a safety break
+                const response = await getAgentResponse(currentHistory, i === 0 ? command : undefined);
 
                 if (response.toolCalls && response.toolCalls.length > 0) {
                     const toolCalls = response.toolCalls;
@@ -52,19 +48,19 @@ export class ChatManager {
                     const toolRequestMessage: ChatMessage = {
                         id: crypto.randomUUID(),
                         role: 'model',
-                        content: '', // No text content for tool requests
+                        content: response.text || '',
                         toolCalls: toolCalls,
                     };
                     currentHistory.push(toolRequestMessage);
 
                     const toolResponses: ChatMessage[] = await Promise.all(
-                        toolCalls.map(async (call: FunctionCall) => {
+                        toolCalls.map(async (call: ToolCall) => {
                             let toolResultContent = '';
                             if (call.name === 'search_notes') {
                                 useChatStore.setState({ chatStatus: 'Searching notes...' });
                                 const { query } = call.args;
                                 const allNotes = useNotesStore.getState().notes;
-                                const relevantNotes = await searchNotesInCorpus(query, allNotes);
+                                const relevantNotes = await searchNotesInCorpus(query as string, allNotes);
                                 sourceNotesForFinalAnswer = relevantNotes;
                                 if (relevantNotes.length > 0) {
                                     toolResultContent = "Relevant notes found:\n" + relevantNotes.map(n => `Title: ${n.title}\nContent: ${n.content}`).join('\n---\n');
@@ -75,14 +71,15 @@ export class ChatManager {
                                 useChatStore.setState({ chatStatus: 'Creating note...' });
                                 const { title, content } = call.args;
                                 const newNote = this.notesManager.createNewTextNote();
-                                this.notesManager.updateNote(newNote.id, { title, content });
+                                this.notesManager.updateNote(newNote.id, { title: title as string, content: content as string });
                                 toolResultContent = `Successfully created a new note titled "${title}".`;
                             }
                             return {
                                 id: crypto.randomUUID(),
                                 role: 'tool',
                                 content: toolResultContent,
-                                toolCalls: [call],
+                                tool_call_id: call.id, // For OpenAI
+                                toolCalls: [call], // For Gemini
                             };
                         })
                     );
@@ -106,7 +103,7 @@ export class ChatManager {
                 }
             }
         } catch (error) {
-            console.error("Agent chat failed:", error);
+            console.error("Agent chat failed:", String(error));
             const errorMessage: ChatMessage = {
                 id: crypto.randomUUID(),
                 role: 'model',
@@ -121,46 +118,41 @@ export class ChatManager {
     }
 
     sendThreadChatMessage = async (noteId: string, message: string) => {
-        // ... (existing implementation)
-    }
-}
+        if (!message.trim()) return;
 
-// Re-exporting for brevity
-ChatManager.prototype.sendThreadChatMessage = async function(noteId: string, message: string) {
-    if (!message.trim()) return;
+        const note = useNotesStore.getState().notes.find(n => n.id === noteId);
+        if (!note) return;
 
-    const note = useNotesStore.getState().notes.find(n => n.id === noteId);
-    if (!note) return;
+        const userMessage: ChatMessage = {
+            id: crypto.randomUUID(),
+            role: 'user',
+            content: message,
+        };
 
-    const userMessage: ChatMessage = {
-        id: crypto.randomUUID(),
-        role: 'user',
-        content: message,
+        useChatStore.setState({ isThreadChatting: true });
+        this.notesManager.appendThreadMessage(noteId, userMessage);
+
+        try {
+            const updatedNote = useNotesStore.getState().notes.find(n => n.id === noteId)!;
+            const responseContent = await generateThreadChatResponse(updatedNote, message);
+            
+            const modelMessage: ChatMessage = {
+                id: crypto.randomUUID(),
+                role: 'model',
+                content: responseContent,
+            };
+            this.notesManager.appendThreadMessage(noteId, modelMessage);
+
+        } catch (error) {
+            console.error("Thread chat failed:", String(error));
+            const errorMessage: ChatMessage = {
+                id: crypto.randomUUID(),
+                role: 'model',
+                content: "Sorry, I encountered an error. Please try again.",
+            };
+            this.notesManager.appendThreadMessage(noteId, errorMessage);
+        } finally {
+            useChatStore.setState({ isThreadChatting: false });
+        }
     };
-
-    useChatStore.setState({ isThreadChatting: true });
-    this.notesManager.appendThreadMessage(noteId, userMessage);
-
-    try {
-        const updatedNote = useNotesStore.getState().notes.find(n => n.id === noteId)!;
-        const responseContent = await generateThreadChatResponse(updatedNote, message);
-        
-        const modelMessage: ChatMessage = {
-            id: crypto.randomUUID(),
-            role: 'model',
-            content: responseContent,
-        };
-        this.notesManager.appendThreadMessage(noteId, modelMessage);
-
-    } catch (error) {
-        console.error("Thread chat failed:", error);
-        const errorMessage: ChatMessage = {
-            id: crypto.randomUUID(),
-            role: 'model',
-            content: "Sorry, I encountered an error. Please try again.",
-        };
-        this.notesManager.appendThreadMessage(noteId, errorMessage);
-    } finally {
-        useChatStore.setState({ isThreadChatting: false });
-    }
-};
+}

@@ -1,5 +1,4 @@
-import { ChatMessage } from '../../types';
-import { FunctionCall } from '@google/genai';
+import { ChatMessage, ToolCall } from '../../types';
 
 export type ModelTier = 'lite' | 'fast' | 'pro';
 
@@ -22,7 +21,7 @@ export interface GenerateWithToolsParams {
 
 export interface GenerateWithToolsResult {
   text: string | null;
-  toolCalls: FunctionCall[] | null;
+  toolCalls: ToolCall[] | null;
 }
 
 /**

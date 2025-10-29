@@ -1,6 +1,6 @@
 import { GoogleGenAI, FunctionCall } from "@google/genai";
 import { LLMProvider, GenerateTextParams, GenerateJsonParams, ModelTier, GenerateWithToolsParams, GenerateWithToolsResult } from './types';
-import { ChatMessage } from "../../types";
+import { ChatMessage, ToolCall } from "../../types";
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
@@ -10,11 +10,6 @@ const GEMINI_MODELS: Record<ModelTier, string> = {
     pro: 'gemini-2.5-pro',
 };
 
-/**
- * Implements the LLMProvider interface using the Google Gemini AI SDK.
- * This module is responsible for all direct communication with the Gemini API.
- */
-// FIX: Moved method implementations into the class body to resolve return type errors.
 class GeminiProvider implements LLMProvider {
     async generateText(params: GenerateTextParams): Promise<string> {
         const { model, prompt, systemInstruction } = params;
@@ -68,20 +63,24 @@ class GeminiProvider implements LLMProvider {
         const { model, history, tools, systemInstruction } = params;
         const geminiModel = GEMINI_MODELS[model];
 
-        // Convert our generic ChatMessage[] to Gemini's Content[] format
         const contents = history.map(msg => {
-            if (msg.role === 'tool') {
+            if (msg.role === 'tool' && msg.toolCalls?.[0]) {
                 return {
                     role: 'tool',
-                    // FIX: Changed 'toolResponse' to 'functionResponse' and removed the 'id' field to match the Gemini API specification for tool call responses.
                     parts: [{ functionResponse: { name: msg.toolCalls[0].name, response: { content: msg.content } } }]
                 };
+            }
+            if (msg.role === 'model' && msg.toolCalls) {
+                 return {
+                    role: 'model',
+                    parts: [{ functionCall: msg.toolCalls[0] }]
+                 }
             }
             return {
                 role: msg.role === 'model' ? 'model' : 'user',
                 parts: [{ text: msg.content }],
             };
-        });
+        }).filter(Boolean);
 
         try {
             const response = await ai.models.generateContent({
@@ -93,7 +92,17 @@ class GeminiProvider implements LLMProvider {
                 },
             });
 
-            const toolCalls = response.functionCalls || null;
+            // Fix: Explicitly map FunctionCall to ToolCall, filtering out invalid calls and providing a default for args.
+            // This handles cases where the response might have function calls without a name or with optional arguments.
+            const toolCalls: ToolCall[] | null = response.functionCalls
+                ? response.functionCalls
+                    .filter(fc => !!fc.name)
+                    .map(fc => ({
+                        id: fc.id,
+                        name: fc.name!,
+                        args: fc.args || {},
+                    }))
+                : null;
             const text = response.text || null;
             
             return { text, toolCalls };

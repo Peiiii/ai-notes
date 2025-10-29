@@ -1,4 +1,4 @@
-import { Note, KnowledgeCard, ChatMessage, DebateSynthesis } from '../types';
+import { Note, KnowledgeCard, ChatMessage, DebateSynthesis, ToolCall } from '../types';
 import { geminiProvider } from './providers/geminiProvider';
 import { openAIProvider, dashscopeProvider, deepseekProvider, openRouterProvider } from './providers/openaiProvider';
 import { LLMProvider, GenerateJsonParams, GenerateTextParams, ModelTier, GenerateWithToolsParams, GenerateWithToolsResult } from './providers/types';
@@ -34,9 +34,9 @@ type CapabilityConfig = {
   agent_reasoning:{ provider: string; model: ModelTier };
   agent_retrieval:{ provider: string; model: ModelTier };
   agent_final_answer: { provider: string; model: ModelTier };
+  agent_proactive:{ provider: string; model: ModelTier };
 };
 
-// FIX: Updated type annotation for `baseScheme` to allow an optional `provider` property, resolving type errors.
 const baseScheme: Record<string, { model: ModelTier; provider?: string }> = {
   summary:        { model: 'fast' },
   title:          { model: 'fast' },
@@ -55,6 +55,7 @@ const baseScheme: Record<string, { model: ModelTier; provider?: string }> = {
   agent_reasoning:{ model: 'pro' },
   agent_retrieval:{ model: 'lite' },
   agent_final_answer: { model: 'fast'},
+  agent_proactive:{ model: 'lite' },
 };
 
 const buildScheme = (provider: string): CapabilityConfig => 
@@ -174,7 +175,6 @@ Return only a JSON array of the most relevant note IDs.`;
     try {
         const relevantIds = await provider.generateJson<string[]>({ model, prompt, schema: retrievalSchema });
         
-        // FIX: Add validation to prevent crash if model returns non-array or other malformed data
         if (!Array.isArray(relevantIds)) {
             console.warn("Retrieved relevant IDs is not an array:", relevantIds);
             return [];
@@ -209,6 +209,72 @@ Answer:`;
     return provider.generateText({ model, prompt });
 }
 
+
+// --- Proactive Insights ---
+const findRelatedNotesTool: FunctionDeclaration = {
+    name: 'find_related_notes',
+    description: "Based on the user's current text, finds a single highly relevant note from their existing notes.",
+    parameters: {
+        type: Type.OBJECT,
+        properties: {
+            topic: { type: Type.STRING, description: "The core topic or concept from the user's text to search for in other notes." }
+        },
+        required: ['topic']
+    }
+};
+
+const identifyActionItemTool: FunctionDeclaration = {
+    name: 'identify_action_item',
+    description: "Identifies a single, clear, and actionable to-do item from the user's text.",
+    parameters: {
+        type: Type.OBJECT,
+        properties: {
+            task: { type: Type.STRING, description: "The full text of the identified to-do item." }
+        },
+        required: ['task']
+    }
+};
+
+const identifyWikiConceptTool: FunctionDeclaration = {
+    name: 'identify_wiki_concept',
+    description: "Identifies a new, significant concept or term from the user's text that would be suitable for a new wiki entry.",
+    parameters: {
+        type: Type.OBJECT,
+        properties: {
+            term: { type: Type.STRING, description: "The specific term or concept identified." }
+        },
+        required: ['term']
+    }
+};
+
+export const insightTools = [findRelatedNotesTool, identifyActionItemTool, identifyWikiConceptTool];
+
+export async function getLiveInsights(textSnippet: string, allNotes: Note[]): Promise<GenerateWithToolsResult> {
+    const systemInstruction = `You are a proactive assistant analyzing a user's writing in real-time. Your goal is to be as helpful as possible by finding relevant connections and suggestions.
+- Use 'find_related_notes' to link to existing knowledge. Be liberal; it's better to show a loosely related note than nothing.
+- Use 'identify_action_item' to capture potential tasks.
+- Use 'identify_wiki_concept' to suggest knowledge base expansion for key terms.
+You have access to the titles of all notes for context.
+
+All Note Titles:
+- ${allNotes.map(n => n.title).filter(Boolean).join('\n- ')}
+`;
+
+    const history: ChatMessage[] = [{
+        id: crypto.randomUUID(),
+        role: 'user',
+        content: `Here is the latest text snippet I'm writing:\n\n"${textSnippet}"`
+    }];
+
+    const { provider, model } = getConfig('agent_proactive');
+    const params: GenerateWithToolsParams = {
+        model,
+        history,
+        tools: insightTools,
+        systemInstruction,
+    };
+    return provider.generateContentWithTools(params);
+}
 
 // --- Legacy Capability Definitions (unchanged) ---
 // The following functions are kept as they were for other parts of the app.

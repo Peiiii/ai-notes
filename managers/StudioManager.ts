@@ -75,10 +75,20 @@ export class StudioManager {
         }));
     }
 
-    adoptTodo = (todoToAdopt: Todo) => {
+    adoptTodo = (todoToAdopt: Todo, fromInsight: boolean = false) => {
         useStudioStore.setState(state => {
-            const updatedSuggestedTodos = state.aiSummary ? state.aiSummary.todos.filter(t => t.id !== todoToAdopt.id) : [];
+            // If it's not from an insight, it must come from the suggested list
+            const updatedSuggestedTodos = fromInsight 
+                ? state.aiSummary?.todos || []
+                : state.aiSummary ? state.aiSummary.todos.filter(t => t.id !== todoToAdopt.id) : [];
+            
             const newAiSummary = state.aiSummary ? { ...state.aiSummary, todos: updatedSuggestedTodos } : null;
+            
+            // Prevent adding duplicates
+            if (state.myTodos.some(t => t.text === todoToAdopt.text)) {
+                return { aiSummary: newAiSummary };
+            }
+            
             return {
                 myTodos: [todoToAdopt, ...state.myTodos],
                 aiSummary: newAiSummary

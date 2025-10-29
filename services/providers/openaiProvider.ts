@@ -1,9 +1,6 @@
 import { LLMProvider, GenerateTextParams, GenerateJsonParams, ModelTier, GenerateWithToolsParams, GenerateWithToolsResult } from './types';
+import { ChatMessage, ToolCall } from '../../types';
 
-/**
- * A generic provider for any OpenAI-compatible API.
- * This class is instantiated with specific configurations for different services.
- */
 class OpenAICompatibleProvider implements LLMProvider {
     private apiUrl: string;
     private apiKey: string;
@@ -12,13 +9,11 @@ class OpenAICompatibleProvider implements LLMProvider {
 
     constructor(config: { providerName: string; apiUrl: string; apiKey?: string; modelMap: Record<ModelTier, string> }) {
         if (!config.apiKey) {
-            // This allows the app to load without all keys being present.
-            // An error will be thrown at runtime if a provider without a key is used.
             console.warn(`API key is missing for ${config.providerName} provider. It will not be usable unless the corresponding environment variable is set.`);
         }
         this.providerName = config.providerName;
         this.apiUrl = config.apiUrl;
-        this.apiKey = config.apiKey || ''; // Default to empty string if not provided
+        this.apiKey = config.apiKey || '';
         this.modelMap = config.modelMap;
     }
     
@@ -41,7 +36,7 @@ class OpenAICompatibleProvider implements LLMProvider {
         });
 
         if (!response.ok) {
-            const errorBody = await response.json();
+            const errorBody = await response.json().catch(() => ({ error: { message: 'Failed to parse error response' } }));
             console.error(`${this.providerName} API Error:`, errorBody);
             throw new Error(`${this.providerName} API request failed with status ${response.status}: ${errorBody.error?.message}`);
         }
@@ -101,15 +96,86 @@ class OpenAICompatibleProvider implements LLMProvider {
     }
 
     async generateContentWithTools(params: GenerateWithToolsParams): Promise<GenerateWithToolsResult> {
-        // Basic placeholder - full implementation would require mapping Gemini's
-        // FunctionDeclaration to the specific provider's format.
-        console.error(`${this.providerName} does not currently support tool calling in this application.`);
-        throw new Error(`Tool calling not implemented for ${this.providerName}.`);
+        const { model, history, tools, systemInstruction } = params;
+        const apiModel = this.modelMap[model];
+
+        const openAITools = tools.map(tool => ({
+            type: 'function',
+            function: {
+                name: tool.name,
+                description: tool.description,
+                parameters: tool.parameters,
+            }
+        }));
+
+        const messages = history.map(msg => {
+            if (msg.role === 'model' && msg.toolCalls) {
+                return {
+                    role: 'assistant',
+                    content: msg.content || null,
+                    tool_calls: msg.toolCalls.map(call => ({
+                        id: call.id,
+                        type: 'function',
+                        function: { name: call.name, arguments: JSON.stringify(call.args) }
+                    }))
+                };
+            }
+            if (msg.role === 'tool') {
+                return {
+                    role: 'tool',
+                    tool_call_id: msg.tool_call_id,
+                    content: msg.content,
+                };
+            }
+            return {
+                role: msg.role === 'model' ? 'assistant' : 'user',
+                content: msg.content,
+            };
+        });
+
+        if (systemInstruction) {
+            messages.unshift({ role: 'system', content: systemInstruction });
+        }
+
+        try {
+            const response: any = await this.makeApiCall({
+                model: apiModel,
+                messages: messages,
+                tools: openAITools,
+                tool_choice: 'auto',
+            });
+
+            const choice = response.choices[0]?.message;
+            if (!choice) {
+                throw new Error("Invalid response structure from API.");
+            }
+
+            const text = choice.content || null;
+            let toolCalls: ToolCall[] | null = null;
+
+            if (choice.tool_calls) {
+                toolCalls = choice.tool_calls.map((tc: any) => {
+                    try {
+                        return {
+                            id: tc.id,
+                            name: tc.function.name,
+                            args: JSON.parse(tc.function.arguments),
+                        };
+                    } catch (e) {
+                        console.error("Failed to parse tool call arguments:", e);
+                        return null;
+                    }
+                }).filter(Boolean);
+            }
+            
+            return { text, toolCalls };
+            
+        } catch (error) {
+            console.error(`Error generating content with tools using ${this.providerName} model ${apiModel}:`, error);
+            throw new Error(`Failed to get agent response from ${this.providerName}.`);
+        }
     }
 }
-
-
-// --- Provider Instances ---
 
 export const openAIProvider = new OpenAICompatibleProvider({
     providerName: 'OpenAI',
@@ -129,7 +195,7 @@ export const dashscopeProvider = new OpenAICompatibleProvider({
     modelMap: {
         lite: 'qwen-turbo',
         fast: 'qwen-plus',
-        pro: 'qwen3-max-preview',
+        pro: 'qwen-max',
     }
 });
 

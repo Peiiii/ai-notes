@@ -7,6 +7,7 @@ import { useStudioStore } from './stores/studioStore';
 import { useWikiStore } from './stores/wikiStore';
 import { useParliamentStore } from './stores/parliamentStore';
 import { useCommandStore } from './stores/commandStore';
+import { useInsightStore } from './stores/insightStore';
 
 import NoteList from './components/note/NoteList';
 import NoteEditor from './components/note/NoteEditor';
@@ -30,6 +31,7 @@ function AppContent() {
   const { wikis, wikiTopics, isLoadingWikiTopics } = useWikiStore();
   const { topics, isLoadingTopics, sessionHistory, isSessionActive, currentSession } = useParliamentStore();
   const commands = useCommandStore(state => state.getCommands());
+  const { insights, isLoadingInsights } = useInsightStore();
 
 
   const activeNote = notes.find((note) => note.id === activeNoteId) || null;
@@ -100,10 +102,16 @@ function AppContent() {
           key={activeNoteId}
           note={activeNote}
           onUpdateNote={(id, title, content) => presenter.notesManager.updateNote(id, { title, content })}
+          onNoteContentChange={presenter.handleNoteContentChange}
           wikis={wikis}
           onViewWikiInStudio={presenter.handleViewWikiInStudio}
           isThreadChatting={isThreadChatting}
           onSendThreadChatMessage={presenter.handleSendThreadMessage}
+          insights={insights}
+          isLoadingInsights={isLoadingInsights}
+          onAdoptInsightTodo={presenter.handleAdoptInsightTodo}
+          onCreateInsightWiki={presenter.handleCreateInsightWiki}
+          onSelectNote={presenter.handleSelectNote}
         />;
     }
   };

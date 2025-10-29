@@ -1,41 +1,64 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Note, WikiEntry } from '../../types';
+import { Note, WikiEntry, Insight } from '../../types';
 import BookOpenIcon from '../icons/BookOpenIcon';
 import ChatBubbleLeftRightIcon from '../icons/ChatBubbleLeftRightIcon';
 import ThreadChatView from '../chat/ThreadChatView';
+import InsightPanel from './InsightPanel';
+import LightbulbIcon from '../icons/LightbulbIcon';
+import XMarkIcon from '../icons/XMarkIcon';
 
 interface NoteEditorProps {
   note: Note | null;
   onUpdateNote: (id: string, title: string, content: string) => void;
+  onNoteContentChange: (content: string, noteId: string) => void;
   wikis: WikiEntry[];
   onViewWikiInStudio: (wikiId: string) => void;
   isThreadChatting: boolean;
   onSendThreadChatMessage: (noteId: string, message: string) => void;
+  insights: Insight[];
+  isLoadingInsights: boolean;
+  onAdoptInsightTodo: (task: string) => void;
+  onCreateInsightWiki: (term: string, sourceNoteId: string, contextContent: string) => void;
+  onSelectNote: (noteId: string) => void;
 }
 
 const NoteEditor: React.FC<NoteEditorProps> = ({ 
     note, 
     onUpdateNote,
+    onNoteContentChange,
     wikis,
     onViewWikiInStudio,
     isThreadChatting,
-    onSendThreadChatMessage
+    onSendThreadChatMessage,
+    insights,
+    isLoadingInsights,
+    onAdoptInsightTodo,
+    onCreateInsightWiki,
+    onSelectNote
 }) => {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const [isChatVisible, setIsChatVisible] = useState(false);
+  const [activeSidePanel, setActiveSidePanel] = useState<'chat' | 'insights' | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (note) {
       setTitle(note.title);
       setContent(note.content);
+      // Don't close panel when switching notes
     } else {
       setTitle('');
       setContent('');
-      setIsChatVisible(false); // Close chat when no note is selected
+      setActiveSidePanel(null); // Close panel when no note is selected
     }
   }, [note]);
+  
+  useEffect(() => {
+    // If insights arrive and no panel is open, open the insights panel automatically.
+    if (insights.length > 0 && activeSidePanel === null) {
+        setActiveSidePanel('insights');
+    }
+  }, [insights, activeSidePanel]);
 
   useEffect(() => {
     // Auto-resize the textarea based on its content
@@ -44,6 +67,13 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
       textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
     }
   }, [content]);
+
+  const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setContent(e.target.value);
+    if (note) {
+        onNoteContentChange(e.target.value, note.id);
+    }
+  };
 
   const handleBlur = () => {
     if (note) {
@@ -79,13 +109,29 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
                 placeholder="Note Title"
                 className="w-full text-3xl font-bold bg-transparent focus:outline-none text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500"
             />
-             <button 
-                onClick={() => setIsChatVisible(!isChatVisible)}
-                title="Toggle Thread Chat"
-                className={`p-2 rounded-full transition-colors flex-shrink-0 ${isChatVisible ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-300' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
-             >
-                <ChatBubbleLeftRightIcon className="w-6 h-6" />
-            </button>
+            <div className="flex items-center gap-2">
+                 <button 
+                    onClick={() => setActiveSidePanel(prev => prev === 'insights' ? null : 'insights')}
+                    title="Toggle Insights"
+                    className={`p-2 w-10 h-10 flex items-center justify-center rounded-full transition-colors flex-shrink-0 relative ${activeSidePanel === 'insights' ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/50 dark:text-amber-300' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
+                 >
+                    {isLoadingInsights ? (
+                        <div className="w-5 h-5 border-2 border-amber-400/50 border-t-amber-400 rounded-full animate-spin"></div>
+                    ) : (
+                        <LightbulbIcon className="w-6 h-6" />
+                    )}
+                    {insights.length > 0 && !isLoadingInsights && activeSidePanel !== 'insights' && (
+                      <span className="absolute top-0 right-0 block h-2.5 w-2.5 rounded-full bg-amber-400 ring-2 ring-white dark:ring-slate-800/50" />
+                    )}
+                </button>
+                 <button 
+                    onClick={() => setActiveSidePanel(prev => prev === 'chat' ? null : 'chat')}
+                    title="Toggle Thread Chat"
+                    className={`p-2 w-10 h-10 flex items-center justify-center rounded-full transition-colors flex-shrink-0 ${activeSidePanel === 'chat' ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-300' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
+                 >
+                    <ChatBubbleLeftRightIcon className="w-6 h-6" />
+                </button>
+            </div>
         </div>
         
         {/* Scrollable content area */}
@@ -93,7 +139,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
             <textarea
                 ref={textareaRef}
                 value={content}
-                onChange={(e) => setContent(e.target.value)}
+                onChange={handleContentChange}
                 onBlur={handleBlur}
                 placeholder="Start writing..."
                 className="w-full bg-transparent text-lg text-slate-700 dark:text-slate-300 placeholder-slate-400 dark:placeholder-slate-500 resize-none focus:outline-none leading-relaxed"
@@ -121,13 +167,31 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
             )}
         </div>
       </div>
-      {isChatVisible && (
-        <div className="w-80 md:w-96 flex-shrink-0 h-full animate-in slide-in-from-right-10 duration-300">
-            <ThreadChatView
-                chatHistory={note.threadHistory || []}
-                isChatting={isThreadChatting}
-                onSendMessage={(message) => onSendThreadChatMessage(note.id, message)}
-            />
+      {activeSidePanel && (
+        <div className="w-80 md:w-96 flex-shrink-0 h-full flex flex-col border-l border-slate-200 dark:border-slate-700 animate-in slide-in-from-right-10 duration-300">
+            <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between flex-shrink-0">
+                <div className="flex items-center gap-2">
+                    {activeSidePanel === 'insights' ? <LightbulbIcon className="w-5 h-5 text-amber-500"/> : <ChatBubbleLeftRightIcon className="w-5 h-5 text-indigo-500" />}
+                    <h2 className="font-semibold text-lg">{activeSidePanel === 'insights' ? 'Live Insights' : 'Thread Chat'}</h2>
+                </div>
+                <button onClick={() => setActiveSidePanel(null)} className="p-1 rounded-full text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700"><XMarkIcon className="w-5 h-5"/></button>
+            </div>
+            {activeSidePanel === 'insights' ? (
+                <InsightPanel
+                    note={note}
+                    insights={insights}
+                    isLoading={isLoadingInsights}
+                    onAdoptTodo={onAdoptInsightTodo}
+                    onCreateWiki={(term) => onCreateInsightWiki(term, note.id, note.content)}
+                    onSelectNote={onSelectNote}
+                />
+            ) : (
+                <ThreadChatView
+                    chatHistory={note.threadHistory || []}
+                    isChatting={isThreadChatting}
+                    onSendMessage={(message) => onSendThreadChatMessage(note.id, message)}
+                />
+            )}
         </div>
       )}
     </div>

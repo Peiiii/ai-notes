@@ -9,8 +9,18 @@ import { StudioManager } from '../managers/StudioManager';
 import { WikiManager } from '../managers/WikiManager';
 import { ParliamentManager } from '../managers/ParliamentManager';
 import { CommandManager } from '../managers/CommandManager';
-import { KnowledgeCard, Note, WikiEntry, WIKI_ROOT_ID, DebateSynthesis } from '../types';
+import { InsightManager } from '../managers/InsightManager';
+import { KnowledgeCard, Note, WikiEntry, WIKI_ROOT_ID, DebateSynthesis, Todo } from '../types';
 import { Command } from '../commands';
+
+// simple debounce utility
+const debounce = <F extends (...args: any[]) => any>(func: F, waitFor: number) => {
+  let timeout: number | undefined;
+  return (...args: Parameters<F>): void => {
+    clearTimeout(timeout);
+    timeout = window.setTimeout(() => func(...args), waitFor);
+  };
+};
 
 export class Presenter {
   appManager = new AppManager();
@@ -20,6 +30,7 @@ export class Presenter {
   wikiManager = new WikiManager();
   parliamentManager = new ParliamentManager();
   commandManager = new CommandManager();
+  insightManager = new InsightManager();
 
   constructor() {
     this.chatManager = new ChatManager(this.notesManager);
@@ -134,6 +145,28 @@ ${synthesis.nextSteps.map(p => `- ${p}`).join('\n')}
     this.appManager.setActiveNoteId(newNote.id);
     this.appManager.setViewMode('editor');
   };
+
+  // --- Live Insights ---
+  debouncedGetInsights = debounce(this.insightManager.getInsightsForNote, 1500);
+
+  handleNoteContentChange = (content: string, noteId: string) => {
+    this.debouncedGetInsights(content, noteId);
+  };
+
+  handleAdoptInsightTodo = (task: string) => {
+      const newTodo: Todo = {
+          id: crypto.randomUUID(),
+          text: task,
+          completed: false
+      };
+      this.studioManager.adoptTodo(newTodo, true);
+  }
+  
+  handleCreateInsightWiki = (term: string, sourceNoteId: string, contextContent: string) => {
+      this.wikiManager.generateWiki(term, sourceNoteId, null, contextContent).then(newWiki => {
+          this.handleViewWikiInStudio(newWiki.id);
+      });
+  }
 }
 
 const PresenterContext = createContext<Presenter | null>(null);

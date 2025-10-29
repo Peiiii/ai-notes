@@ -1,4 +1,4 @@
-export type ViewMode = 'editor' | 'studio' | 'chat' | 'pulse' | 'wiki' | 'parliament';
+export type ViewMode = 'editor' | 'studio' | 'chat' | 'wiki' | 'parliament';
 
 export const WIKI_ROOT_ID = 'wiki_root';
 
@@ -45,6 +45,12 @@ export interface DebateSynthesis {
   nextSteps: string[];
 }
 
+export interface ToolCall {
+  id?: string;
+  name: string;
+  args: { [key: string]: any };
+}
+
 export interface ChatMessage {
   id: string;
   role: 'user' | 'model' | 'tool';
@@ -52,8 +58,8 @@ export interface ChatMessage {
   persona?: 'The Pragmatist' | 'The Visionary' | 'Moderator' | 'Host' | 'Guest Expert';
   synthesisContent?: DebateSynthesis;
   sourceNotes?: { id: string; title: string; }[];
-  toolCalls?: any;
-  toolResponse?: any;
+  toolCalls?: ToolCall[];
+  tool_call_id?: string; // For OpenAI response mapping
 }
 
 export interface PulseReport {
@@ -81,4 +87,15 @@ export interface MindMapNode {
 
 export interface MindMapData {
   root: MindMapNode;
+}
+
+// --- Live Insights Types ---
+export type InsightType = 'related_note' | 'action_item' | 'wiki_concept';
+
+export interface Insight {
+  id: string;
+  type: InsightType;
+  title: string;
+  content?: string;
+  sourceNoteId?: string; // For related_note type
 }
