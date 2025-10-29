@@ -89,6 +89,11 @@ export interface MindMapData {
   root: MindMapNode;
 }
 
+export interface ProactiveSuggestion {
+  prompt: string;
+  description: string;
+}
+
 // --- Live Insights Types ---
 export type InsightType = 'related_note' | 'action_item' | 'wiki_concept';
 

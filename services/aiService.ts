@@ -1,4 +1,4 @@
-import { Note, KnowledgeCard, ChatMessage, DebateSynthesis, ToolCall } from '../types';
+import { Note, KnowledgeCard, ChatMessage, DebateSynthesis, ToolCall, ProactiveSuggestion } from '../types';
 import { geminiProvider } from './providers/geminiProvider';
 import { openAIProvider, dashscopeProvider, deepseekProvider, openRouterProvider } from './providers/openaiProvider';
 import { LLMProvider, GenerateJsonParams, GenerateTextParams, ModelTier, GenerateWithToolsParams, GenerateWithToolsResult } from './providers/types';
@@ -35,6 +35,7 @@ type CapabilityConfig = {
   agent_retrieval:{ provider: string; model: ModelTier };
   agent_final_answer: { provider: string; model: ModelTier };
   agent_proactive:{ provider: string; model: ModelTier };
+  proactiveSuggestions: { provider: string; model: ModelTier };
 };
 
 const baseScheme: Record<string, { model: ModelTier; provider?: string }> = {
@@ -56,6 +57,7 @@ const baseScheme: Record<string, { model: ModelTier; provider?: string }> = {
   agent_retrieval:{ model: 'lite' },
   agent_final_answer: { model: 'fast'},
   agent_proactive:{ model: 'lite' },
+  proactiveSuggestions: { model: 'pro' },
 };
 
 const buildScheme = (provider: string): CapabilityConfig => 
@@ -276,6 +278,61 @@ All Note Titles:
     return provider.generateContentWithTools(params);
 }
 
+// --- Proactive Chat Suggestions ---
+const proactiveSuggestionsSchema = {
+    type: Type.ARRAY,
+    description: "An array of 3-4 proactive suggestions for the user.",
+    items: {
+        type: Type.OBJECT,
+        properties: {
+            prompt: {
+                type: Type.STRING,
+                description: "The text of the suggestion, ready to be sent as a user message (e.g., 'Summarize my recent notes')."
+            },
+            description: {
+                type: Type.STRING,
+                description: "A brief, user-facing explanation of why this suggestion is being made (e.g., 'To catch you up on your latest thoughts.')."
+            }
+        },
+        required: ["prompt", "description"]
+    }
+};
+
+export async function generateProactiveSuggestions(notes: Note[]): Promise<ProactiveSuggestion[]> {
+    if (notes.length < 2) return [];
+
+    const notesContent = notes
+        .slice(0, 15) // Limit context size
+        .map(note => `Title: ${note.title || 'Untitled'}\nContent: ${note.content.substring(0, 500)}...`)
+        .join('\n\n---\n\n');
+
+    const prompt = `You are a proactive AI assistant in a note-taking app. Your goal is to be insightful and helpful. Analyze the following user notes and generate 3-4 interesting and relevant conversation starters or tasks for the user. Frame them as prompts that the user could give you.
+
+**Possible Suggestion Types:**
+- **Summarize recent notes:** If there are new, unprocessed notes. (e.g., "Summarize my last 3 notes.")
+- **Connect ideas:** Find a non-obvious link between two or more notes. (e.g., "What's the connection between my note on 'Stoicism' and the one on 'Productivity'?")
+- **Create a wiki entry:** Identify a recurring key concept that could be expanded upon. (e.g., "Create a wiki page for 'Mental Models'.")
+- **Identify a forgotten idea:** Resurface an interesting point from an older note. (e.g., "Remind me about that idea I had on 'asynchronous communication'.")
+
+**Rules:**
+- Provide a diverse set of suggestions.
+- Keep the suggestion prompt text concise and conversational.
+- Keep the description short and user-friendly.
+- Base your suggestions strictly on the provided notes.
+- Respond in the primary language used in the notes.
+- Respond ONLY with a valid JSON object conforming to the schema.
+
+**Notes:**
+---
+${notesContent}
+---`;
+    
+    const { provider, model } = getConfig('proactiveSuggestions');
+    const params: GenerateJsonParams = { model, prompt, schema: proactiveSuggestionsSchema };
+    return provider.generateJson(params);
+}
+
+
 // --- Legacy Capability Definitions (unchanged) ---
 // The following functions are kept as they were for other parts of the app.
 
@@ -290,9 +347,20 @@ export async function generateSummary(notes: Note[]): Promise<{ todos: string[];
 
 export async function generateTitleForNote(content: string): Promise<string> {
     if (!content) return "";
-    const prompt = `Based on the following note content...`;
+    
+    const prompt = `Based on the following note content, generate a very short, concise, and relevant title (max 5 words).
+IMPORTANT: Respond in the same language as the provided Content. Do not include any quotation marks or labels.
+
+Content:
+---
+${content}
+---
+
+Title:`;
+
     const { provider, model } = getConfig('title');
-    const title = await provider.generateText({ model, prompt });
+    const params: GenerateTextParams = { model, prompt };
+    const title = await provider.generateText(params);
     return title.replace(/["']/g, '').trim();
 }
 

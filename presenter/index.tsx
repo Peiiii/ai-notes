@@ -61,6 +61,7 @@ export class Presenter {
   handleShowChat = () => {
     this.appManager.setViewMode('chat');
     this.appManager.setActiveNoteId(null);
+    this.chatManager.fetchProactiveSuggestions();
   };
 
   handleShowStudio = () => {

@@ -2,7 +2,7 @@ import { useChatStore } from '../stores/chatStore';
 import { useNotesStore } from '../stores/notesStore';
 import { useCommandStore } from '../stores/commandStore';
 import { ChatMessage, Note, ToolCall } from '../types';
-import { getAgentResponse, searchNotesInCorpus, generateThreadChatResponse } from '../services/aiService';
+import { getAgentResponse, searchNotesInCorpus, generateThreadChatResponse, generateProactiveSuggestions } from '../services/aiService';
 import { NotesManager } from './NotesManager';
 
 export class ChatManager {
@@ -12,9 +12,33 @@ export class ChatManager {
         this.notesManager = notesManager;
     }
 
+    fetchProactiveSuggestions = async () => {
+        const { isLoadingSuggestions, chatHistory } = useChatStore.getState();
+        if (isLoadingSuggestions || chatHistory.length > 0) {
+            // Don't fetch if already loading or if there's a conversation history
+            return;
+        }
+
+        useChatStore.setState({ isLoadingSuggestions: true, proactiveSuggestions: [] });
+        try {
+            const notes = useNotesStore.getState().notes;
+            const suggestions = await generateProactiveSuggestions(notes);
+            useChatStore.setState({ proactiveSuggestions: suggestions });
+        } catch (error) {
+            console.error("Failed to fetch proactive suggestions:", String(error));
+            // Silently fail, don't show an error to the user
+            useChatStore.setState({ proactiveSuggestions: [] });
+        } finally {
+            useChatStore.setState({ isLoadingSuggestions: false });
+        }
+    }
+
     sendChatMessage = async (message: string) => {
         if (!message.trim() || useChatStore.getState().chatStatus) return;
 
+        // When a message is sent, clear suggestions
+        useChatStore.setState({ proactiveSuggestions: [] });
+        
         const userMessage: ChatMessage = {
             id: crypto.randomUUID(),
             role: 'user',

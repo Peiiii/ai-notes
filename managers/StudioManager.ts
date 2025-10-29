@@ -40,14 +40,18 @@ export class StudioManager {
             try {
                 const rawSummary = await generateSummary(notes);
                 const myTodoTexts = new Set(myTodos.map(t => t.text));
-                const suggestedTodos = rawSummary.todos
+
+                const todosFromAI = rawSummary.todos || [];
+                const knowledgeCardsFromAI = rawSummary.knowledgeCards || [];
+
+                const suggestedTodos = todosFromAI
                     .filter(text => !myTodoTexts.has(text))
                     .map((text: string): Todo => ({
                         id: simpleHash(text),
                         text,
                         completed: false,
                     }));
-                const knowledgeCardsWithIds = rawSummary.knowledgeCards.map((card): KnowledgeCard => ({
+                const knowledgeCardsWithIds = knowledgeCardsFromAI.map((card): KnowledgeCard => ({
                     ...card,
                     id: simpleHash(card.title + card.content),
                 }));

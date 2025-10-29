@@ -26,7 +26,7 @@ function AppContent() {
   // Subscribe to state from stores
   const { viewMode, activeNoteId, initialWikiHistory, viewingPulseReport, commandToCreate } = useAppStore();
   const { notes, generatingTitleIds } = useNotesStore();
-  const { chatHistory, chatStatus, isThreadChatting } = useChatStore();
+  const { chatHistory, chatStatus, isThreadChatting, proactiveSuggestions, isLoadingSuggestions } = useChatStore();
   const { aiSummary, myTodos, isLoadingAI, isLoadingPulse, pulseReports, mindMapData, isLoadingMindMap } = useStudioStore();
   const { wikis, wikiTopics, isLoadingWikiTopics } = useWikiStore();
   const { topics, isLoadingTopics, sessionHistory, isSessionActive, currentSession } = useParliamentStore();
@@ -65,6 +65,8 @@ function AppContent() {
             onSelectNote={presenter.handleSelectNote}
             commands={commands}
             onOpenCreateCommandModal={presenter.handleOpenCreateCommandModal}
+            proactiveSuggestions={proactiveSuggestions}
+            isLoadingSuggestions={isLoadingSuggestions}
           />
         );
       case 'wiki':
