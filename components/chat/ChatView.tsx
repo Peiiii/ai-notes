@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { ChatMessage, ProactiveSuggestion } from '../../types';
 import PaperAirplaneIcon from '../icons/PaperAirplaneIcon';
 import UserIcon from '../icons/UserIcon';
@@ -130,6 +130,21 @@ const ChatView: React.FC<ChatViewProps> = ({
   const handleSuggestionClick = (prompt: string) => {
     onSendMessage(prompt);
   };
+
+  const completedToolCallIds = useMemo(() => {
+    const ids = new Set<string>();
+    chatHistory.forEach(msg => {
+      // A tool result message signifies its corresponding call is complete.
+      if (msg.role === 'tool' && msg.toolCalls?.[0]?.id) {
+        ids.add(msg.toolCalls[0].id);
+      }
+      // Also check OpenAI format for robustness
+      if (msg.role === 'tool' && msg.tool_call_id) {
+        ids.add(msg.tool_call_id);
+      }
+    });
+    return ids;
+  }, [chatHistory]);
   
   const ChatEmptyState = () => (
     <div className="flex flex-col items-center justify-center h-full text-center text-slate-500 dark:text-slate-400 p-4">
@@ -196,7 +211,7 @@ const ChatView: React.FC<ChatViewProps> = ({
                 )
             }
             if (msg.role === 'model' && msg.toolCalls) {
-                return <ToolCallCard key={msg.id} toolCalls={msg.toolCalls} text={msg.content} />
+                return <ToolCallCard key={msg.id} toolCalls={msg.toolCalls} text={msg.content} completedToolCallIds={completedToolCallIds} />
             }
             if (msg.role === 'tool' && msg.structuredContent) {
                 return <ToolResultCard key={msg.id} message={msg} onSelectNote={onSelectNote} />

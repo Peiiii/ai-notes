@@ -157,7 +157,7 @@ class OpenAICompatibleProvider implements LLMProvider {
                 toolCalls = choice.tool_calls.map((tc: any) => {
                     try {
                         return {
-                            id: tc.id,
+                            id: tc.id || `openai-tool-call-${crypto.randomUUID()}`,
                             name: tc.function.name,
                             args: JSON.parse(tc.function.arguments),
                         };

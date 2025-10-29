@@ -98,7 +98,7 @@ class GeminiProvider implements LLMProvider {
                 ? response.functionCalls
                     .filter(fc => !!fc.name)
                     .map(fc => ({
-                        id: fc.id,
+                        id: fc.id || `gemini-tool-call-${crypto.randomUUID()}`,
                         name: fc.name!,
                         args: fc.args || {},
                     }))

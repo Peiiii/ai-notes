@@ -4,6 +4,7 @@ import { ToolCall } from '../../types';
 import CpuChipIcon from '../icons/CpuChipIcon';
 import MagnifyingGlassIcon from '../icons/MagnifyingGlassIcon';
 import DocumentPlusIcon from '../icons/DocumentPlusIcon';
+import CheckCircleIcon from '../icons/CheckCircleIcon';
 
 const toolIconMap: { [key: string]: React.FC<any> } = {
   search_notes: MagnifyingGlassIcon,
@@ -14,9 +15,10 @@ const toolIconMap: { [key: string]: React.FC<any> } = {
 interface ToolCallCardProps {
   toolCalls: ToolCall[];
   text?: string | null;
+  completedToolCallIds: Set<string>;
 }
 
-const ToolCallCard: React.FC<ToolCallCardProps> = ({ toolCalls, text }) => {
+const ToolCallCard: React.FC<ToolCallCardProps> = ({ toolCalls, text, completedToolCallIds }) => {
   return (
     <div className="flex items-start gap-3 max-w-4xl mx-auto">
       <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center flex-shrink-0">
@@ -27,15 +29,22 @@ const ToolCallCard: React.FC<ToolCallCardProps> = ({ toolCalls, text }) => {
         <div className="space-y-2">
           {toolCalls.map((call) => {
             const Icon = toolIconMap[call.name] || toolIconMap.default;
+            const isCompleted = call.id ? completedToolCallIds.has(call.id) : false;
             return (
               <div key={call.id || call.name} className="p-3 bg-slate-100 dark:bg-slate-700/50 rounded-lg border border-slate-200 dark:border-slate-600/50">
                 <div className="flex items-center gap-2 mb-1">
                   <Icon className="w-4 h-4 text-slate-500 dark:text-slate-400" />
                   <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">{call.name}</span>
                   <div className="flex items-center gap-1.5 ml-auto">
-                      <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-pulse" style={{ animationDelay: '0s' }}></span>
-                      <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-pulse" style={{ animationDelay: '0.1s' }}></span>
-                      <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></span>
+                    {isCompleted ? (
+                      <CheckCircleIcon className="w-4 h-4 text-green-500" />
+                    ) : (
+                      <>
+                        <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-pulse" style={{ animationDelay: '0s' }}></span>
+                        <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-pulse" style={{ animationDelay: '0.1s' }}></span>
+                        <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></span>
+                      </>
+                    )}
                   </div>
                 </div>
                 <pre className="text-xs text-slate-500 dark:text-slate-400 bg-slate-200/50 dark:bg-slate-800/50 p-2 rounded-md whitespace-pre-wrap break-all">
