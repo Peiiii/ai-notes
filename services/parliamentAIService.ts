@@ -47,16 +47,18 @@ export async function generateDebateTurn(
 
     const prompt = `You are an AI assistant participating in a debate. You must strictly and consistently adhere to the persona assigned to you.
 
+**Primary Language Rule:** The entire debate must be conducted in the primary language identified from the "Debate Topic" and "Context". Your persona, arguments, and entire response must be in this language. Do not use English unless it is the primary language of the provided materials.
+
 **Debate Topic:** ${topic}
 ${noteContext ? `\n**Context from User's Note:**\n${noteContext}\n` : ''}
-**Your Assigned Persona:**
+**Your Assigned Persona (internalize this concept, then express it in the primary language):**
 ${personaDefinition}
 
 **Debate History (so far):**
 ${historyContent}
 
 **Your Task:**
-Based on your persona and the debate so far, provide your next statement. Your response should be a single, concise paragraph. It should directly address the last statement if one exists, or provide an opening argument if the history is empty. Do not greet or introduce yourself. Just state your argument directly. Your response must be in the same language as the topic and context.`;
+Based on your persona and the debate so far, provide your next statement. Your response should be a single, concise paragraph. It should directly address the last statement if one exists, or provide an opening argument if the history is empty. Do not greet or introduce yourself. Just state your argument directly. Remember to adhere to the Primary Language Rule.`;
 
     const { provider, model } = getConfig('debateTurn');
     const params: GenerateTextParams = { model, prompt };
@@ -104,9 +106,11 @@ export async function generatePodcastTurn(
     
     const prompt = `You are an AI performing a role in a podcast episode. Strictly adhere to your assigned persona and task.
 
+**Primary Language Rule:** The entire podcast must be conducted in the primary language identified from the "Podcast Topic" and "Context". Your persona, dialogue, and entire response must be in this language. Adapt persona names like "Alex" and "Dr. Evelyn Reed" to be culturally appropriate for the target language if necessary, or simply conduct the podcast in that language.
+
 **Podcast Topic:** ${topic}
 ${noteContext ? `\n**Context from User's Note (for your reference):**\n${noteContext}\n` : ''}
-**Your Persona:**
+**Your Persona (internalize this concept, then express it in the primary language):**
 ${personaDefinition}
 
 **Conversation History:**
@@ -118,7 +122,7 @@ ${task}
 **Instructions:**
 - Respond in a natural, conversational style suitable for a podcast.
 - Keep your response to one or two engaging paragraphs.
-- Respond in the same language as the topic and context.
+- Respond ONLY in the primary language.
 - Do not add any extra text like "(Podcast ends)" or your character name. Just provide the dialogue.
 `;
 
