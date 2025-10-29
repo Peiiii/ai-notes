@@ -4,24 +4,28 @@ import { ChatMessage } from '../../types';
 import PaperAirplaneIcon from '../icons/PaperAirplaneIcon';
 import UserIcon from '../icons/UserIcon';
 import SparklesIcon from '../icons/SparklesIcon';
+import BookOpenIcon from '../icons/BookOpenIcon';
 
 interface ChatViewProps {
   chatHistory: ChatMessage[];
-  isChatting: boolean;
+  chatStatus: string | null;
   onSendMessage: (message: string) => void;
+  onSelectNote: (noteId: string) => void;
 }
 
 const ChatView: React.FC<ChatViewProps> = ({
   chatHistory,
-  isChatting,
+  chatStatus,
   onSendMessage,
+  onSelectNote,
 }) => {
   const [chatInput, setChatInput] = useState('');
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const isChatting = !!chatStatus;
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [chatHistory, isChatting]);
+  }, [chatHistory, chatStatus]);
 
   const handleChatSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,7 +51,7 @@ const ChatView: React.FC<ChatViewProps> = ({
           <div className="flex flex-col items-center justify-center h-full text-center text-slate-500 dark:text-slate-400">
              <SparklesIcon className="w-16 h-16 mb-4 text-slate-400 dark:text-slate-500" />
             <h2 className="text-xl font-semibold">Start the Conversation</h2>
-            <p className="max-w-sm mt-2">Ask a question about your notes to get started. For example: "What were my main takeaways about the Q3 project?" or "Summarize my ideas for the new marketing campaign."</p>
+            <p className="max-w-sm mt-2">Ask a question about your notes, or ask to create a new one. E.g., "What were my main takeaways about the Q3 project?" or "Create a new note summarizing my ideas for the marketing campaign."</p>
           </div>
         )}
         {chatHistory.map((msg) => (
@@ -57,8 +61,21 @@ const ChatView: React.FC<ChatViewProps> = ({
                 <SparklesIcon className="w-5 h-5 text-indigo-500 dark:text-indigo-400" />
               </div>
             )}
-            <div className={`p-3 rounded-lg max-w-lg ${msg.role === 'user' ? 'bg-indigo-600 text-white rounded-br-none' : 'bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-bl-none'}`}>
-              <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+            <div className={`flex flex-col items-start`}>
+              <div className={`p-3 rounded-lg max-w-lg ${msg.role === 'user' ? 'bg-indigo-600 text-white rounded-br-none' : 'bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-bl-none'}`}>
+                <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+              </div>
+              {msg.sourceNotes && msg.sourceNotes.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-2 items-center">
+                    <BookOpenIcon className="w-4 h-4 text-slate-400 dark:text-slate-500" />
+                    <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Sources:</span>
+                    {msg.sourceNotes.map(note => (
+                        <button key={note.id} onClick={() => onSelectNote(note.id)} className="px-2 py-0.5 bg-slate-200 dark:bg-slate-600 text-xs text-slate-700 dark:text-slate-200 rounded-md hover:bg-slate-300 dark:hover:bg-slate-500 transition-colors">
+                            {note.title}
+                        </button>
+                    ))}
+                </div>
+              )}
             </div>
             {msg.role === 'user' && (
               <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-600 flex items-center justify-center flex-shrink-0">
@@ -73,10 +90,13 @@ const ChatView: React.FC<ChatViewProps> = ({
               <SparklesIcon className="w-5 h-5 text-indigo-500 dark:text-indigo-400" />
             </div>
             <div className="p-3 rounded-lg bg-slate-100 dark:bg-slate-700 rounded-bl-none">
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 bg-indigo-400 rounded-full animate-pulse" style={{ animationDelay: '0s' }}></span>
-                <span className="w-2 h-2 bg-indigo-400 rounded-full animate-pulse" style={{ animationDelay: '0.1s' }}></span>
-                <span className="w-2 h-2 bg-indigo-400 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></span>
+              <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 bg-indigo-400 rounded-full animate-pulse" style={{ animationDelay: '0s' }}></span>
+                  <span className="w-2 h-2 bg-indigo-400 rounded-full animate-pulse" style={{ animationDelay: '0.1s' }}></span>
+                  <span className="w-2 h-2 bg-indigo-400 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></span>
+                </div>
+                <span>{chatStatus}</span>
               </div>
             </div>
           </div>

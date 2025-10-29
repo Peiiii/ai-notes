@@ -23,7 +23,7 @@ function AppContent() {
   // Subscribe to state from stores
   const { viewMode, activeNoteId, initialWikiHistory, viewingPulseReport } = useAppStore();
   const { notes, generatingTitleIds } = useNotesStore();
-  const { chatHistory, isChatting, isThreadChatting } = useChatStore();
+  const { chatHistory, chatStatus, isThreadChatting } = useChatStore();
   const { aiSummary, myTodos, isLoadingAI, isLoadingPulse, pulseReports, mindMapData, isLoadingMindMap } = useStudioStore();
   const { wikis, wikiTopics, isLoadingWikiTopics } = useWikiStore();
   const { topics, isLoadingTopics, sessionHistory, isSessionActive, currentSession } = useParliamentStore();
@@ -55,8 +55,9 @@ function AppContent() {
         return (
           <ChatView
             chatHistory={chatHistory}
-            isChatting={isChatting}
+            chatStatus={chatStatus}
             onSendMessage={presenter.chatManager.sendChatMessage}
+            onSelectNote={presenter.handleSelectNote}
           />
         );
       case 'wiki':

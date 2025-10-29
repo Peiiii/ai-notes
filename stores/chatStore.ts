@@ -5,7 +5,7 @@ import { ChatMessage } from '../types';
 
 interface ChatState {
   chatHistory: ChatMessage[];
-  isChatting: boolean;
+  chatStatus: string | null; // Changed from isChatting: boolean
   isThreadChatting: boolean;
 }
 
@@ -13,7 +13,7 @@ export const useChatStore = create<ChatState>()(
   persist(
     () => ({
       chatHistory: [],
-      isChatting: false,
+      chatStatus: null,
       isThreadChatting: false,
     }),
     { 

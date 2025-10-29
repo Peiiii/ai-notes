@@ -1,4 +1,4 @@
-import { LLMProvider, GenerateTextParams, GenerateJsonParams, ModelTier } from './types';
+import { LLMProvider, GenerateTextParams, GenerateJsonParams, ModelTier, GenerateWithToolsParams, GenerateWithToolsResult } from './types';
 
 /**
  * A generic provider for any OpenAI-compatible API.
@@ -98,6 +98,13 @@ class OpenAICompatibleProvider implements LLMProvider {
             console.error(`Error generating JSON with ${this.providerName} model ${apiModel}:`, error);
             throw new Error(`Failed to get a valid JSON response from ${this.providerName}.`);
         }
+    }
+
+    async generateContentWithTools(params: GenerateWithToolsParams): Promise<GenerateWithToolsResult> {
+        // Basic placeholder - full implementation would require mapping Gemini's
+        // FunctionDeclaration to the specific provider's format.
+        console.error(`${this.providerName} does not currently support tool calling in this application.`);
+        throw new Error(`Tool calling not implemented for ${this.providerName}.`);
     }
 }
 

@@ -47,10 +47,13 @@ export interface DebateSynthesis {
 
 export interface ChatMessage {
   id: string;
-  role: 'user' | 'model';
+  role: 'user' | 'model' | 'tool';
   content: string;
   persona?: 'The Pragmatist' | 'The Visionary' | 'Moderator' | 'Host' | 'Guest Expert';
   synthesisContent?: DebateSynthesis;
+  sourceNotes?: { id: string; title: string; }[];
+  toolCalls?: any;
+  toolResponse?: any;
 }
 
 export interface PulseReport {
