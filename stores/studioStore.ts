@@ -1,7 +1,6 @@
-
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { AISummary, Todo, PulseReport } from '../types';
+import { AISummary, Todo, PulseReport, MindMapData } from '../types';
 
 interface StudioState {
   aiSummary: AISummary | null;
@@ -11,6 +10,9 @@ interface StudioState {
   isLoadingPulse: boolean;
   lastPulseTimestamp: number | null;
   pulseReports: PulseReport[];
+  mindMapData: MindMapData | null;
+  isLoadingMindMap: boolean;
+  notesHashAtLastMindMap: string | null;
 }
 
 export const useStudioStore = create<StudioState>()(
@@ -23,6 +25,9 @@ export const useStudioStore = create<StudioState>()(
       isLoadingPulse: false,
       lastPulseTimestamp: null,
       pulseReports: [],
+      mindMapData: null,
+      isLoadingMindMap: false,
+      notesHashAtLastMindMap: null,
     }),
     {
       name: 'ai-notes-studio-storage',
@@ -32,6 +37,8 @@ export const useStudioStore = create<StudioState>()(
         notesHashAtLastSummary: state.notesHashAtLastSummary,
         lastPulseTimestamp: state.lastPulseTimestamp,
         pulseReports: state.pulseReports,
+        mindMapData: state.mindMapData,
+        notesHashAtLastMindMap: state.notesHashAtLastMindMap,
       }),
     }
   )

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Note, WikiEntry } from '../../types';
 import ChevronRightIcon from '../icons/ChevronRightIcon';

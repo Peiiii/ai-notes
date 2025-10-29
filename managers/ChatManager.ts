@@ -1,4 +1,3 @@
-
 import { useChatStore } from '../stores/chatStore';
 import { useNotesStore } from '../stores/notesStore';
 import { ChatMessage } from '../types';

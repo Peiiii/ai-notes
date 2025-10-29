@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Note, WikiEntry, WIKI_ROOT_ID, LoadingState } from '../../types';
 import BookOpenIcon from '../icons/BookOpenIcon';

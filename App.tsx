@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { PresenterProvider, usePresenter } from './presenter';
 import { useAppStore } from './stores/appStore';
@@ -25,7 +24,7 @@ function AppContent() {
   const { viewMode, activeNoteId, initialWikiHistory, viewingPulseReport } = useAppStore();
   const { notes, generatingTitleIds } = useNotesStore();
   const { chatHistory, isChatting } = useChatStore();
-  const { aiSummary, myTodos, isLoadingAI, isLoadingPulse, pulseReports } = useStudioStore();
+  const { aiSummary, myTodos, isLoadingAI, isLoadingPulse, pulseReports, mindMapData, isLoadingMindMap } = useStudioStore();
   const { wikis, wikiTopics, isLoadingWikiTopics } = useWikiStore();
   const { topics, isLoadingTopics, sessionHistory, isSessionActive, currentSession } = useParliamentStore();
 
@@ -47,6 +46,9 @@ function AppContent() {
             isLoadingPulse={isLoadingPulse}
             onGeneratePulse={() => presenter.studioManager.generateNewPulseReport()}
             onViewPulseReport={presenter.appManager.setViewingPulseReport}
+            mindMapData={mindMapData}
+            isLoadingMindMap={isLoadingMindMap}
+            onGenerateMindMap={presenter.studioManager.generateNewMindMap}
           />
         );
       case 'chat':

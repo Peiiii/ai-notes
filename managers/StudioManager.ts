@@ -1,8 +1,7 @@
-
 import { useStudioStore } from '../stores/studioStore';
 import { useNotesStore } from '../stores/notesStore';
-import { Todo, KnowledgeCard, PulseReport } from '../types';
-import { generateSummary, generatePulseReport } from '../services/aiService';
+import { Todo, KnowledgeCard, PulseReport, MindMapNode } from '../types';
+import { generateSummary, generatePulseReport, generateMindMap } from '../services/aiService';
 
 function simpleHash(str: string): string {
   let hash = 0;
@@ -34,7 +33,7 @@ export class StudioManager {
     generateNewSummary = async () => {
         const notes = useNotesStore.getState().notes;
         const { notesHashAtLastSummary, myTodos } = useStudioStore.getState();
-        const currentNotesHash = JSON.stringify(notes);
+        const currentNotesHash = simpleHash(JSON.stringify(notes));
 
         if (notes.length > 0 && currentNotesHash !== notesHashAtLastSummary) {
             useStudioStore.setState({ isLoadingAI: true });
@@ -108,6 +107,44 @@ export class StudioManager {
             }
         } finally {
             useStudioStore.setState({ isLoadingPulse: false });
+        }
+    }
+
+    private addIdsToMindMapNode = (node: { label: string; children?: any[] }): MindMapNode => {
+        const newNode: MindMapNode = {
+            ...node,
+            id: crypto.randomUUID(),
+            children: node.children ? node.children.map(this.addIdsToMindMapNode) : [],
+        };
+        return newNode;
+    }
+
+    generateNewMindMap = async (force = false) => {
+        const notes = useNotesStore.getState().notes;
+        if (notes.length === 0) return;
+
+        const { notesHashAtLastMindMap } = useStudioStore.getState();
+        const currentNotesHash = simpleHash(JSON.stringify(notes));
+
+        if (force || currentNotesHash !== notesHashAtLastMindMap) {
+            useStudioStore.setState({ isLoadingMindMap: true });
+            try {
+                const rawMindMapData = await generateMindMap(notes);
+                if (rawMindMapData && rawMindMapData.root) {
+                    const mindMapDataWithIds = {
+                        root: this.addIdsToMindMapNode(rawMindMapData.root),
+                    };
+                    useStudioStore.setState({
+                        mindMapData: mindMapDataWithIds,
+                        notesHashAtLastMindMap: currentNotesHash
+                    });
+                }
+            } catch (error) {
+                console.error("Mind map generation failed:", error);
+                alert("Failed to generate Mind Map. Please check the console for details.");
+            } finally {
+                useStudioStore.setState({ isLoadingMindMap: false });
+            }
         }
     }
 }

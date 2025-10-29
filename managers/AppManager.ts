@@ -1,4 +1,3 @@
-
 import { useAppStore } from '../stores/appStore';
 import { ViewMode, Note, WikiEntry, PulseReport } from '../types';
 

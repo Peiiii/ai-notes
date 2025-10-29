@@ -61,11 +61,21 @@ export interface PulseReport {
 }
 
 export interface WikiEntry {
-  id: string;
+  id:string;
   term: string;
   content: string;
   createdAt: number;
   sourceNoteId: string; // The note that started this specific tree of wikis
   parentId: string | null; // The ID of the parent WikiEntry, null if it's a root
   suggestedTopics?: string[]; // AI-suggested topics for further exploration
+}
+
+export interface MindMapNode {
+  id: string;
+  label: string;
+  children?: MindMapNode[];
+}
+
+export interface MindMapData {
+  root: MindMapNode;
 }

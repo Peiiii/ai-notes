@@ -1,4 +1,3 @@
-
 import { useNotesStore } from '../stores/notesStore';
 import { Note } from '../types';
 import { generateTitleForNote } from '../services/aiService';

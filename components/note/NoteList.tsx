@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Note, ViewMode } from '../../types';
 import DocumentPlusIcon from '../icons/DocumentPlusIcon';
@@ -69,7 +68,7 @@ const NoteList: React.FC<NoteListProps> = ({
                 New Note
             </button>
         </div>
-        <div className="grid grid-cols-2 items-center gap-2">
+        <div className="grid grid-cols-2 gap-2">
            <button onClick={onShowStudio} className={getButtonClasses('studio')}>
             <Squares2X2Icon className="w-5 h-5" />
             <span>Studio</span>

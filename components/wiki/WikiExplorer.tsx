@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Note, WikiEntry, WIKI_ROOT_ID, LoadingState } from '../../types';
 import WikiBreadcrumb from './WikiBreadcrumb';

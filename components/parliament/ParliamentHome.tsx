@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Note, ParliamentMode } from '../../types';
 import UsersIcon from '../icons/UsersIcon';

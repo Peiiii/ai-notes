@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef } from 'react';
 import { ChatMessage, DebateSynthesis, ParliamentMode } from '../../types';
 import ArrowLeftIcon from '../icons/ArrowLeftIcon';

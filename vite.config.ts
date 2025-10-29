@@ -21,7 +21,6 @@ export default defineConfig(({ mode }) => {
       },
       resolve: {
         alias: {
-          // FIX: `__dirname` is not available in ES modules. Using `import.meta.url` is the modern and correct way to get the current file's path.
           '@': fileURLToPath(new URL('.', import.meta.url)),
         }
       }

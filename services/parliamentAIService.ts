@@ -1,4 +1,3 @@
-
 import { Note, ChatMessage, DebateSynthesis } from '../types';
 import { GenerateJsonParams, GenerateTextParams } from './providers/types';
 import { getConfig } from './aiService';

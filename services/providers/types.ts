@@ -1,4 +1,3 @@
-
 export type ModelTier = 'lite' | 'fast' | 'pro';
 
 export interface GenerateTextParams {

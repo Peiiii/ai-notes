@@ -10,20 +10,19 @@ interface ErrorBoundaryState {
   errorInfo: React.ErrorInfo | null;
 }
 
-// FIX: An Error Boundary must be a class component. The ErrorBoundary was a plain class, causing errors because it lacked `this.state`, `this.props`, and lifecycle methods. It now correctly extends `React.Component` to resolve these issues.
 class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
   constructor(props: ErrorBoundaryProps) {
     super(props);
     this.state = { hasError: false, error: null, errorInfo: null };
   }
 
-  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
-    return { hasError: true, error, errorInfo: null };
+  static getDerivedStateFromError(error: Error): Partial<ErrorBoundaryState> {
+    return { hasError: true, error: error };
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error("Uncaught error:", error, errorInfo);
-    this.setState({ error, errorInfo });
+    this.setState({ errorInfo: errorInfo });
   }
 
   render() {

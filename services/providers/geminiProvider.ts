@@ -1,8 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import { LLMProvider, GenerateTextParams, GenerateJsonParams, ModelTier } from './types';
 
-// FIX: Per coding guidelines, the API key must be obtained from process.env.API_KEY.
-// This also resolves potential client-side environment variable access issues.
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 const GEMINI_MODELS: Record<ModelTier, string> = {

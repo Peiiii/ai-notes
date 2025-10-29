@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Note, ChatMessage, DebateSynthesis, ParliamentMode } from '../../types';
 import ParliamentHome from './ParliamentHome';

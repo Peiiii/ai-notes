@@ -1,4 +1,3 @@
-
 import { useParliamentStore } from '../stores/parliamentStore';
 import { useNotesStore } from '../stores/notesStore';
 import { ChatMessage } from '../types';

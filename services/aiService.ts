@@ -33,6 +33,7 @@ type CapabilityConfig = {
   debateTurn:     { provider: string; model: ModelTier };
   debateSynthesis:{ provider: string; model: ModelTier };
   podcastTurn:    { provider: string; model: ModelTier };
+  mindMap:        { provider: string; model: ModelTier };
 };
 
 // A scheme that primarily uses Gemini models.
@@ -49,6 +50,7 @@ const geminiScheme: CapabilityConfig = {
   debateTurn:     { provider: 'gemini', model: 'lite' },
   debateSynthesis:{ provider: 'gemini', model: 'lite' },
   podcastTurn:    { provider: 'gemini', model: 'lite' },
+  mindMap:        { provider: 'gemini', model: 'fast' },
 };
 
 // A scheme that primarily uses DashScope models.
@@ -65,6 +67,7 @@ const dashscopeScheme: CapabilityConfig = {
   debateTurn:     { provider: 'dashscope', model: 'lite' },
   debateSynthesis:{ provider: 'dashscope', model: 'lite' },
   podcastTurn:    { provider: 'dashscope', model: 'lite' },
+  mindMap:        { provider: 'dashscope', model: 'fast' },
 };
 
 // A scheme that primarily uses OpenAI models.
@@ -81,6 +84,7 @@ const openaiScheme: CapabilityConfig = {
   debateTurn:     { provider: 'openai', model: 'lite' },
   debateSynthesis:{ provider: 'openai', model: 'lite' },
   podcastTurn:    { provider: 'openai', model: 'lite' },
+  mindMap:        { provider: 'openai', model: 'fast' },
 };
 
 // A scheme that primarily uses DeepSeek models.
@@ -97,6 +101,7 @@ const deepseekScheme: CapabilityConfig = {
   debateTurn:     { provider: 'deepseek', model: 'lite' },
   debateSynthesis:{ provider: 'deepseek', model: 'lite' },
   podcastTurn:    { provider: 'deepseek', model: 'lite' },
+  mindMap:        { provider: 'deepseek', model: 'fast' },
 };
 
 // A scheme that primarily uses OpenRouter models.
@@ -113,6 +118,7 @@ const openRouterScheme: CapabilityConfig = {
   debateTurn:     { provider: 'openrouter', model: 'lite' },
   debateSynthesis:{ provider: 'openrouter', model: 'lite' },
   podcastTurn:    { provider: 'openrouter', model: 'lite' },
+  mindMap:        { provider: 'openrouter', model: 'fast' },
 };
 
 // Example of a future mixed scheme
@@ -308,5 +314,64 @@ ${notesContent}`;
     
     const { provider, model } = getConfig('pulseReport');
     const params: GenerateJsonParams = { model, prompt, schema: pulseReportSchema };
+    return provider.generateJson(params);
+}
+
+const mindMapSchema = {
+    type: Type.OBJECT,
+    properties: {
+        root: {
+            type: Type.OBJECT,
+            description: "The central root node of the mind map.",
+            properties: {
+                label: { type: Type.STRING, description: "The concise text label for the root node." },
+                children: {
+                    type: Type.ARRAY,
+                    description: "An array of main branch nodes.",
+                    items: {
+                        type: Type.OBJECT,
+                        properties: {
+                            label: { type: Type.STRING, description: "The concise text label for a main branch node." },
+                            children: {
+                                type: Type.ARRAY,
+                                description: "An array of sub-topic leaf nodes.",
+                                items: {
+                                    type: Type.OBJECT,
+                                    properties: {
+                                        label: { type: Type.STRING, description: "The concise text label for a sub-topic leaf node." }
+                                    },
+                                    required: ['label']
+                                }
+                            }
+                        },
+                        required: ['label']
+                    }
+                }
+            },
+            required: ['label']
+        }
+    },
+    required: ['root']
+};
+
+export async function generateMindMap(notes: Note[]): Promise<{ root: { label: string, children?: { label: string, children?: { label: string }[] }[] } }> {
+    const notesContent = notes.map(note => `Title: ${note.title || 'Untitled'}\nContent: ${note.content}`).join('\n\n---\n\n');
+    const prompt = `
+Analyze the following collection of notes and generate a hierarchical mind map structure.
+
+**Instructions:**
+1.  **Root Node:** Identify the single most central theme or overarching topic from all the notes. This will be the root node.
+2.  **Main Branches:** Identify 3 to 5 major themes or categories that branch off from the root node. These will be the main child nodes.
+3.  **Sub-Topics:** For each major theme, identify 2 to 4 specific sub-points, concepts, or related ideas from the notes. These will be the children of the major theme nodes.
+4.  **Strict Hierarchy:** The structure must be a strict hierarchy (a tree). Each sub-topic must belong to only one main branch. Do not share sub-topics between different branches.
+5.  **Concise Labels:** Ensure the labels for each node are concise and descriptive (2-5 words).
+6.  **Language:** Respond ONLY in the primary language used in the provided notes.
+7.  **JSON Output:** Return the result as a single JSON object that strictly adheres to the provided schema.
+
+Here are the notes:
+${notesContent}`;
+
+    const { provider, model } = getConfig('mindMap');
+    const params: GenerateJsonParams = { model, prompt, schema: mindMapSchema };
     return provider.generateJson(params);
 }
