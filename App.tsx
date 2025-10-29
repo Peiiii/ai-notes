@@ -6,6 +6,7 @@ import { useChatStore } from './stores/chatStore';
 import { useStudioStore } from './stores/studioStore';
 import { useWikiStore } from './stores/wikiStore';
 import { useParliamentStore } from './stores/parliamentStore';
+import { useCommandStore } from './stores/commandStore';
 
 import NoteList from './components/note/NoteList';
 import NoteEditor from './components/note/NoteEditor';
@@ -15,18 +16,20 @@ import PulseReportModal from './components/studio/PulseReportModal';
 import WikiStudio from './components/wiki/WikiStudio';
 import ParliamentView from './components/parliament/ParliamentView';
 import ErrorBoundary from './components/ui/ErrorBoundary';
+import CreateCommandModal from './components/chat/CreateCommandModal';
 
 
 function AppContent() {
   const presenter = usePresenter();
 
   // Subscribe to state from stores
-  const { viewMode, activeNoteId, initialWikiHistory, viewingPulseReport } = useAppStore();
+  const { viewMode, activeNoteId, initialWikiHistory, viewingPulseReport, commandToCreate } = useAppStore();
   const { notes, generatingTitleIds } = useNotesStore();
   const { chatHistory, chatStatus, isThreadChatting } = useChatStore();
   const { aiSummary, myTodos, isLoadingAI, isLoadingPulse, pulseReports, mindMapData, isLoadingMindMap } = useStudioStore();
   const { wikis, wikiTopics, isLoadingWikiTopics } = useWikiStore();
   const { topics, isLoadingTopics, sessionHistory, isSessionActive, currentSession } = useParliamentStore();
+  const commands = useCommandStore(state => state.getCommands());
 
 
   const activeNote = notes.find((note) => note.id === activeNoteId) || null;
@@ -58,6 +61,8 @@ function AppContent() {
             chatStatus={chatStatus}
             onSendMessage={presenter.chatManager.sendChatMessage}
             onSelectNote={presenter.handleSelectNote}
+            commands={commands}
+            onOpenCreateCommandModal={presenter.handleOpenCreateCommandModal}
           />
         );
       case 'wiki':
@@ -92,6 +97,7 @@ function AppContent() {
       case 'editor':
       default:
         return <NoteEditor
+          key={activeNoteId}
           note={activeNote}
           onUpdateNote={(id, title, content) => presenter.notesManager.updateNote(id, { title, content })}
           wikis={wikis}
@@ -124,6 +130,12 @@ function AppContent() {
       <PulseReportModal 
         report={viewingPulseReport} 
         onClose={() => presenter.appManager.setViewingPulseReport(null)} 
+      />
+      <CreateCommandModal
+        isOpen={!!commandToCreate}
+        onClose={() => presenter.appManager.setCommandToCreate(null)}
+        onCreateCommand={presenter.handleCreateCommand}
+        initialCommandName={commandToCreate || ''}
       />
     </div>
   );

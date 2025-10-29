@@ -1,16 +1,19 @@
-
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ChatMessage } from '../../types';
 import PaperAirplaneIcon from '../icons/PaperAirplaneIcon';
 import UserIcon from '../icons/UserIcon';
 import SparklesIcon from '../icons/SparklesIcon';
 import BookOpenIcon from '../icons/BookOpenIcon';
+import CommandPalette from './CommandPalette';
+import { Command } from '../../commands';
 
 interface ChatViewProps {
   chatHistory: ChatMessage[];
   chatStatus: string | null;
   onSendMessage: (message: string) => void;
   onSelectNote: (noteId: string) => void;
+  commands: Command[];
+  onOpenCreateCommandModal: (commandName: string) => void;
 }
 
 const ChatView: React.FC<ChatViewProps> = ({
@@ -18,20 +21,89 @@ const ChatView: React.FC<ChatViewProps> = ({
   chatStatus,
   onSendMessage,
   onSelectNote,
+  commands,
+  onOpenCreateCommandModal,
 }) => {
   const [chatInput, setChatInput] = useState('');
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const isChatting = !!chatStatus;
+  
+  // Command Palette State
+  const [showCommands, setShowCommands] = useState(false);
+  const [commandQuery, setCommandQuery] = useState('');
+  const [selectedCommandIndex, setSelectedCommandIndex] = useState(0);
+
+  const filteredCommands = commands.filter(c => c.name.toLowerCase().startsWith(commandQuery.toLowerCase()));
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatHistory, chatStatus]);
+  
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setChatInput(value);
+
+    if (value.startsWith('/') && !value.includes(' ')) {
+        setShowCommands(true);
+        setCommandQuery(value.substring(1));
+        setSelectedCommandIndex(0);
+    } else {
+        setShowCommands(false);
+    }
+  };
+  
+  const handleSelectCommand = useCallback((commandName: string) => {
+    setChatInput(`/${commandName} `);
+    setShowCommands(false);
+    inputRef.current?.focus();
+  }, []);
+
+  const handleCreateCommand = (commandName: string) => {
+    onOpenCreateCommandModal(commandName);
+    setShowCommands(false);
+    setChatInput('');
+  };
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (showCommands) {
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            const newIndex = (selectedCommandIndex + 1) % (filteredCommands.length + (filteredCommands.length === 0 ? 1 : 0));
+            setSelectedCommandIndex(newIndex);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            const newIndex = (selectedCommandIndex - 1 + (filteredCommands.length + (filteredCommands.length === 0 ? 1 : 0))) % (filteredCommands.length + (filteredCommands.length === 0 ? 1 : 0));
+            setSelectedCommandIndex(newIndex);
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (filteredCommands.length > 0 && selectedCommandIndex < filteredCommands.length) {
+                handleSelectCommand(filteredCommands[selectedCommandIndex].name);
+            } else if (filteredCommands.length === 0) {
+                handleCreateCommand(commandQuery);
+            }
+        } else if (e.key === 'Escape') {
+            e.preventDefault();
+            setShowCommands(false);
+        }
+    }
+  }, [showCommands, filteredCommands, selectedCommandIndex, commandQuery, handleSelectCommand]);
 
   const handleChatSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (showCommands) {
+      if (filteredCommands.length > 0 && selectedCommandIndex < filteredCommands.length) {
+          handleSelectCommand(filteredCommands[selectedCommandIndex].name);
+          return;
+      } else if (filteredCommands.length === 0 && commandQuery) {
+          handleCreateCommand(commandQuery);
+          return;
+      }
+    }
     if (chatInput.trim() && !isChatting) {
       onSendMessage(chatInput);
       setChatInput('');
+      setShowCommands(false);
     }
   };
 
@@ -51,7 +123,7 @@ const ChatView: React.FC<ChatViewProps> = ({
           <div className="flex flex-col items-center justify-center h-full text-center text-slate-500 dark:text-slate-400">
              <SparklesIcon className="w-16 h-16 mb-4 text-slate-400 dark:text-slate-500" />
             <h2 className="text-xl font-semibold">Start the Conversation</h2>
-            <p className="max-w-sm mt-2">Ask a question about your notes, or ask to create a new one. E.g., "What were my main takeaways about the Q3 project?" or "Create a new note summarizing my ideas for the marketing campaign."</p>
+            <p className="max-w-sm mt-2">Ask a question, or type <code className="px-1.5 py-0.5 bg-slate-200 dark:bg-slate-700 rounded-md font-mono text-sm">/</code> to see available commands.</p>
           </div>
         )}
         {chatHistory.map((msg) => (
@@ -104,22 +176,36 @@ const ChatView: React.FC<ChatViewProps> = ({
         <div ref={chatEndRef} />
       </div>
       <div className="p-4 border-t border-slate-200 dark:border-slate-700">
-        <form onSubmit={handleChatSubmit} className="max-w-4xl mx-auto flex gap-2">
-          <input
-            type="text"
-            value={chatInput}
-            onChange={(e) => setChatInput(e.target.value)}
-            placeholder="Ask anything about your notes..."
-            disabled={isChatting}
-            className="flex-1 w-full bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 rounded-lg px-4 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
-          <button
-            type="submit"
-            disabled={isChatting || !chatInput.trim()}
-            className="p-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-slate-300 dark:disabled:bg-slate-600 disabled:cursor-not-allowed transition-colors"
-          >
-            <PaperAirplaneIcon className="w-5 h-5" />
-          </button>
+        <form onSubmit={handleChatSubmit} className="max-w-4xl mx-auto relative">
+          {showCommands && (
+            <CommandPalette
+                commands={filteredCommands}
+                query={commandQuery}
+                selectedIndex={selectedCommandIndex}
+                onSelect={handleSelectCommand}
+                onHover={setSelectedCommandIndex}
+                onCreateCommand={handleCreateCommand}
+            />
+          )}
+          <div className="flex gap-2">
+            <input
+              ref={inputRef}
+              type="text"
+              value={chatInput}
+              onChange={handleInputChange}
+              onKeyDown={handleKeyDown}
+              placeholder="Ask a question or type '/' for commands..."
+              disabled={isChatting}
+              className="flex-1 w-full bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 rounded-lg px-4 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+            <button
+              type="submit"
+              disabled={isChatting || !chatInput.trim()}
+              className="p-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-slate-300 dark:disabled:bg-slate-600 disabled:cursor-not-allowed transition-colors"
+            >
+              <PaperAirplaneIcon className="w-5 h-5" />
+            </button>
+          </div>
         </form>
       </div>
     </div>

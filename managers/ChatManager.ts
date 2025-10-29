@@ -1,7 +1,9 @@
 import { useChatStore } from '../stores/chatStore';
 import { useNotesStore } from '../stores/notesStore';
+import { useCommandStore } from '../stores/commandStore';
 import { ChatMessage, Note } from '../types';
-import { generateThreadChatResponse, getAgentResponse, searchNotesInCorpus } from '../services/aiService';
+// FIX: Imported `generateThreadChatResponse` to resolve reference error.
+import { getAgentResponse, searchNotesInCorpus, generateThreadChatResponse } from '../services/aiService';
 import { NotesManager } from './NotesManager';
 import { FunctionCall } from '@google/genai';
 
@@ -27,13 +29,22 @@ export class ChatManager {
             chatStatus: 'Thinking...',
         });
 
-        let sourceNotesForFinalAnswer: Note[] = [];
-
         try {
+            let command;
+            if (message.startsWith('/')) {
+                const commandName = message.trim().split(' ')[0].substring(1);
+                const allCommands = useCommandStore.getState().getCommands();
+                command = allCommands.find(c => c.name === commandName);
+            }
+
             let currentHistory = [...history];
+            let sourceNotesForFinalAnswer: Note[] = [];
+
             // Agent loop
             while (true) {
-                const response = await getAgentResponse(currentHistory);
+                // Pass the command on the first turn of the loop
+                const response = await getAgentResponse(currentHistory, command);
+                command = undefined; // Ensure command is only sent once
 
                 if (response.toolCalls && response.toolCalls.length > 0) {
                     const toolCalls = response.toolCalls;

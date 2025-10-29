@@ -8,7 +8,9 @@ import { ChatManager } from '../managers/ChatManager';
 import { StudioManager } from '../managers/StudioManager';
 import { WikiManager } from '../managers/WikiManager';
 import { ParliamentManager } from '../managers/ParliamentManager';
+import { CommandManager } from '../managers/CommandManager';
 import { KnowledgeCard, Note, WikiEntry, WIKI_ROOT_ID, DebateSynthesis } from '../types';
+import { Command } from '../commands';
 
 export class Presenter {
   appManager = new AppManager();
@@ -17,6 +19,7 @@ export class Presenter {
   studioManager = new StudioManager();
   wikiManager = new WikiManager();
   parliamentManager = new ParliamentManager();
+  commandManager = new CommandManager();
 
   constructor() {
     this.chatManager = new ChatManager(this.notesManager);
@@ -78,6 +81,14 @@ export class Presenter {
 
   handleSendThreadMessage = (noteId: string, message: string) => {
     this.chatManager.sendThreadChatMessage(noteId, message);
+  };
+
+  handleOpenCreateCommandModal = (commandName: string) => {
+    this.appManager.setCommandToCreate(commandName);
+  };
+
+  handleCreateCommand = (commandData: Omit<Command, 'isCustom'>) => {
+    this.commandManager.createCommand(commandData);
   };
 
   handleViewWikiInStudio = (wikiId: string) => {

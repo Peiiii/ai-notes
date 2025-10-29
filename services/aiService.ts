@@ -3,6 +3,7 @@ import { geminiProvider } from './providers/geminiProvider';
 import { openAIProvider, dashscopeProvider, deepseekProvider, openRouterProvider } from './providers/openaiProvider';
 import { LLMProvider, GenerateJsonParams, GenerateTextParams, ModelTier, GenerateWithToolsParams, GenerateWithToolsResult } from './providers/types';
 import { Type, FunctionDeclaration } from "@google/genai";
+import { Command } from '../commands';
 
 // --- Provider Registry ---
 const providers: { [key: string]: LLMProvider } = {
@@ -32,26 +33,28 @@ type CapabilityConfig = {
   mindMap:        { provider: string; model: ModelTier };
   agent_reasoning:{ provider: string; model: ModelTier };
   agent_retrieval:{ provider: string; model: ModelTier };
+  agent_final_answer: { provider: string; model: ModelTier };
 };
 
-// FIX: Added a type annotation to `baseScheme` to ensure TypeScript correctly infers `model` as type `ModelTier` instead of `string`.
-const baseScheme: Record<string, { model: ModelTier }> = {
+// FIX: Updated type annotation for `baseScheme` to allow an optional `provider` property, resolving type errors.
+const baseScheme: Record<string, { model: ModelTier; provider?: string }> = {
   summary:        { model: 'fast' },
   title:          { model: 'fast' },
   chat:           { model: 'fast' },
   threadChat:     { model: 'fast' },
   pulseReport:    { model: 'pro'  },
   wikiEntry:      { model: 'lite' },
-  relatedTopics:  { model: 'lite' },
-  subTopics:      { model: 'lite' },
-  wikiTopics:     { model: 'lite' },
-  debateTopics:   { model: 'lite' },
-  debateTurn:     { model: 'lite' },
-  debateSynthesis:{ model: 'lite' },
-  podcastTurn:    { model: 'lite' },
+  relatedTopics:  { provider: 'gemini', model: 'lite' },
+  subTopics:      { provider: 'gemini', model: 'lite' },
+  wikiTopics:     { provider: 'gemini', model: 'lite' },
+  debateTopics:   { provider: 'gemini', model: 'lite' },
+  debateTurn:     { provider: 'gemini', model: 'lite' },
+  debateSynthesis:{ provider: 'gemini', model: 'lite' },
+  podcastTurn:    { provider: 'gemini', model: 'lite' },
   mindMap:        { model: 'fast' },
   agent_reasoning:{ model: 'pro' },
   agent_retrieval:{ model: 'lite' },
+  agent_final_answer: { model: 'fast'},
 };
 
 const buildScheme = (provider: string): CapabilityConfig => 
@@ -114,13 +117,24 @@ const createNoteTool: FunctionDeclaration = {
 export const agentTools = [searchNotesTool, createNoteTool];
 
 // --- Agent Core Function ---
-export async function getAgentResponse(history: ChatMessage[]): Promise<GenerateWithToolsResult> {
-    const systemInstruction = `You are a powerful AI assistant integrated into a note-taking app. 
+export async function getAgentResponse(history: ChatMessage[], command?: Command): Promise<GenerateWithToolsResult> {
+    let systemInstruction = `You are a powerful AI assistant integrated into a note-taking app. 
 - You can search existing notes to answer questions.
 - You can create new notes.
 - When answering a question based on a search, be concise and directly state the answer.
 - After answering from a search, ask the user if they would like you to create a new note with the synthesized information.
 - Always respond in the user's language.`;
+
+    if (command) {
+      systemInstruction = `The user has issued a specific command: /${command.name}. You MUST follow these instructions precisely to fulfill their request.
+--- COMMAND DEFINITION ---
+${command.definition}
+---
+After fulfilling the command, respond naturally.
+
+Original general instructions (for context):
+${systemInstruction}`;
+    }
 
     const { provider, model } = getConfig('agent_reasoning');
     const params: GenerateWithToolsParams = {
@@ -159,12 +173,42 @@ Return only a JSON array of the most relevant note IDs.`;
     const { provider, model } = getConfig('agent_retrieval');
     try {
         const relevantIds = await provider.generateJson<string[]>({ model, prompt, schema: retrievalSchema });
+        
+        // FIX: Add validation to prevent crash if model returns non-array or other malformed data
+        if (!Array.isArray(relevantIds)) {
+            console.warn("Retrieved relevant IDs is not an array:", relevantIds);
+            return [];
+        }
+        
         return notes.filter(note => relevantIds.includes(note.id));
     } catch (error) {
         console.error("Failed to retrieve relevant notes:", error);
         return []; // Return empty on failure to prevent crashing the agent
     }
 }
+
+export async function generateFinalAnswerFromContext(query: string, contextNotes: Note[]): Promise<string> {
+    if (contextNotes.length === 0) {
+        return "I couldn't find any relevant information in your notes to answer that question.";
+    }
+
+    const context = contextNotes.map(note => `Title: ${note.title}\nContent:\n${note.content}`).join('\n\n---\n\n');
+
+    const prompt = `Based *strictly* on the provided note context below, answer the user's query in a concise and helpful way.
+
+User Query: "${query}"
+
+Note Context:
+---
+${context}
+---
+
+Answer:`;
+    
+    const { provider, model } = getConfig('agent_final_answer');
+    return provider.generateText({ model, prompt });
+}
+
 
 // --- Legacy Capability Definitions (unchanged) ---
 // The following functions are kept as they were for other parts of the app.

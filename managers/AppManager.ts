@@ -17,4 +17,8 @@ export class AppManager {
   setViewingPulseReport = (report: PulseReport | null) => {
     useAppStore.setState({ viewingPulseReport: report });
   }
+
+  setCommandToCreate = (commandName: string | null) => {
+    useAppStore.setState({ commandToCreate: commandName });
+  }
 }

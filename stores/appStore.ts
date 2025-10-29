@@ -6,6 +6,7 @@ interface AppState {
   activeNoteId: string | null;
   initialWikiHistory: (Note | WikiEntry)[] | null;
   viewingPulseReport: PulseReport | null;
+  commandToCreate: string | null;
 }
 
 export const useAppStore = create<AppState>(() => ({
@@ -13,4 +14,5 @@ export const useAppStore = create<AppState>(() => ({
   activeNoteId: null,
   initialWikiHistory: null,
   viewingPulseReport: null,
+  commandToCreate: null,
 }));
