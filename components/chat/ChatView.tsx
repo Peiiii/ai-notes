@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ChatMessage, ProactiveSuggestion } from '../../types';
 import PaperAirplaneIcon from '../icons/PaperAirplaneIcon';
@@ -7,6 +8,8 @@ import BookOpenIcon from '../icons/BookOpenIcon';
 import CommandPalette from './CommandPalette';
 import { Command } from '../../commands';
 import ThoughtBubbleIcon from '../icons/ThoughtBubbleIcon';
+import ToolCallCard from './ToolCallCard';
+import ToolResultCard from './ToolResultCard';
 
 interface ChatViewProps {
   chatHistory: ChatMessage[];
@@ -179,36 +182,50 @@ const ChatView: React.FC<ChatViewProps> = ({
       </div>
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {chatHistory.length === 0 && !isChatting ? <ChatEmptyState /> : 
-        (chatHistory.map((msg) => (
-          <div key={msg.id} className={`flex items-start gap-3 max-w-4xl mx-auto ${msg.role === 'user' ? 'justify-end' : ''}`}>
-            {msg.role === 'model' && (
-              <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center flex-shrink-0">
-                <SparklesIcon className="w-5 h-5 text-indigo-500 dark:text-indigo-400" />
-              </div>
-            )}
-            <div className={`flex flex-col items-start`}>
-              <div className={`p-3 rounded-lg max-w-lg ${msg.role === 'user' ? 'bg-indigo-600 text-white rounded-br-none' : 'bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-bl-none'}`}>
-                <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
-              </div>
-              {msg.sourceNotes && msg.sourceNotes.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-2 items-center">
-                    <BookOpenIcon className="w-4 h-4 text-slate-400 dark:text-slate-500" />
-                    <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Sources:</span>
-                    {msg.sourceNotes.map(note => (
-                        <button key={note.id} onClick={() => onSelectNote(note.id)} className="px-2 py-0.5 bg-slate-200 dark:bg-slate-600 text-xs text-slate-700 dark:text-slate-200 rounded-md hover:bg-slate-300 dark:hover:bg-slate-500 transition-colors">
-                            {note.title}
-                        </button>
-                    ))}
+        (chatHistory.map((msg) => {
+            if (msg.role === 'user') {
+                return (
+                    <div key={msg.id} className="flex items-start gap-3 max-w-4xl mx-auto justify-end">
+                        <div className="p-3 rounded-lg max-w-lg bg-indigo-600 text-white rounded-br-none">
+                            <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                        </div>
+                        <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-600 flex items-center justify-center flex-shrink-0">
+                            <UserIcon className="w-5 h-5 text-slate-600 dark:text-slate-300" />
+                        </div>
+                    </div>
+                )
+            }
+            if (msg.role === 'model' && msg.toolCalls) {
+                return <ToolCallCard key={msg.id} toolCalls={msg.toolCalls} text={msg.content} />
+            }
+            if (msg.role === 'tool' && msg.structuredContent) {
+                return <ToolResultCard key={msg.id} message={msg} onSelectNote={onSelectNote} />
+            }
+            // Default model text response
+            return (
+              <div key={msg.id} className="flex items-start gap-3 max-w-4xl mx-auto">
+                <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center flex-shrink-0">
+                  <SparklesIcon className="w-5 h-5 text-indigo-500 dark:text-indigo-400" />
                 </div>
-              )}
-            </div>
-            {msg.role === 'user' && (
-              <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-600 flex items-center justify-center flex-shrink-0">
-                <UserIcon className="w-5 h-5 text-slate-600 dark:text-slate-300" />
+                <div className="flex flex-col items-start">
+                  <div className="p-3 rounded-lg max-w-lg bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-bl-none">
+                    <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                  </div>
+                  {msg.sourceNotes && msg.sourceNotes.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-2 items-center">
+                        <BookOpenIcon className="w-4 h-4 text-slate-400 dark:text-slate-500" />
+                        <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Sources:</span>
+                        {msg.sourceNotes.map(note => (
+                            <button key={note.id} onClick={() => onSelectNote(note.id)} className="px-2 py-0.5 bg-slate-200 dark:bg-slate-600 text-xs text-slate-700 dark:text-slate-200 rounded-md hover:bg-slate-300 dark:hover:bg-slate-500 transition-colors">
+                                {note.title}
+                            </button>
+                        ))}
+                    </div>
+                  )}
+                </div>
               </div>
-            )}
-          </div>
-        )))}
+            )
+        }))}
         {isChatting && (
           <div className="flex items-start gap-3 max-w-4xl mx-auto">
             <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center flex-shrink-0">

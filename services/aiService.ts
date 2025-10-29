@@ -1,3 +1,4 @@
+
 import { Note, KnowledgeCard, ChatMessage, DebateSynthesis, ToolCall, ProactiveSuggestion } from '../types';
 import { geminiProvider } from './providers/geminiProvider';
 import { openAIProvider, dashscopeProvider, deepseekProvider, openRouterProvider } from './providers/openaiProvider';
@@ -299,7 +300,7 @@ const proactiveSuggestionsSchema = {
 };
 
 export async function generateProactiveSuggestions(notes: Note[]): Promise<ProactiveSuggestion[]> {
-    if (notes.length < 2) return [];
+    if (notes.length === 0) return [];
 
     const notesContent = notes
         .slice(0, 15) // Limit context size

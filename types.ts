@@ -1,3 +1,4 @@
+
 export type ViewMode = 'editor' | 'studio' | 'chat' | 'wiki' | 'parliament';
 
 export const WIKI_ROOT_ID = 'wiki_root';
@@ -60,6 +61,15 @@ export interface ChatMessage {
   sourceNotes?: { id: string; title: string; }[];
   toolCalls?: ToolCall[];
   tool_call_id?: string; // For OpenAI response mapping
+  structuredContent?: { // New field for rich UI rendering of tool results
+    type: 'search_result';
+    notes: Note[];
+  } | {
+    type: 'create_note_result';
+    message: string;
+    noteId: string;
+    title: string;
+  };
 }
 
 export interface PulseReport {

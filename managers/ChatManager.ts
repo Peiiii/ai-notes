@@ -1,3 +1,4 @@
+
 import { useChatStore } from '../stores/chatStore';
 import { useNotesStore } from '../stores/notesStore';
 import { useCommandStore } from '../stores/commandStore';
@@ -35,9 +36,6 @@ export class ChatManager {
 
     sendChatMessage = async (message: string) => {
         if (!message.trim() || useChatStore.getState().chatStatus) return;
-
-        // When a message is sent, clear suggestions
-        useChatStore.setState({ proactiveSuggestions: [] });
         
         const userMessage: ChatMessage = {
             id: crypto.randomUUID(),
@@ -45,11 +43,11 @@ export class ChatManager {
             content: message,
         };
         
-        const history = [...useChatStore.getState().chatHistory, userMessage];
-        useChatStore.setState({
-            chatHistory: history,
+        useChatStore.setState(state => ({
+            chatHistory: [...state.chatHistory, userMessage],
             chatStatus: 'Thinking...',
-        });
+            proactiveSuggestions: [],
+        }));
 
         try {
             let command;
@@ -59,12 +57,12 @@ export class ChatManager {
                 command = allCommands.find(c => c.name === commandName);
             }
 
-            let currentHistory = [...history];
+            let conversationHistoryForAI = [...useChatStore.getState().chatHistory];
             let sourceNotesForFinalAnswer: Note[] = [];
 
             // Agent loop
             for (let i = 0; i < 5; i++) { // Add a safety break
-                const response = await getAgentResponse(currentHistory, i === 0 ? command : undefined);
+                const response = await getAgentResponse(conversationHistoryForAI, i === 0 ? command : undefined);
 
                 if (response.toolCalls && response.toolCalls.length > 0) {
                     const toolCalls = response.toolCalls;
@@ -72,45 +70,61 @@ export class ChatManager {
                     const toolRequestMessage: ChatMessage = {
                         id: crypto.randomUUID(),
                         role: 'model',
-                        content: response.text || '',
+                        content: response.text || '', // Can contain text like "Okay, I will search for that."
                         toolCalls: toolCalls,
                     };
-                    currentHistory.push(toolRequestMessage);
 
-                    const toolResponses: ChatMessage[] = await Promise.all(
-                        toolCalls.map(async (call: ToolCall) => {
+                    // Update UI with the tool call request
+                    useChatStore.setState(state => ({
+                        chatHistory: [...state.chatHistory, toolRequestMessage],
+                        chatStatus: 'Using tools...',
+                    }));
+                    
+                    conversationHistoryForAI.push(toolRequestMessage);
+
+                    const toolResponses = await Promise.all(
+                        toolCalls.map(async (call: ToolCall): Promise<ChatMessage> => {
                             let toolResultContent = '';
+                            let structuredContent: ChatMessage['structuredContent'] | undefined = undefined;
+
                             if (call.name === 'search_notes') {
-                                useChatStore.setState({ chatStatus: 'Searching notes...' });
                                 const { query } = call.args;
                                 const allNotes = useNotesStore.getState().notes;
                                 const relevantNotes = await searchNotesInCorpus(query as string, allNotes);
                                 sourceNotesForFinalAnswer = relevantNotes;
+                                
                                 if (relevantNotes.length > 0) {
-                                    toolResultContent = "Relevant notes found:\n" + relevantNotes.map(n => `Title: ${n.title}\nContent: ${n.content}`).join('\n---\n');
+                                    toolResultContent = `Found ${relevantNotes.length} relevant notes.`;
+                                    structuredContent = { type: 'search_result', notes: relevantNotes };
                                 } else {
                                     toolResultContent = "No relevant notes were found for that query.";
                                 }
                             } else if (call.name === 'create_note') {
-                                useChatStore.setState({ chatStatus: 'Creating note...' });
                                 const { title, content } = call.args;
                                 const newNote = this.notesManager.createNewTextNote();
                                 this.notesManager.updateNote(newNote.id, { title: title as string, content: content as string });
                                 toolResultContent = `Successfully created a new note titled "${title}".`;
+                                structuredContent = { type: 'create_note_result', message: toolResultContent, noteId: newNote.id, title: title as string };
                             }
+                            
                             return {
                                 id: crypto.randomUUID(),
                                 role: 'tool',
                                 content: toolResultContent,
                                 tool_call_id: call.id, // For OpenAI
                                 toolCalls: [call], // For Gemini
+                                structuredContent,
                             };
                         })
                     );
                     
-                    currentHistory.push(...toolResponses);
-                    useChatStore.setState({ chatStatus: 'Thinking...' });
-
+                    // Update UI with tool results
+                    useChatStore.setState(state => ({
+                        chatHistory: [...state.chatHistory, ...toolResponses],
+                        chatStatus: 'Thinking...',
+                    }));
+                    
+                    conversationHistoryForAI.push(...toolResponses);
                 } else { // It's a final text response
                     const modelMessage: ChatMessage = {
                         id: crypto.randomUUID(),
