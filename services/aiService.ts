@@ -336,13 +336,77 @@ ${notesContent}
 // --- Legacy Capability Definitions (unchanged) ---
 // The following functions are kept as they were for other parts of the app.
 
-const summarySchema = { /* ... */ };
+const summarySchema = {
+    type: Type.OBJECT,
+    properties: {
+        todos: {
+            type: Type.ARRAY,
+            description: "A list of actionable to-do items extracted from the notes.",
+            items: {
+                type: Type.STRING
+            }
+        },
+        knowledgeCards: {
+            type: Type.ARRAY,
+            description: "A diverse list of knowledge cards based on the notes.",
+            items: {
+                type: Type.OBJECT,
+                properties: {
+                    type: {
+                        type: Type.STRING,
+                        description: "The type of knowledge card.",
+                        enum: ['encyclopedia', 'creative_story', 'note_synthesis', 'new_theory', 'idea']
+                    },
+                    title: {
+                        type: Type.STRING,
+                        description: "The title of the knowledge card."
+                    },
+                    content: {
+                        type: Type.STRING,
+                        description: "The main content of the knowledge card."
+                    },
+                    sources: {
+                        type: Type.ARRAY,
+                        description: "An array of source URLs, required for 'encyclopedia' type cards.",
+                        items: {
+                            type: Type.STRING
+                        }
+                    }
+                },
+                required: ['type', 'title', 'content']
+            }
+        }
+    },
+    required: ['todos', 'knowledgeCards']
+};
+
 export async function generateSummary(notes: Note[]): Promise<{ todos: string[]; knowledgeCards: Omit<KnowledgeCard, 'id'>[] }> {
     if (notes.length === 0) return { todos: [], knowledgeCards: [] };
+
     const notesContent = notes.map(note => `Title: ${note.title || 'Untitled'}\nContent: ${note.content}`).join('\n\n---\n\n');
-    const prompt = `Analyze the following collection of notes...`;
+    const prompt = `
+Analyze the following collection of notes. Your task is to extract two types of information:
+1.  Actionable to-do items.
+2.  A diverse set of "Knowledge Cards" based on the content.
+
+**Instructions for Knowledge Cards:**
+Generate a variety of cards from the following categories. Be creative and insightful.
+-   **encyclopedia**: For significant concepts, provide a concise summary of critical key points, MUST include an array of URLs for 'sources'.
+-   **creative_story**: Write a short, imaginative story or scene.
+-   **note_synthesis**: Synthesize key points from multiple related notes.
+-   **new_theory**: Formulate a concise theory or principle from abstract ideas.
+-   **idea**: For simple, standalone creative sparks.
+
+**General Rules:**
+-   Respond in the primary language used in the provided notes.
+-   Return the result as a single JSON object.
+
+Here are the notes:
+${notesContent}`;
+    
     const { provider, model } = getConfig('summary');
-    return provider.generateJson({ model, prompt, schema: summarySchema });
+    const params: GenerateJsonParams = { model, prompt, schema: summarySchema };
+    return provider.generateJson(params);
 }
 
 export async function generateTitleForNote(content: string): Promise<string> {
@@ -367,150 +431,77 @@ Title:`;
 export async function generateChatResponse(notes: Note[], history: ChatMessage[], question: string): Promise<string> {
     const notesContent = notes.map(note => `Title: ${note.title || 'Untitled'}\nContent: ${note.content}`).join('\n\n---\n\n');
     const historyContent = history.slice(-10).map(msg => `${msg.role}: ${msg.content}`).join('\n');
-    const prompt = `You are an AI assistant for a note-taking app...`;
+
+    const prompt = `You are an AI assistant for a note-taking app. Your purpose is to help the user understand and synthesize their own notes.
+You have access to the user's entire collection of notes and the recent conversation history.
+Answer the user's question based *only* on the information provided in their notes. Do not make things up.
+If the notes don't contain the answer, say so politely. Be helpful, concise, and conversational.
+
+--- CONVERSATION HISTORY ---
+${historyContent}
+
+--- ALL NOTES ---
+${notesContent}
+
+--- USER'S QUESTION ---
+user: ${question}
+
+model:`;
+    
     const { provider, model } = getConfig('chat');
-    return provider.generateText({ model, prompt });
+    const params: GenerateTextParams = { model, prompt };
+    return provider.generateText(params);
 }
 
 export async function generateThreadChatResponse(note: Note, question: string): Promise<string> {
     const noteContent = `Title: ${note.title || 'Untitled'}\nContent: ${note.content}`;
     const history = note.threadHistory || [];
     const historyContent = history.slice(-10).map(msg => `${msg.role}: ${msg.content}`).join('\n');
-    const prompt = `You are an AI assistant focused on a single note...`;
-    const { provider, model } = getConfig('threadChat');
-    return provider.generateText({ model, prompt });
-}
 
-const pulseReportSchema = { /* ... */ };
-export async function generatePulseReport(notes: Note[]): Promise<{ title: string; content: string }> {
-    if (notes.length === 0) return { title: "Not Enough Data", content: "Write at least one note..." };
-    const notesContent = notes.map(note => `...`).join('\n\n---\n\n');
-    const prompt = `You are a highly perceptive thought analyst...`;
-    const { provider, model } = getConfig('pulseReport');
-    return provider.generateJson({ model, prompt, schema: pulseReportSchema });
-}
-
-const mindMapSchema = { /* ... */ };
-export async function generateMindMap(notes: Note[]): Promise<{ root: { label: string, children?: any[] } }> {
-    const notesContent = notes.map(note => `...`).join('\n\n---\n\n');
-    const prompt = `Analyze the following collection of notes...`;
-    const { provider, model } = getConfig('mindMap');
-    return provider.generateJson({ model, prompt, schema: mindMapSchema });
-}
-
-// Keeping original content for brevity
-const originalGenerateSummary = `
-export async function generateSummary(notes: Note[]): Promise<{ todos: string[]; knowledgeCards: Omit<KnowledgeCard, 'id'>[] }> {
-    if (notes.length === 0) return { todos: [], knowledgeCards: [] };
-
-    const notesContent = notes.map(note => \`Title: \${note.title || 'Untitled'}\\nContent: \${note.content}\`).join('\\n\\n---\\n\\n');
-    const prompt = \`
-Analyze the following collection of notes. Your task is to extract two types of information:
-1.  Actionable to-do items.
-2.  A diverse set of "Knowledge Cards" based on the content.
-
-**Instructions for Knowledge Cards:**
-Generate a variety of cards from the following categories. Be creative and insightful.
--   **encyclopedia**: For significant concepts, provide a concise summary of critical key points, MUST include an array of URLs for 'sources'.
--   **creative_story**: Write a short, imaginative story or scene.
--   **note_synthesis**: Synthesize key points from multiple related notes.
--   **new_theory**: Formulate a concise theory or principle from abstract ideas.
--   **idea**: For simple, standalone creative sparks.
-
-**General Rules:**
--   Respond in the primary language used in the provided notes.
--   Return the result as a single JSON object.
-
-Here are the notes:
-\${notesContent}\`;
-    
-    const { provider, model } = getConfig('summary');
-    const params: GenerateJsonParams = { model, prompt, schema: summarySchema };
-    return provider.generateJson(params);
-}
-`;
-const originalGenerateTitleForNote = `
-export async function generateTitleForNote(content: string): Promise<string> {
-    if (!content) return "";
-    
-    const prompt = \`Based on the following note content, generate a very short, concise, and relevant title (max 5 words).
-IMPORTANT: Respond in the same language as the provided Content. Do not include any quotation marks or labels.
-
-Content:
----
-\${content}
----
-
-Title:\`;
-
-    const { provider, model } = getConfig('title');
-    const params: GenerateTextParams = { model, prompt };
-    const title = await provider.generateText(params);
-    return title.replace(/["']/g, '').trim();
-}
-`;
-const originalGenerateChatResponse = `
-export async function generateChatResponse(notes: Note[], history: ChatMessage[], question: string): Promise<string> {
-    const notesContent = notes.map(note => \`Title: \${note.title || 'Untitled'}\\nContent: \${note.content}\`).join('\\n\\n---\\n\\n');
-    const historyContent = history.slice(-10).map(msg => \`\${msg.role}: \${msg.content}\`).join('\\n');
-
-    const prompt = \`You are an AI assistant for a note-taking app. Your purpose is to help the user understand and synthesize their own notes.
-You have access to the user's entire collection of notes and the recent conversation history.
-Answer the user's question based *only* on the information provided in their notes. Do not make things up.
-If the notes don't contain the answer, say so politely. Be helpful, concise, and conversational.
-
---- CONVERSATION HISTORY ---
-\${historyContent}
-
---- ALL NOTES ---
-\${notesContent}
-
---- USER'S QUESTION ---
-user: \${question}
-
-model:\`;
-    
-    const { provider, model } = getConfig('chat');
-    const params: GenerateTextParams = { model, prompt };
-    return provider.generateText(params);
-}
-`;
-const originalGenerateThreadChatResponse = `
-export async function generateThreadChatResponse(note: Note, question: string): Promise<string> {
-    const noteContent = \`Title: \${note.title || 'Untitled'}\\nContent: \${note.content}\`;
-    const history = note.threadHistory || [];
-    const historyContent = history.slice(-10).map(msg => \`\${msg.role}: \${msg.content}\`).join('\\n');
-
-    const prompt = \`You are an AI assistant focused on a single note. Your purpose is to help the user with the content of *this specific note*.
+    const prompt = `You are an AI assistant focused on a single note. Your purpose is to help the user with the content of *this specific note*.
 You can help them rewrite, brainstorm, summarize, or answer questions about it. Be helpful and conversational.
 Base your answer *only* on the note's content and the recent conversation history provided.
 
 --- CONVERSATION HISTORY ---
-\${historyContent}
+${historyContent}
 
 --- NOTE CONTENT ---
-\${noteContent}
+${noteContent}
 
 --- USER'S QUESTION ---
-user: \${question}
+user: ${question}
 
-model:\`;
+model:`;
     
     const { provider, model } = getConfig('threadChat');
     const params: GenerateTextParams = { model, prompt };
     return provider.generateText(params);
 }
-`;
-const originalGeneratePulseReport = `
+
+const pulseReportSchema = {
+    type: Type.OBJECT,
+    properties: {
+        title: {
+            type: Type.STRING,
+            description: "The main title for the Pulse Report."
+        },
+        content: {
+            type: Type.STRING,
+            description: "The full content of the Pulse Report, formatted in Markdown."
+        }
+    },
+    required: ['title', 'content']
+};
+
 export async function generatePulseReport(notes: Note[]): Promise<{ title: string; content: string }> {
     if (notes.length === 0) {
         return { title: "Not Enough Data", content: "Write at least one note to generate your first Pulse report." };
     }
     const notesContent = notes
-        .map(note => \`Date: \${new Date(note.createdAt).toISOString().split('T')[0]}\\nTitle: \${note.title || 'Untitled'}\\nContent: \${note.content}\`)
-        .join('\\n\\n---\\n\\n');
+        .map(note => `Date: ${new Date(note.createdAt).toISOString().split('T')[0]}\nTitle: ${note.title || 'Untitled'}\nContent: ${note.content}`)
+        .join('\n\n---\n\n');
     
-    const prompt = \`
+    const prompt = `
 You are a highly perceptive thought analyst. Your task is to analyze a user's entire collection of notes and generate a short, insightful "Pulse Report" about their intellectual journey.
 The report should be a narrative, not just a list. Be insightful and help the user see the bigger picture of their own thinking.
 
@@ -527,17 +518,54 @@ The report should be a narrative, not just a list. Be insightful and help the us
 -   Return the result as a single JSON object.
 
 Here are all the notes:
-\${notesContent}\`;
+${notesContent}`;
     
     const { provider, model } = getConfig('pulseReport');
     const params: GenerateJsonParams = { model, prompt, schema: pulseReportSchema };
     return provider.generateJson(params);
 }
-`;
-const originalGenerateMindMap = `
-export async function generateMindMap(notes: Note[]): Promise<{ root: { label: string, children?: { label: string, children?: { label: string }[] }[] } }> {
-    const notesContent = notes.map(note => \`Title: \${note.title || 'Untitled'}\\nContent: \${note.content}\`).join('\\n\\n---\\n\\n');
-    const prompt = \`
+
+const mindMapNodeSchema: any = {
+    type: Type.OBJECT,
+    properties: {
+        label: {
+            type: Type.STRING,
+            description: "The concise label for this node."
+        },
+        children: {
+            type: Type.ARRAY,
+            description: "An array of child nodes.",
+            items: {} // Placeholder for recursion
+        }
+    },
+    required: ['label']
+};
+mindMapNodeSchema.properties.children.items = {
+    ...mindMapNodeSchema,
+    properties: {
+        ...mindMapNodeSchema.properties,
+        children: {
+            type: Type.ARRAY,
+            items: {
+                type: Type.OBJECT,
+                properties: { label: { type: Type.STRING } },
+                required: ['label']
+            }
+        }
+    }
+};
+
+const mindMapSchema = {
+    type: Type.OBJECT,
+    properties: {
+        root: mindMapNodeSchema
+    },
+    required: ['root']
+};
+
+export async function generateMindMap(notes: Note[]): Promise<{ root: { label: string, children?: any[] } }> {
+    const notesContent = notes.map(note => `Title: ${note.title || 'Untitled'}\nContent: ${note.content}`).join('\n\n---\n\n');
+    const prompt = `
 Analyze the following collection of notes and generate a hierarchical mind map structure.
 
 **Instructions:**
@@ -550,10 +578,9 @@ Analyze the following collection of notes and generate a hierarchical mind map s
 7.  **JSON Output:** Return the result as a single JSON object that strictly adheres to the provided schema.
 
 Here are the notes:
-\${notesContent}\`;
+${notesContent}`;
 
     const { provider, model } = getConfig('mindMap');
     const params: GenerateJsonParams = { model, prompt, schema: mindMapSchema };
     return provider.generateJson(params);
 }
-`;
