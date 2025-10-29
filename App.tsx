@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { PresenterProvider, usePresenter } from './presenter';
 import { useAppStore } from './stores/appStore';
@@ -8,6 +9,8 @@ import { useWikiStore } from './stores/wikiStore';
 import { useParliamentStore } from './stores/parliamentStore';
 import { useCommandStore } from './stores/commandStore';
 import { useInsightStore } from './stores/insightStore';
+import { useAgentStore } from './stores/agentStore';
+
 
 import NoteList from './components/note/NoteList';
 import NoteEditor from './components/note/NoteEditor';
@@ -26,15 +29,17 @@ function AppContent() {
   // Subscribe to state from stores
   const { viewMode, activeNoteId, initialWikiHistory, viewingPulseReport, commandToCreate } = useAppStore();
   const { notes, generatingTitleIds } = useNotesStore();
-  const { chatHistory, chatStatus, isThreadChatting, proactiveSuggestions, isLoadingSuggestions } = useChatStore();
+  const { sessions, activeSessionId, chatStatus, isThreadChatting } = useChatStore();
   const { aiSummary, myTodos, isLoadingAI, isLoadingPulse, pulseReports, mindMapData, isLoadingMindMap } = useStudioStore();
   const { wikis, wikiTopics, isLoadingWikiTopics } = useWikiStore();
   const { topics, isLoadingTopics, sessionHistory, isSessionActive, currentSession } = useParliamentStore();
   const commands = useCommandStore(state => state.getCommands());
   const { insights, isLoadingInsights } = useInsightStore();
+  const { agents } = useAgentStore();
 
 
   const activeNote = notes.find((note) => note.id === activeNoteId) || null;
+  const activeChatSession = sessions.find(s => s.id === activeSessionId) || null;
 
   const renderMainView = () => {
     switch (viewMode) {
@@ -59,14 +64,21 @@ function AppContent() {
       case 'chat':
         return (
           <ChatView
-            chatHistory={chatHistory}
+            sessions={sessions}
+            activeSession={activeChatSession}
+            agents={agents}
             chatStatus={chatStatus}
-            onSendMessage={presenter.chatManager.sendChatMessage}
+            onSendMessage={presenter.handleSendMessage}
             onSelectNote={presenter.handleSelectNote}
             commands={commands}
             onOpenCreateCommandModal={presenter.handleOpenCreateCommandModal}
-            proactiveSuggestions={proactiveSuggestions}
-            isLoadingSuggestions={isLoadingSuggestions}
+            onSetActiveSession={presenter.handleSetActiveChatSession}
+            onCreateSession={presenter.handleCreateChatSession}
+            onDeleteSession={presenter.handleDeleteChatSession}
+            onCreateAgent={presenter.handleCreateAgent}
+            onUpdateAgent={presenter.handleUpdateAgent}
+            onDeleteAgent={presenter.handleDeleteAgent}
+            presenter={presenter}
           />
         );
       case 'wiki':

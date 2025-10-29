@@ -1,7 +1,10 @@
+
 import React, { createContext, useContext, useEffect, useRef } from 'react';
 import { useAppStore } from '../stores/appStore';
 import { useNotesStore } from '../stores/notesStore';
 import { useWikiStore } from '../stores/wikiStore';
+import { useChatStore } from '../stores/chatStore';
+import { useAgentStore } from '../stores/agentStore';
 import { AppManager } from '../managers/AppManager';
 import { NotesManager } from '../managers/NotesManager';
 import { ChatManager } from '../managers/ChatManager';
@@ -10,7 +13,7 @@ import { WikiManager } from '../managers/WikiManager';
 import { ParliamentManager } from '../managers/ParliamentManager';
 import { CommandManager } from '../managers/CommandManager';
 import { InsightManager } from '../managers/InsightManager';
-import { KnowledgeCard, Note, WikiEntry, WIKI_ROOT_ID, DebateSynthesis, Todo } from '../types';
+import { KnowledgeCard, Note, WikiEntry, WIKI_ROOT_ID, DebateSynthesis, Todo, AIAgent, ChatMessage } from '../types';
 import { Command } from '../commands';
 
 // simple debounce utility
@@ -61,7 +64,6 @@ export class Presenter {
   handleShowChat = () => {
     this.appManager.setViewMode('chat');
     this.appManager.setActiveNoteId(null);
-    this.chatManager.fetchProactiveSuggestions();
   };
 
   handleShowStudio = () => {
@@ -146,6 +148,117 @@ ${synthesis.nextSteps.map(p => `- ${p}`).join('\n')}
     this.appManager.setActiveNoteId(newNote.id);
     this.appManager.setViewMode('editor');
   };
+  
+  // --- New Multi-Agent Chat Methods ---
+  
+  handleCreateAgent = (agentData: Omit<AIAgent, 'id' | 'createdAt' | 'isCustom'>): AIAgent => {
+    const newAgent: AIAgent = {
+        id: crypto.randomUUID(),
+        createdAt: Date.now(),
+        isCustom: true,
+        ...agentData
+    };
+    useAgentStore.setState(state => ({ agents: [...state.agents, newAgent] }));
+    return newAgent;
+  }
+
+  handleUpdateAgent = (agentData: AIAgent) => {
+      if (!agentData.isCustom) {
+          alert("The default companion cannot be edited.");
+          return;
+      }
+      useAgentStore.setState(state => ({
+          agents: state.agents.map(a => a.id === agentData.id ? agentData : a)
+      }));
+  }
+
+  handleDeleteAgent = (agentId: string) => {
+      const agentToDelete = useAgentStore.getState().agents.find(a => a.id === agentId);
+      if (!agentToDelete?.isCustom) {
+          alert("The default companion cannot be deleted.");
+          return;
+      }
+      useAgentStore.setState(state => ({
+          agents: state.agents.filter(a => a.id !== agentId)
+      }));
+      // Also remove this agent from any chat sessions
+      useChatStore.setState(state => ({
+          sessions: state.sessions.map(session => ({
+              ...session,
+              participantIds: session.participantIds.filter(id => id !== agentId)
+          })).filter(session => session.participantIds.length > 0) // Remove sessions that are now empty
+      }));
+  }
+
+  handleCreateChatSession = (participantIds: string[]) => {
+      this.chatManager.createSession(participantIds);
+  }
+  
+  handleSetActiveChatSession = (sessionId: string | null) => {
+      useChatStore.setState({ activeSessionId: sessionId });
+  }
+
+  handleDeleteChatSession = (sessionId: string) => {
+      useChatStore.setState(state => {
+          const newSessions = state.sessions.filter(s => s.id !== sessionId);
+          let newActiveSessionId = state.activeSessionId;
+          if (state.activeSessionId === sessionId) {
+              newActiveSessionId = newSessions.length > 0 ? newSessions[0].id : null;
+          }
+          return { sessions: newSessions, activeSessionId: newActiveSessionId };
+      });
+  }
+
+  handleSendMessage = (sessionId: string, message: string) => {
+      this.chatManager.sendMessageInSession(sessionId, message);
+  }
+
+  handleAgentCreatorChat = async (history: ChatMessage[]) => {
+      const { getCreatorAgentResponse } = await import('../services/aiService');
+      const response = await getCreatorAgentResponse(history);
+      
+      let finalAgent: AIAgent | null = null;
+      let toolResponseMessage: ChatMessage | null = null;
+      
+      if (response.toolCalls && response.toolCalls[0]?.name === 'create_new_agent') {
+        const call = response.toolCalls[0];
+        const { name, description, systemInstruction, icon, color } = call.args;
+        
+        if(name && description && systemInstruction) {
+             finalAgent = this.handleCreateAgent({
+                name: name as string,
+                description: description as string,
+                systemInstruction: systemInstruction as string,
+                icon: icon as string || 'SparklesIcon',
+                color: color as string || 'indigo',
+            });
+            toolResponseMessage = {
+                id: crypto.randomUUID(),
+                role: 'tool',
+                content: `Successfully created agent: ${name}`,
+                tool_call_id: call.id
+            }
+        } else {
+             toolResponseMessage = {
+                id: crypto.randomUUID(),
+                role: 'tool',
+                content: `I couldn't create the agent. I am missing some required information. Please ensure you provide a name, description, and system instructions.`,
+                tool_call_id: call.id
+            }
+        }
+      }
+
+      const modelMessage: ChatMessage = {
+          id: crypto.randomUUID(),
+          role: 'model',
+          content: response.text || '',
+          toolCalls: response.toolCalls || undefined,
+          persona: "Agent Architect",
+      }
+      
+      return { modelMessage, toolResponseMessage, createdAgent: finalAgent };
+  }
+
 
   // --- Live Insights ---
   debouncedGetInsights = debounce(this.insightManager.getInsightsForNote, 1500);

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Note, ViewMode } from '../../types';
 import DocumentPlusIcon from '../icons/DocumentPlusIcon';
@@ -78,7 +79,7 @@ const NoteList: React.FC<NoteListProps> = ({
           </button>
           <button onClick={onShowChat} className={getButtonClasses('chat')}>
             <ChatBubbleLeftRightIcon className="w-5 h-5" />
-            <span>Companion</span>
+            <span>Chat</span>
           </button>
            <button onClick={onShowWiki} className={getButtonClasses('wiki')}>
             <BookOpenIcon className="w-5 h-5" />

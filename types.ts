@@ -56,7 +56,7 @@ export interface ChatMessage {
   id: string;
   role: 'user' | 'model' | 'tool';
   content: string;
-  persona?: 'The Pragmatist' | 'The Visionary' | 'Moderator' | 'Host' | 'Guest Expert';
+  persona?: string;
   synthesisContent?: DebateSynthesis;
   sourceNotes?: { id: string; title: string; }[];
   toolCalls?: ToolCall[];
@@ -103,6 +103,27 @@ export interface ProactiveSuggestion {
   prompt: string;
   description: string;
 }
+
+// --- Multi-Agent Chat Types ---
+export interface AIAgent {
+  id: string;
+  name: string;
+  description: string;
+  systemInstruction: string;
+  icon: string;
+  color: string;
+  createdAt: number;
+  isCustom: boolean;
+}
+
+export interface ChatSession {
+  id: string;
+  name: string;
+  participantIds: string[]; // agent IDs
+  history: ChatMessage[];
+  createdAt: number;
+}
+
 
 // --- Live Insights Types ---
 export type InsightType = 'related_note' | 'action_item' | 'wiki_concept';

@@ -1,27 +1,28 @@
+
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { ChatMessage, ProactiveSuggestion } from '../types';
+import { ChatSession } from '../types';
 
 interface ChatState {
-  chatHistory: ChatMessage[];
-  chatStatus: string | null; // Changed from isChatting: boolean
-  isThreadChatting: boolean;
-  proactiveSuggestions: ProactiveSuggestion[];
-  isLoadingSuggestions: boolean;
+  sessions: ChatSession[];
+  activeSessionId: string | null;
+  chatStatus: string | null; // e.g., 'Thinking...', 'Using tools...'
+  isThreadChatting: boolean; // Keep this for note-specific chats
 }
 
 export const useChatStore = create<ChatState>()(
   persist(
     () => ({
-      chatHistory: [],
+      sessions: [],
+      activeSessionId: null,
       chatStatus: null,
       isThreadChatting: false,
-      proactiveSuggestions: [],
-      isLoadingSuggestions: false,
     }),
     { 
-        name: 'ai-notes-chathistory',
-        partialize: (state) => ({ chatHistory: state.chatHistory }),
+        name: 'ai-notes-chatsessions',
+        partialize: (state) => ({ 
+            sessions: state.sessions,
+         }),
     }
   )
 );

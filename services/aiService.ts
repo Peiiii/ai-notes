@@ -120,9 +120,25 @@ const createNoteTool: FunctionDeclaration = {
 
 export const agentTools = [searchNotesTool, createNoteTool];
 
+export const createNewAgentTool: FunctionDeclaration = {
+    name: 'create_new_agent',
+    description: "Creates a new AI agent based on the user's specifications. Use this tool ONLY when you have collected the name, description, and system instructions from the user.",
+    parameters: {
+        type: Type.OBJECT,
+        properties: {
+            name: { type: Type.STRING, description: "The name for the new AI agent." },
+            description: { type: Type.STRING, description: "A short, one-sentence description of the agent's purpose." },
+            systemInstruction: { type: Type.STRING, description: "The detailed system instructions defining the agent's personality, capabilities, and constraints." },
+            icon: { type: Type.STRING, description: "Optional: Suggest an icon name from this list: SparklesIcon, BookOpenIcon, CpuChipIcon, LightbulbIcon, BeakerIcon, UsersIcon. Default is SparklesIcon." },
+            color: { type: Type.STRING, description: "Optional: Suggest a color from this list: slate, indigo, sky, purple, amber, rose, green. Default is indigo." }
+        },
+        required: ['name', 'description', 'systemInstruction']
+    }
+};
+
 // --- Agent Core Function ---
-export async function getAgentResponse(history: ChatMessage[], command?: Command): Promise<GenerateWithToolsResult> {
-    let systemInstruction = `You are a powerful AI assistant integrated into a note-taking app. 
+export async function getAgentResponse(history: ChatMessage[], command?: Command, customSystemInstruction?: string): Promise<GenerateWithToolsResult> {
+    let systemInstruction = customSystemInstruction || `You are a powerful AI assistant integrated into a note-taking app. 
 - You can search existing notes to answer questions.
 - You can create new notes.
 - When answering a question based on a search, be concise and directly state the answer.
@@ -149,6 +165,25 @@ ${systemInstruction}`;
     };
     return provider.generateContentWithTools(params);
 }
+
+export async function getCreatorAgentResponse(history: ChatMessage[]): Promise<GenerateWithToolsResult> {
+    const systemInstruction = `You are the 'Agent Architect'. Your role is to help the user create a new AI agent by having a friendly conversation with them.
+- Your goal is to gather three key pieces of information: a **name**, a short **description**, and the detailed **system instructions** for the new agent.
+- Guide the user step-by-step. Start by asking for the name. Then the description. Then the system instructions.
+- Be encouraging and helpful throughout the process.
+- Once you are confident you have all three pieces of information, you MUST use the \`create_new_agent\` tool to finalize the creation.
+- You can also suggest an icon and color for the agent, but it's not required.`;
+
+    const { provider, model } = getConfig('agent_reasoning'); // Reuse the reasoning model
+    const params: GenerateWithToolsParams = {
+        model,
+        history,
+        tools: [createNewAgentTool],
+        systemInstruction,
+    };
+    return provider.generateContentWithTools(params);
+}
+
 
 // --- RAG Retrieval Function ---
 const retrievalSchema = {
