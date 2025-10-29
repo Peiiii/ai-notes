@@ -198,9 +198,11 @@ const MindMap: React.FC<{ data: MindMapNodeData; onRegenerate: () => void; isLoa
     if (!svgElement) return;
 
     const handleWheel = (e: WheelEvent) => {
-        e.preventDefault();
-        const { clientX, clientY, deltaY } = e;
-        
+      const { clientX, clientY, deltaY, deltaX, ctrlKey } = e;
+
+      // Pinch-to-zoom gesture (should work in both modes)
+      if (ctrlKey) {
+        e.preventDefault(); // Always prevent browser page zoom for this gesture
         const point = new DOMPoint(clientX, clientY);
         const ctm = svgElement.getScreenCTM();
         if (!ctm) return;
@@ -208,6 +210,19 @@ const MindMap: React.FC<{ data: MindMapNodeData; onRegenerate: () => void; isLoa
         
         const zoomFactor = 1 + deltaY * ZOOM_SENSITIVITY;
         zoom(zoomFactor, svgPoint.x, svgPoint.y);
+
+      // Two-finger scroll/pan gesture
+      } else { 
+        // Only pan if in full-screen mode
+        if (isFullScreen) {
+          e.preventDefault(); // Prevent page scroll only in fullscreen
+          const scale = viewBox.width / (svgRef.current?.clientWidth || 1);
+          const dx = deltaX * scale * 0.5;
+          const dy = deltaY * scale * 0.5;
+          setViewBox(prev => ({ ...prev, x: prev.x + dx, y: prev.y + dy }));
+        }
+        // If not fullscreen, do nothing and let the browser handle the scroll
+      }
     };
 
     svgElement.addEventListener('wheel', handleWheel, { passive: false });
@@ -215,7 +230,7 @@ const MindMap: React.FC<{ data: MindMapNodeData; onRegenerate: () => void; isLoa
     return () => {
       svgElement.removeEventListener('wheel', handleWheel);
     };
-  }, [zoom]);
+  }, [isFullScreen, zoom, viewBox.width]);
   
   useEffect(() => {
     const handleFullScreenChange = () => {
@@ -256,9 +271,16 @@ const MindMap: React.FC<{ data: MindMapNodeData; onRegenerate: () => void; isLoa
       }
   }, [layout, collapsedNodes]);
   
+  // Ref to hold the latest fitToView function to avoid dependency issues
+  const fitToViewRef = useRef(fitToView);
   useEffect(() => {
-    setTimeout(() => fitToView(), 50);
-  }, [fitToView, isFullScreen]);
+    fitToViewRef.current = fitToView;
+  });
+
+  // Call fitToView only when the map data changes or when entering/exiting fullscreen
+  useEffect(() => {
+    setTimeout(() => fitToViewRef.current(), 50);
+  }, [data, isFullScreen]);
 
   const handleToggleCollapse = useCallback((nodeId: string) => {
     setCollapsedNodes(prev => {
