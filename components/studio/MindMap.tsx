@@ -27,56 +27,61 @@ interface PositionedNode extends MindMapNodeData {
 }
 
 // --- Layout Calculation ---
-function calculateTreeLayout(node: MindMapNodeData, collapsedNodes: Set<string>, depth = 0): PositionedNode {
+
+/**
+ * Pass 1: Recursively calculates the layout for each node relative to its parent.
+ * It determines the total height required for each subtree and the relative Y position of nodes.
+ * The 'x' coordinate is determined by the node's depth in the tree.
+ */
+function calculateInitialLayout(node: MindMapNodeData, collapsedNodes: Set<string>, depth = 0): PositionedNode {
   const isCollapsed = collapsedNodes.has(node.id);
   const children = (node.children && !isCollapsed) ? node.children : [];
-  
-  const positionedChildren = children.map(child => calculateTreeLayout(child, collapsedNodes, depth + 1));
 
-  let totalChildHeight = 0;
-  if (positionedChildren.length > 0) {
-    totalChildHeight = positionedChildren.reduce((acc, child) => acc + child.subtreeHeight, 0) + (positionedChildren.length - 1) * VERTICAL_SPACING;
-  }
-  
+  const positionedChildren = children.map(child => calculateInitialLayout(child, collapsedNodes, depth + 1));
+
+  const totalChildHeight = positionedChildren.length > 0
+    ? positionedChildren.reduce((acc, child) => acc + child.subtreeHeight, 0) + (positionedChildren.length - 1) * VERTICAL_SPACING
+    : 0;
+
   const subtreeHeight = Math.max(NODE_HEIGHT, totalChildHeight);
 
-  // Position children vertically
-  let currentY = (subtreeHeight / 2) * -1;
+  // Position children vertically relative to the parent's centerline (y=0)
+  let currentRelativeY = -subtreeHeight / 2;
   for (const child of positionedChildren) {
-    child.y = currentY + child.subtreeHeight / 2;
-    currentY += child.subtreeHeight + VERTICAL_SPACING;
+    child.y = currentRelativeY + child.subtreeHeight / 2;
+    currentRelativeY += child.subtreeHeight + VERTICAL_SPACING;
   }
-  
+
   const positionedNode: PositionedNode = {
     ...node,
     width: NODE_WIDTH,
     height: NODE_HEIGHT,
-    x: depth * (NODE_WIDTH + HORIZONTAL_SPACING),
-    y: 0, // This node is at the center of its own coordinate system
+    x: depth * (NODE_WIDTH + HORIZONTAL_SPACING), // X is absolute based on depth
+    y: 0, // Y is relative to its parent, starts at 0
     children: positionedChildren,
     originalChildren: node.children,
     subtreeHeight: subtreeHeight,
   };
 
-  // Center the parent node vertically relative to its children for a balanced look
+  // Center the parent node vertically among its children
   if (positionedChildren.length > 0) {
-      const firstChildY = positionedChildren[0].y;
-      const lastChildY = positionedChildren[positionedChildren.length - 1].y;
-      positionedNode.y = (firstChildY + lastChildY) / 2;
+    const firstChildY = positionedChildren[0].y;
+    const lastChildY = positionedChildren[positionedChildren.length - 1].y;
+    positionedNode.y = (firstChildY + lastChildY) / 2;
   }
-  
+
   return positionedNode;
 }
 
-// Set absolute positions after the relative layout is done
-function setAbsolutePositions(node: PositionedNode, parentX = 0, parentY = 0) {
-    node.x += parentX;
-    node.y += parentY;
-    node.children.forEach(child => {
-        // Parent's y is centered, so the child's y is relative to that center
-        const childParentY = node.y;
-        setAbsolutePositions(child, node.x, childParentY);
-    });
+/**
+ * Pass 2: Traverses the tree and converts the relative Y coordinates to absolute ones.
+ * This is done by adding the parent's absolute Y position to each child's relative Y.
+ */
+function applyAbsoluteYPositions(node: PositionedNode, parentAbsoluteY = 0) {
+  node.y += parentAbsoluteY;
+  node.children.forEach(child => {
+    applyAbsoluteYPositions(child, node.y);
+  });
 }
 
 
@@ -178,9 +183,9 @@ const MindMap: React.FC<{ data: MindMapNodeData; onRegenerate: () => void; isLoa
   const lastPoint = useRef({ x: 0, y: 0 });
 
   const layout = useMemo(() => {
-    const relativeLayout = calculateTreeLayout(data, collapsedNodes);
-    setAbsolutePositions(relativeLayout);
-    return relativeLayout;
+    const treeWithRelativeY = calculateInitialLayout(data, collapsedNodes);
+    applyAbsoluteYPositions(treeWithRelativeY);
+    return treeWithRelativeY;
   }, [data, collapsedNodes]);
 
   const zoom = useCallback((factor: number, centerX: number, centerY: number) => {
