@@ -13,7 +13,7 @@ import { WikiManager } from '../managers/WikiManager';
 import { ParliamentManager } from '../managers/ParliamentManager';
 import { CommandManager } from '../managers/CommandManager';
 import { InsightManager } from '../managers/InsightManager';
-import { KnowledgeCard, Note, WikiEntry, WIKI_ROOT_ID, DebateSynthesis, Todo, AIAgent, ChatMessage } from '../types';
+import { KnowledgeCard, Note, WikiEntry, WIKI_ROOT_ID, DebateSynthesis, Todo, AIAgent, ChatMessage, DiscussionMode } from '../types';
 import { Command } from '../commands';
 
 // simple debounce utility
@@ -190,8 +190,8 @@ ${synthesis.nextSteps.map(p => `- ${p}`).join('\n')}
       }));
   }
 
-  handleCreateChatSession = (participantIds: string[]) => {
-      this.chatManager.createSession(participantIds);
+  handleCreateChatSession = (participantIds: string[], discussionMode: DiscussionMode) => {
+      this.chatManager.createSession(participantIds, discussionMode);
   }
   
   handleSetActiveChatSession = (sessionId: string | null) => {
@@ -211,6 +211,14 @@ ${synthesis.nextSteps.map(p => `- ${p}`).join('\n')}
 
   handleSendMessage = (sessionId: string, message: string) => {
       this.chatManager.sendMessageInSession(sessionId, message);
+  }
+  
+  handleAddAgentsToSession = (sessionId: string, agentIds: string[]) => {
+      this.chatManager.addAgentsToSession(sessionId, agentIds);
+  }
+  
+  handleUpdateSessionMode = (sessionId: string, newMode: DiscussionMode) => {
+      this.chatManager.updateSessionMode(sessionId, newMode);
   }
 
   handleAgentCreatorChat = async (history: ChatMessage[]) => {

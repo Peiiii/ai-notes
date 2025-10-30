@@ -10,7 +10,8 @@ export class AppManager {
     useAppStore.setState({ activeNoteId: id });
   }
 
-  setInitialWikiHistory = (history: (Note | WikiEntry)[] | null) => {
+  // Fix: Changed type to only allow WikiEntry[] to match the updated app state.
+  setInitialWikiHistory = (history: WikiEntry[] | null) => {
     useAppStore.setState({ initialWikiHistory: history });
   }
 

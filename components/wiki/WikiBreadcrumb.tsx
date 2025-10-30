@@ -1,20 +1,22 @@
 import React from 'react';
-import { Note, WikiEntry } from '../../types';
+// Fix: Removed Note and ExplorationItem type as history now only contains WikiEntry.
+import { WikiEntry } from '../../types';
 import ChevronRightIcon from '../icons/ChevronRightIcon';
 import HoverPopup from '../ui/HoverPopup';
 
-type ExplorationItem = Note | WikiEntry;
-
 interface WikiBreadcrumbProps {
-    history: ExplorationItem[];
+    // Fix: Updated history to be of type WikiEntry[]
+    history: WikiEntry[];
     wikis: WikiEntry[];
-    setHistory: React.Dispatch<React.SetStateAction<ExplorationItem[]>>;
+    // Fix: Updated setHistory to work with WikiEntry[]
+    setHistory: React.Dispatch<React.SetStateAction<WikiEntry[]>>;
 }
 
 const WikiBreadcrumb: React.FC<WikiBreadcrumbProps> = ({ history, wikis, setHistory }) => {
-    const BreadcrumbItem = ({ item, isLast }: { item: ExplorationItem; isLast: boolean }) => {
-        const children = 'id' in item ? wikis.filter(w => w.parentId === item.id) : [];
-        const title = 'term' in item ? item.term : item.title || 'Untitled Note';
+    // Fix: Updated item to be of type WikiEntry and simplified title logic.
+    const BreadcrumbItem = ({ item, isLast }: { item: WikiEntry; isLast: boolean }) => {
+        const children = wikis.filter(w => w.parentId === item.id);
+        const title = item.term;
 
         const handleItemClick = () => {
             const itemIndex = history.findIndex(h => h.id === item.id);

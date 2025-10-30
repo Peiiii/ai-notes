@@ -1,9 +1,10 @@
 
 import { Note, KnowledgeCard, ChatMessage, DebateSynthesis, ToolCall, ProactiveSuggestion } from '../types';
-import { geminiProvider } from './providers/geminiProvider';
+import { geminiProvider, GEMINI_MODELS } from './providers/geminiProvider';
 import { openAIProvider, dashscopeProvider, deepseekProvider, openRouterProvider } from './providers/openaiProvider';
 import { LLMProvider, GenerateJsonParams, GenerateTextParams, ModelTier, GenerateWithToolsParams, GenerateWithToolsResult } from './providers/types';
-import { Type, FunctionDeclaration } from "@google/genai";
+// Fix: Imported `GoogleGenAI` to resolve 'Cannot find name' error.
+import { GoogleGenAI, Type, FunctionDeclaration, GenerateContentResponse } from "@google/genai";
 import { Command } from '../commands';
 
 // --- Provider Registry ---
@@ -54,7 +55,7 @@ const baseScheme: Record<string, { model: ModelTier; provider?: string }> = {
   debateSynthesis:{ provider: 'gemini', model: 'lite' },
   podcastTurn:    { provider: 'gemini', model: 'lite' },
   mindMap:        { model: 'fast' },
-  agent_reasoning:{ model: 'pro' },
+  agent_reasoning:{ model: 'fast' },
   agent_retrieval:{ model: 'lite' },
   agent_final_answer: { model: 'fast'},
   agent_proactive:{ model: 'lite' },
@@ -76,8 +77,16 @@ const allSchemes: Record<string, CapabilityConfig> = {
     openrouter: buildScheme('openrouter'),
 };
 
+// Create a new scheme for quick testing where all models are 'lite'
+const quickTestScheme = JSON.parse(JSON.stringify(allSchemes.gemini));
+for (const key in quickTestScheme) {
+    quickTestScheme[key as keyof CapabilityConfig].model = 'lite';
+}
+allSchemes['quick-test'] = quickTestScheme;
+
+
 // --- Active Scheme Selection ---
-const activeSchemeName = process.env.AI_SCHEME || 'gemini';
+const activeSchemeName = process.env.AI_SCHEME || 'quick-test';
 const capabilityConfig = allSchemes[activeSchemeName] || allSchemes.gemini;
 
 console.log(`Using AI Scheme: "${activeSchemeName}"`);
@@ -136,6 +145,73 @@ export const createNewAgentTool: FunctionDeclaration = {
     }
 };
 
+export const moderatorTools: FunctionDeclaration[] = [
+    {
+        name: 'select_next_speaker',
+        description: "Selects the next AI agent to speak in the discussion.",
+        parameters: {
+            type: Type.OBJECT,
+            properties: {
+                agent_name: { 
+                    type: Type.STRING, 
+                    description: "The exact name of the agent who should speak next." 
+                },
+                reason: {
+                    type: Type.STRING,
+                    description: "A brief reason why this agent was chosen to speak next."
+                }
+            },
+            required: ['agent_name', 'reason']
+        }
+    },
+    {
+        name: 'end_discussion',
+        description: "Ends the current discussion turn when the user's query has been fully addressed.",
+        parameters: {
+            type: Type.OBJECT,
+            properties: {
+                 summary: {
+                    type: Type.STRING,
+                    description: "A brief summary of why the discussion is ending."
+                }
+            },
+            required: ['summary']
+        }
+    }
+];
+
+export async function getModeratorResponse(history: ChatMessage[], availableAgents: string[], spokenAgentNames: string[]): Promise<GenerateWithToolsResult> {
+    const lastUserMessage = history.filter(m => m.role === 'user').pop()?.content || '';
+    const systemInstruction = `You are an expert AI moderator orchestrating a group chat. Your goal is to ensure the user's request is fully and completely addressed by the AI agents. You are in a continuous loop. After each agent speaks, you are re-invoked to decide the next action.
+
+**Current State of this Turn:**
+*   **User's Request:** "${lastUserMessage}"
+*   **Available Agents:** [${availableAgents.join(', ')}]
+*   **Agents who have already spoken this turn:** [${spokenAgentNames.join(', ')}]
+
+**Your Process:**
+1.  **Analyze the User's Request.** What is the user's explicit or implicit goal? Does it require multiple agents to respond (e.g., "everyone", "each of you", "all of you")?
+2.  **Compare with who has spoken.** Look at the list of agents who have already spoken this turn.
+3.  **Decide the next action using a tool:**
+    *   If the request requires more input, use \`select_next_speaker\` to call on an agent from the 'Available Agents' list who is **NOT** in the 'already spoken' list.
+    *   Use \`end_discussion\` **ONLY** when the user's request is fully satisfied. For multi-agent requests, this means every required agent has contributed.
+
+**CRITICAL RULES:**
+1.  **Multi-Agent Requests:** If the user's request implies multiple participants (e.g., "everyone introduce yourselves"), you MUST call \`select_next_speaker\` for each required agent, one by one. You are FORBIDDEN from using \`end_discussion\` until every necessary agent has spoken.
+2.  **Mandatory Re-evaluation:** You are re-invoked after every agent's turn. You MUST re-evaluate the state. Do not end the discussion prematurely. Ask yourself: "Based on the user's original request and who has spoken, is there anyone else who needs to contribute?" If yes, you MUST select another speaker.
+3.  **Tool Only:** You MUST respond with only a tool call. Do not add any conversational text.`;
+    
+    const { provider, model } = getConfig('agent_reasoning');
+
+    const params: GenerateWithToolsParams = {
+        model,
+        history,
+        tools: moderatorTools,
+        systemInstruction,
+    };
+    return provider.generateContentWithTools(params);
+}
+
 // --- Agent Core Function ---
 export async function getAgentResponse(history: ChatMessage[], command?: Command, customSystemInstruction?: string): Promise<GenerateWithToolsResult> {
     let systemInstruction = customSystemInstruction || `You are a powerful AI assistant integrated into a note-taking app. 
@@ -164,6 +240,31 @@ ${systemInstruction}`;
         systemInstruction,
     };
     return provider.generateContentWithTools(params);
+}
+
+export async function getAgentResponseStream(history: ChatMessage[], systemInstruction: string): Promise<AsyncGenerator<GenerateContentResponse>> {
+  const { model: modelTier } = getConfig('agent_reasoning');
+  const geminiModelName = GEMINI_MODELS[modelTier];
+
+  const contents = history.map(msg => ({
+    role: msg.role === 'model' ? 'model' : 'user',
+    parts: [{ text: msg.content }],
+  }));
+
+  try {
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const response = await ai.models.generateContentStream({
+        model: geminiModelName,
+        contents: contents,
+        config: {
+            systemInstruction: systemInstruction,
+        },
+    });
+    return response;
+  } catch (error) {
+    console.error(`Error getting streaming agent response:`, error);
+    throw new Error("Failed to get streaming response from Gemini AI.");
+  }
 }
 
 export async function getCreatorAgentResponse(history: ChatMessage[]): Promise<GenerateWithToolsResult> {

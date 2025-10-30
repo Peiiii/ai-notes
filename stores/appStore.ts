@@ -4,7 +4,8 @@ import { ViewMode, Note, WikiEntry, PulseReport } from '../types';
 interface AppState {
   viewMode: ViewMode;
   activeNoteId: string | null;
-  initialWikiHistory: (Note | WikiEntry)[] | null;
+  // Fix: Changed type to only allow WikiEntry[] to match component props.
+  initialWikiHistory: WikiEntry[] | null;
   viewingPulseReport: PulseReport | null;
   commandToCreate: string | null;
 }

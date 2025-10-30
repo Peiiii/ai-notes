@@ -4,7 +4,7 @@ import { ChatMessage, ToolCall } from "../../types";
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-const GEMINI_MODELS: Record<ModelTier, string> = {
+export const GEMINI_MODELS: Record<ModelTier, string> = {
     lite: 'gemini-flash-lite-latest',
     fast: 'gemini-2.5-flash',
     pro: 'gemini-2.5-pro',

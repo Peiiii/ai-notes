@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { ChatMessage, AIAgent, ChatSession } from '../../types';
+import { ChatMessage, AIAgent, ChatSession, DiscussionMode } from '../../types';
 import { Command } from '../../commands';
 import { Presenter } from '../../presenter';
 import PaperAirplaneIcon from '../icons/PaperAirplaneIcon';
@@ -16,13 +16,16 @@ import Cog6ToothIcon from '../icons/Cog6ToothIcon';
 import PencilIcon from '../icons/PencilIcon';
 import TrashIcon from '../icons/TrashIcon';
 import UsersIcon from '../icons/UsersIcon';
+import UserPlusIcon from '../icons/UserPlusIcon';
 import CpuChipIcon from '../icons/CpuChipIcon';
 import LightbulbIcon from '../icons/LightbulbIcon';
 import BeakerIcon from '../icons/BeakerIcon';
 import ChatBubbleLeftRightIcon from '../icons/ChatBubbleLeftRightIcon';
 import ChevronDoubleLeftIcon from '../icons/ChevronDoubleLeftIcon';
 import ChevronDoubleRightIcon from '../icons/ChevronDoubleRightIcon';
-
+import ArrowPathIcon from '../icons/ArrowPathIcon';
+import SpeakerWaveIcon from '../icons/SpeakerWaveIcon';
+import ChevronDownIcon from '../icons/ChevronDownIcon';
 
 // --- Available Icons & Colors for Agent Creation ---
 const agentIcons: Record<string, React.FC<any>> = {
@@ -58,33 +61,100 @@ const AgentAvatar: React.FC<{ agent: AIAgent, size?: 'sm' | 'md' | 'lg'}> = ({ a
     );
 }
 
+const ParticipantAvatarStack: React.FC<{ agents: AIAgent[], size?: 'sm' | 'lg'}> = ({ agents, size = 'sm' }) => {
+    const maxVisible = size === 'sm' ? 3 : 4;
+    const visibleAgents = agents.slice(0, maxVisible);
+    const hiddenCount = agents.length - maxVisible;
+    const sizeClasses = size === 'sm' ? 'h-6 min-w-6 px-1' : 'h-10 min-w-10 px-1.5';
+    
+    return (
+        <div className="flex items-center flex-shrink-0">
+            <div className={`flex ${size === 'sm' ? '-space-x-2' : '-space-x-4'}`}>
+                {visibleAgents.map(agent => (
+                    <div key={agent.id} className={`ring-2 ring-slate-100 dark:ring-slate-800 rounded-full`}>
+                      <AgentAvatar agent={agent} size={size} />
+                    </div>
+                ))}
+            </div>
+            {hiddenCount > 0 && (
+                <div className={`flex items-center justify-center rounded-full bg-slate-200 dark:bg-slate-600 text-slate-600 dark:text-slate-300 text-xs font-bold z-10 ring-2 ring-slate-100 dark:ring-slate-800 ${sizeClasses} ${size === 'sm' ? '-ml-2' : '-ml-4'}`}>
+                    +{hiddenCount}
+                </div>
+            )}
+        </div>
+    );
+};
+
+// --- New WeChat-inspired Composite Avatar ---
+const CompositeAvatar: React.FC<{ agents: AIAgent[] }> = ({ agents }) => {
+    const displayAgents = agents.slice(0, 4); // Max 4 in a 2x2 grid
+    return (
+        <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex-shrink-0 grid grid-cols-2 grid-rows-2 gap-px p-px overflow-hidden">
+            {displayAgents.map((agent) => {
+                const Icon = agentIcons[agent.icon] || SparklesIcon;
+                const color = iconColors[agent.color] || iconColors.indigo;
+                // Note: We use rounded-none here because the parent provides the circle mask
+                return (
+                    <div key={agent.id} className={`w-full h-full flex items-center justify-center ${color.bg}`}>
+                        <Icon className={`w-[65%] h-[65%] ${color.text}`} />
+                    </div>
+                );
+            })}
+        </div>
+    );
+};
+
+
+// --- Discussion Modes ---
+const discussionModes: { id: DiscussionMode; name: string; description: string; icon: React.FC<any> }[] = [
+    { id: 'concurrent', name: 'Concurrent', description: 'All agents respond at the same time. Best for quick brainstorming.', icon: SparklesIcon },
+    { id: 'turn_based', name: 'Turn-Based', description: 'Agents respond one after another, seeing previous replies.', icon: ArrowPathIcon },
+    { id: 'moderated', name: 'Moderated', description: 'A moderator AI directs the conversation, choosing who speaks.', icon: SpeakerWaveIcon },
+];
+
 // --- Chat View Props ---
 interface ChatViewProps {
   sessions: ChatSession[];
   activeSession: ChatSession | null;
   agents: AIAgent[];
-  chatStatus: string | null;
   onSendMessage: (sessionId: string, message: string) => void;
   onSelectNote: (noteId: string) => void;
   commands: Command[];
   onOpenCreateCommandModal: (commandName: string) => void;
   onSetActiveSession: (sessionId: string | null) => void;
-  onCreateSession: (participantIds: string[]) => void;
+  onCreateSession: (participantIds: string[], discussionMode: DiscussionMode) => void;
   onDeleteSession: (sessionId: string) => void;
   onCreateAgent: (agentData: Omit<AIAgent, 'id' | 'createdAt' | 'isCustom'>) => AIAgent;
   onUpdateAgent: (agentData: AIAgent) => void;
   onDeleteAgent: (agentId: string) => void;
+  onAddAgentsToSession: (sessionId: string, agentIds: string[]) => void;
+  onUpdateSessionMode: (sessionId: string, newMode: DiscussionMode) => void;
   presenter: Presenter;
 }
 
+const ThinkingIndicator = () => (
+    <div className="flex items-center gap-1.5 p-3">
+        <span className="w-2 h-2 bg-indigo-400 rounded-full animate-pulse" style={{ animationDelay: '0s' }}></span>
+        <span className="w-2 h-2 bg-indigo-400 rounded-full animate-pulse" style={{ animationDelay: '0.1s' }}></span>
+        <span className="w-2 h-2 bg-indigo-400 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></span>
+    </div>
+);
+
 // --- Chat Panel Component (Right Side) ---
-const ChatPanel: React.FC<Omit<ChatViewProps, 'sessions' | 'presenter'>> = ({
-  activeSession, agents, chatStatus, onSendMessage, onSelectNote, commands, onOpenCreateCommandModal
+const ChatPanel: React.FC<Pick<ChatViewProps, 'activeSession' | 'agents' | 'onSendMessage' | 'onSelectNote' | 'commands' | 'onOpenCreateCommandModal' | 'onAddAgentsToSession' | 'onUpdateSessionMode'>> = ({
+  activeSession, agents, onSendMessage, onSelectNote, commands, onOpenCreateCommandModal, onAddAgentsToSession, onUpdateSessionMode
 }) => {
   const [chatInput, setChatInput] = useState('');
+  const [isAddAgentModalOpen, setAddAgentModalOpen] = useState(false);
+  const [isModeDropdownOpen, setModeDropdownOpen] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const isChatting = !!chatStatus;
+  const modeDropdownRef = useRef<HTMLDivElement>(null);
+  
+  const isChatting = useMemo(() => 
+    activeSession?.history.some(m => m.status === 'thinking' || m.status === 'streaming') || false,
+    [activeSession?.history]
+  );
   
   const [showCommands, setShowCommands] = useState(false);
   const [commandQuery, setCommandQuery] = useState('');
@@ -93,10 +163,18 @@ const ChatPanel: React.FC<Omit<ChatViewProps, 'sessions' | 'presenter'>> = ({
   const filteredCommands = commands.filter(c => c.name.toLowerCase().startsWith(commandQuery.toLowerCase()));
 
   useEffect(() => {
-    if (activeSession) {
+    const handleClickOutside = (event: MouseEvent) => {
+        if (modeDropdownRef.current && !modeDropdownRef.current.contains(event.target as Node)) {
+            setModeDropdownOpen(false);
+        }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [modeDropdownRef]);
+
+  useEffect(() => {
       chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [activeSession?.history, chatStatus]);
+  }, [activeSession?.history]);
   
   useEffect(() => {
     setChatInput('');
@@ -172,23 +250,74 @@ const ChatPanel: React.FC<Omit<ChatViewProps, 'sessions' | 'presenter'>> = ({
   }
 
   const participants = agents.filter(a => activeSession.participantIds.includes(a.id));
+  const availableAgentsToAdd = agents.filter(a => !activeSession.participantIds.includes(a.id));
+  const currentMode = discussionModes.find(m => m.id === activeSession.discussionMode) || discussionModes[0];
+  const CurrentModeIcon = currentMode.icon;
 
   return (
     <div className="h-full flex flex-col bg-white dark:bg-slate-800/50">
-      <div className="p-3 border-b border-slate-200 dark:border-slate-700 flex items-center gap-3">
-          <div className="flex -space-x-2">
-            {participants.map(p => <AgentAvatar key={p.id} agent={p} size="lg"/>)}
+      <div className="p-3 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <ParticipantAvatarStack agents={participants} size="lg"/>
+            <div className="flex-1 min-w-0">
+                <h1 className="text-lg font-bold text-slate-800 dark:text-slate-100 truncate">{activeSession.name}</h1>
+                <p className="text-sm text-slate-500 dark:text-slate-400 truncate">
+                    {participants.length > 1 ? `${participants.length} Agents` : participants[0]?.description || 'Chat'}
+                </p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-lg font-bold text-slate-800 dark:text-slate-100 truncate">{activeSession.name}</h1>
-            <p className="text-sm text-slate-500 dark:text-slate-400">
-                {participants.length > 1 ? `${participants.length} Agents` : participants[0]?.description || 'Chat'}
-            </p>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {participants.length > 1 && (
+                <div className="relative" ref={modeDropdownRef}>
+                    <button 
+                        onClick={() => setModeDropdownOpen(prev => !prev)}
+                        className="flex items-center gap-2 text-sm font-medium text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-700/50 hover:bg-slate-200 dark:hover:bg-slate-700 px-3 py-1.5 rounded-md"
+                    >
+                        <CurrentModeIcon className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+                        <span>{currentMode.name}</span>
+                        <ChevronDownIcon className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+                    </button>
+                    {isModeDropdownOpen && (
+                        <div className="absolute top-full right-0 mt-2 w-64 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 z-10 p-2 animate-in fade-in zoom-in-95">
+                            {discussionModes.map(mode => (
+                                <button
+                                    key={mode.id}
+                                    onClick={() => {
+                                        onUpdateSessionMode(activeSession.id, mode.id);
+                                        setModeDropdownOpen(false);
+                                    }}
+                                    className="w-full text-left p-2 flex items-start gap-3 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700"
+                                >
+                                    <mode.icon className="w-5 h-5 mt-0.5 text-indigo-500 dark:text-indigo-400 flex-shrink-0"/>
+                                    <div>
+                                        <p className="font-semibold text-sm">{mode.name}</p>
+                                        <p className="text-xs text-slate-500 dark:text-slate-400">{mode.description}</p>
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
+            {availableAgentsToAdd.length > 0 && (
+              <button 
+                  onClick={() => setAddAgentModalOpen(true)}
+                  title="Add agent to chat"
+                  className="p-2 rounded-full text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50"
+              >
+                  <UserPlusIcon className="w-5 h-5"/>
+              </button>
+            )}
           </div>
       </div>
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {activeSession.history.map((msg) => {
             const agent = agents.find(a => a.name === msg.persona);
+            if (msg.role === 'system') return (
+              <div key={msg.id} className="text-center text-xs text-slate-400 dark:text-slate-500 italic my-2">
+                {msg.content}
+              </div>
+            );
             if (msg.role === 'user') return (
               <div key={msg.id} className="flex items-start gap-3 max-w-4xl mx-auto justify-end">
                 <div className="p-3 rounded-lg max-w-lg bg-indigo-600 text-white rounded-br-none">
@@ -206,8 +335,14 @@ const ChatPanel: React.FC<Omit<ChatViewProps, 'sessions' | 'presenter'>> = ({
                 {agent ? <AgentAvatar agent={agent} /> : <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center flex-shrink-0"><SparklesIcon className="w-5 h-5 text-indigo-500 dark:text-indigo-400" /></div>}
                 <div className="flex flex-col items-start">
                   <div className="p-3 rounded-lg max-w-lg bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-bl-none">
-                    {msg.persona && msg.persona !== 'Group AI' && <p className="text-xs font-bold mb-1 text-indigo-600 dark:text-indigo-400">{msg.persona}</p>}
-                    <div className="text-sm leading-relaxed whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: msg.content.replace(/\[([^\]]+)\]:/g, '<strong>$1:</strong>') }}></div>
+                    {msg.persona && <p className="text-xs font-bold mb-1 text-indigo-600 dark:text-indigo-400">{msg.persona}</p>}
+                    
+                    {msg.status === 'thinking' ? (
+                        <ThinkingIndicator />
+                    ) : (
+                        <div className="text-sm leading-relaxed prose prose-slate dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: window.marked.parse(msg.content) }}></div>
+                    )}
+
                   </div>
                   {msg.sourceNotes && msg.sourceNotes.length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-2 items-center">
@@ -224,23 +359,6 @@ const ChatPanel: React.FC<Omit<ChatViewProps, 'sessions' | 'presenter'>> = ({
               </div>
             );
         })}
-        {isChatting && (
-          <div className="flex items-start gap-3 max-w-4xl mx-auto">
-            <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center flex-shrink-0">
-              <SparklesIcon className="w-5 h-5 text-indigo-500 dark:text-indigo-400" />
-            </div>
-            <div className="p-3 rounded-lg bg-slate-100 dark:bg-slate-700 rounded-bl-none">
-              <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 bg-indigo-400 rounded-full animate-pulse" style={{ animationDelay: '0s' }}></span>
-                  <span className="w-2 h-2 bg-indigo-400 rounded-full animate-pulse" style={{ animationDelay: '0.1s' }}></span>
-                  <span className="w-2 h-2 bg-indigo-400 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></span>
-                </div>
-                <span>{chatStatus}</span>
-              </div>
-            </div>
-          </div>
-        )}
         <div ref={chatEndRef} />
       </div>
       <div className="p-4 border-t border-slate-200 dark:border-slate-700">
@@ -276,6 +394,12 @@ const ChatPanel: React.FC<Omit<ChatViewProps, 'sessions' | 'presenter'>> = ({
           </div>
         </form>
       </div>
+       <AddAgentsModal
+            isOpen={isAddAgentModalOpen}
+            onClose={() => setAddAgentModalOpen(false)}
+            agents={availableAgentsToAdd}
+            onAddAgents={(agentIds) => onAddAgentsToSession(activeSession.id, agentIds)}
+        />
     </div>
   );
 };
@@ -301,19 +425,40 @@ const ChatView: React.FC<ChatViewProps> = (props) => {
             <ul className="space-y-1">
                 {props.sessions.map(session => {
                     const participants = props.agents.filter(a => session.participantIds.includes(a.id));
+                    if (participants.length === 0) return null;
+
+                    const lastMessage = [...session.history].reverse().find(m => m.role !== 'system');
+                    const lastMessageContent = lastMessage?.content || 'No messages yet';
+
                     return (
                         <li key={session.id}>
-                            <button onClick={() => props.onSetActiveSession(session.id)} className={`w-full text-left p-2 rounded-md flex items-center gap-3 group ${props.activeSession?.id === session.id ? 'bg-indigo-100 dark:bg-indigo-900/50' : 'hover:bg-slate-200 dark:hover:bg-slate-700/50'}`}>
-                                <div className="flex -space-x-3">
-                                    {participants.slice(0, 3).map(p => <AgentAvatar key={p.id} agent={p} size="sm"/>)}
-                                </div>
-                                {!isSidebarCollapsed && (
-                                  <div className="flex-1 overflow-hidden">
-                                      <p className={`text-sm font-semibold truncate ${props.activeSession?.id === session.id ? 'text-indigo-800 dark:text-indigo-200' : 'text-slate-800 dark:text-slate-200'}`}>{session.name}</p>
-                                      <p className={`text-xs truncate ${props.activeSession?.id === session.id ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400'}`}>{session.history.length > 0 ? session.history[session.history.length-1].content : 'No messages yet'}</p>
-                                  </div>
+                            <button onClick={() => props.onSetActiveSession(session.id)} className={`w-full text-left p-2 rounded-md flex items-center group transition-colors ${isSidebarCollapsed ? 'justify-center' : 'gap-3'} ${props.activeSession?.id === session.id ? 'bg-indigo-100 dark:bg-indigo-900/50' : 'hover:bg-slate-200 dark:hover:bg-slate-700/50'}`}>
+                                
+                                {/* AVATAR LOGIC */}
+                                {isSidebarCollapsed ? (
+                                    participants.length > 1 ? (
+                                        <CompositeAvatar agents={participants} />
+                                    ) : (
+                                        <AgentAvatar agent={participants[0]} size="md" />
+                                    )
+                                ) : (
+                                     participants.length > 1 ? (
+                                        <ParticipantAvatarStack agents={participants} size="sm" />
+                                     ) : (
+                                        <AgentAvatar agent={participants[0]} size="md" />
+                                     )
                                 )}
-                                {!isSidebarCollapsed && <button onClick={(e) => {e.stopPropagation(); props.onDeleteSession(session.id)}} className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 p-1 rounded-full flex-shrink-0"><TrashIcon className="w-4 h-4"/></button>}
+                                
+                                {/* TEXT & DELETE LOGIC (Expanded only) */}
+                                {!isSidebarCollapsed && (
+                                  <>
+                                    <div className="flex-1 overflow-hidden">
+                                        <p className={`text-sm font-semibold truncate ${props.activeSession?.id === session.id ? 'text-indigo-800 dark:text-indigo-200' : 'text-slate-800 dark:text-slate-200'}`}>{session.name}</p>
+                                        <p className={`text-xs truncate ${props.activeSession?.id === session.id ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400'}`}>{lastMessageContent.replace(/\s+/g, ' ')}</p>
+                                    </div>
+                                    <button onClick={(e) => {e.stopPropagation(); props.onDeleteSession(session.id)}} className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 p-1 rounded-full flex-shrink-0 transition-opacity"><TrashIcon className="w-4 h-4"/></button>
+                                  </>
+                                )}
                             </button>
                         </li>
                     )
@@ -333,14 +478,26 @@ const ChatView: React.FC<ChatViewProps> = (props) => {
 
       {/* Main Chat Panel (Right Side) */}
       <div className="flex-1 h-full min-w-0">
-        <ChatPanel {...props} />
+        <ChatPanel 
+            activeSession={props.activeSession}
+            agents={props.agents}
+            onSendMessage={props.onSendMessage}
+            onSelectNote={props.onSelectNote}
+            commands={props.commands}
+            onOpenCreateCommandModal={props.onOpenCreateCommandModal}
+            onAddAgentsToSession={props.onAddAgentsToSession}
+            onUpdateSessionMode={props.onUpdateSessionMode}
+        />
       </div>
 
       {/* Modals */}
       <AgentManagerModal 
         isOpen={isAgentManagerOpen} 
         onClose={() => setIsAgentManagerOpen(false)}
-        {...props}
+        agents={props.agents}
+        presenter={props.presenter}
+        onUpdateAgent={props.onUpdateAgent}
+        onDeleteAgent={props.onDeleteAgent}
       />
       <NewChatModal
         isOpen={isNewChatOpen}
@@ -555,14 +712,18 @@ interface NewChatModalProps {
   isOpen: boolean;
   onClose: () => void;
   agents: AIAgent[];
-  onCreateSession: (participantIds: string[]) => void;
+  onCreateSession: (participantIds: string[], discussionMode: DiscussionMode) => void;
 }
 
 const NewChatModal: React.FC<NewChatModalProps> = ({ isOpen, onClose, agents, onCreateSession }) => {
     const [selectedAgentIds, setSelectedAgentIds] = useState<Set<string>>(new Set());
+    const [discussionMode, setDiscussionMode] = useState<DiscussionMode>('concurrent');
 
     useEffect(() => {
-        if(isOpen) setSelectedAgentIds(new Set());
+        if(isOpen) {
+            setSelectedAgentIds(new Set());
+            setDiscussionMode('concurrent');
+        }
     }, [isOpen]);
 
     const toggleSelection = (agentId: string) => {
@@ -579,7 +740,7 @@ const NewChatModal: React.FC<NewChatModalProps> = ({ isOpen, onClose, agents, on
 
     const handleStartChat = () => {
         if (selectedAgentIds.size > 0) {
-            onCreateSession(Array.from(selectedAgentIds));
+            onCreateSession(Array.from(selectedAgentIds), discussionMode);
             onClose();
         }
     };
@@ -600,6 +761,24 @@ const NewChatModal: React.FC<NewChatModalProps> = ({ isOpen, onClose, agents, on
                         </button>
                     ))}
                 </div>
+                
+                {selectedAgentIds.size > 1 && (
+                    <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+                        <h3 className="text-base font-semibold mb-3">Discussion Mode</h3>
+                        <div className="space-y-2">
+                            {discussionModes.map(mode => (
+                                <button key={mode.id} onClick={() => setDiscussionMode(mode.id)} className={`w-full text-left p-2 flex items-start gap-3 rounded-lg border-2 transition-colors ${discussionMode === mode.id ? 'bg-indigo-50 dark:bg-indigo-900/50 border-indigo-500' : 'bg-slate-100 dark:bg-slate-700/50 border-transparent hover:border-slate-300 dark:hover:border-slate-600'}`}>
+                                    <mode.icon className="w-5 h-5 mt-0.5 text-indigo-500 dark:text-indigo-400 flex-shrink-0"/>
+                                    <div>
+                                        <p className="font-semibold">{mode.name}</p>
+                                        <p className="text-xs text-slate-500 dark:text-slate-400">{mode.description}</p>
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
                 <div className="flex justify-end pt-4 mt-2 border-t border-slate-200 dark:border-slate-700">
                     <button onClick={handleStartChat} disabled={selectedAgentIds.size === 0} className="px-4 py-2 font-semibold bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-slate-400 dark:disabled:bg-slate-600">
                         Start Chat
@@ -610,5 +789,60 @@ const NewChatModal: React.FC<NewChatModalProps> = ({ isOpen, onClose, agents, on
     );
 };
 
+// --- Add Agents Modal ---
+interface AddAgentsModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  agents: AIAgent[];
+  onAddAgents: (agentIds: string[]) => void;
+}
+const AddAgentsModal: React.FC<AddAgentsModalProps> = ({ isOpen, onClose, agents, onAddAgents }) => {
+    const [selectedAgentIds, setSelectedAgentIds] = useState<Set<string>>(new Set());
+
+    useEffect(() => {
+        if(isOpen) setSelectedAgentIds(new Set());
+    }, [isOpen]);
+
+    const toggleSelection = (agentId: string) => {
+        setSelectedAgentIds(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(agentId)) newSet.delete(agentId);
+            else newSet.add(agentId);
+            return newSet;
+        });
+    };
+
+    const handleAdd = () => {
+        if (selectedAgentIds.size > 0) {
+            onAddAgents(Array.from(selectedAgentIds));
+            onClose();
+        }
+    };
+    
+    return (
+        <Modal isOpen={isOpen} onClose={onClose}>
+             <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-lg p-6">
+                <h2 className="text-xl font-bold mb-4">Add Agents to Chat</h2>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Select agents to add to the current conversation.</p>
+                <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-2">
+                    {agents.map(agent => (
+                        <button key={agent.id} onClick={() => toggleSelection(agent.id)} className={`w-full text-left p-2 flex items-center gap-3 rounded-lg border-2 transition-colors ${selectedAgentIds.has(agent.id) ? 'bg-indigo-50 dark:bg-indigo-900/50 border-indigo-500' : 'bg-slate-100 dark:bg-slate-700/50 border-transparent hover:border-slate-300 dark:hover:border-slate-600'}`}>
+                            <AgentAvatar agent={agent}/>
+                            <div className="flex-1">
+                                <p className="font-semibold">{agent.name}</p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400">{agent.description}</p>
+                            </div>
+                        </button>
+                    ))}
+                </div>
+                <div className="flex justify-end pt-4 mt-2 border-t border-slate-200 dark:border-slate-700">
+                    <button onClick={handleAdd} disabled={selectedAgentIds.size === 0} className="px-4 py-2 font-semibold bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-slate-400 dark:disabled:bg-slate-600">
+                        Add to Chat
+                    </button>
+                </div>
+            </div>
+        </Modal>
+    );
+};
 
 export default ChatView;

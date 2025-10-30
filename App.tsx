@@ -29,7 +29,7 @@ function AppContent() {
   // Subscribe to state from stores
   const { viewMode, activeNoteId, initialWikiHistory, viewingPulseReport, commandToCreate } = useAppStore();
   const { notes, generatingTitleIds } = useNotesStore();
-  const { sessions, activeSessionId, chatStatus, isThreadChatting } = useChatStore();
+  const { sessions, activeSessionId, isThreadChatting } = useChatStore();
   const { aiSummary, myTodos, isLoadingAI, isLoadingPulse, pulseReports, mindMapData, isLoadingMindMap } = useStudioStore();
   const { wikis, wikiTopics, isLoadingWikiTopics } = useWikiStore();
   const { topics, isLoadingTopics, sessionHistory, isSessionActive, currentSession } = useParliamentStore();
@@ -67,7 +67,6 @@ function AppContent() {
             sessions={sessions}
             activeSession={activeChatSession}
             agents={agents}
-            chatStatus={chatStatus}
             onSendMessage={presenter.handleSendMessage}
             onSelectNote={presenter.handleSelectNote}
             commands={commands}
@@ -78,6 +77,8 @@ function AppContent() {
             onCreateAgent={presenter.handleCreateAgent}
             onUpdateAgent={presenter.handleUpdateAgent}
             onDeleteAgent={presenter.handleDeleteAgent}
+            onAddAgentsToSession={presenter.handleAddAgentsToSession}
+            onUpdateSessionMode={presenter.handleUpdateSessionMode}
             presenter={presenter}
           />
         );
@@ -131,8 +132,8 @@ function AppContent() {
   };
 
   return (
-    <div className="h-screen w-screen flex antialiased text-slate-800 dark:text-slate-200">
-      <div className="w-full max-w-xs md:w-1/3 md:max-w-sm lg:w-1/4 border-r border-slate-200 dark:border-slate-700">
+    <div className="h-screen w-screen flex antialiased text-slate-800 dark:text-slate-200 overflow-x-hidden">
+      <div className="w-full max-w-xs md:w-1/3 md:max-w-sm lg:w-1/4 border-r border-slate-200 dark:border-slate-700 flex-shrink-0">
         <NoteList
           notes={notes}
           activeNoteId={activeNoteId}
@@ -148,7 +149,7 @@ function AppContent() {
           viewMode={viewMode}
         />
       </div>
-      <main className="flex-1">{renderMainView()}</main>
+      <main className="flex-1 min-w-0">{renderMainView()}</main>
       <PulseReportModal 
         report={viewingPulseReport} 
         onClose={() => presenter.appManager.setViewingPulseReport(null)} 

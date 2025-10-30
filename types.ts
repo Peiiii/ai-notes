@@ -54,9 +54,10 @@ export interface ToolCall {
 
 export interface ChatMessage {
   id: string;
-  role: 'user' | 'model' | 'tool';
+  role: 'user' | 'model' | 'tool' | 'system';
   content: string;
   persona?: string;
+  status?: 'thinking' | 'streaming' | 'complete' | 'error';
   synthesisContent?: DebateSynthesis;
   sourceNotes?: { id: string; title: string; }[];
   toolCalls?: ToolCall[];
@@ -116,12 +117,15 @@ export interface AIAgent {
   isCustom: boolean;
 }
 
+export type DiscussionMode = 'concurrent' | 'turn_based' | 'moderated';
+
 export interface ChatSession {
   id: string;
   name: string;
   participantIds: string[]; // agent IDs
   history: ChatMessage[];
   createdAt: number;
+  discussionMode: DiscussionMode;
 }
 
 
