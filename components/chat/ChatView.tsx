@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { ChatMessage, AIAgent, ChatSession, DiscussionMode } from '../../types';
+import { ChatMessage, AIAgent, ChatSession, DiscussionMode, ProactiveSuggestion, Note } from '../../types';
 import { Command } from '../../commands';
 import { Presenter } from '../../presenter';
 import PaperAirplaneIcon from '../icons/PaperAirplaneIcon';
@@ -26,6 +26,8 @@ import ChevronDoubleRightIcon from '../icons/ChevronDoubleRightIcon';
 import ArrowPathIcon from '../icons/ArrowPathIcon';
 import SpeakerWaveIcon from '../icons/SpeakerWaveIcon';
 import ChevronDownIcon from '../icons/ChevronDownIcon';
+import ConfirmationModal from '../ui/ConfirmationModal';
+import HoverPopup from '../ui/HoverPopup';
 
 // --- Available Icons & Colors for Agent Creation ---
 const agentIcons: Record<string, React.FC<any>> = {
@@ -117,6 +119,7 @@ interface ChatViewProps {
   sessions: ChatSession[];
   activeSession: ChatSession | null;
   agents: AIAgent[];
+  notes: Note[];
   onSendMessage: (sessionId: string, message: string) => void;
   onSelectNote: (noteId: string) => void;
   commands: Command[];
@@ -124,6 +127,7 @@ interface ChatViewProps {
   onSetActiveSession: (sessionId: string | null) => void;
   onCreateSession: (participantIds: string[], discussionMode: DiscussionMode) => void;
   onDeleteSession: (sessionId: string) => void;
+  onClearSessionHistory: (sessionId: string) => void;
   onCreateAgent: (agentData: Omit<AIAgent, 'id' | 'createdAt' | 'isCustom'>) => AIAgent;
   onUpdateAgent: (agentData: AIAgent) => void;
   onDeleteAgent: (agentId: string) => void;
@@ -140,13 +144,53 @@ const ThinkingIndicator = () => (
     </div>
 );
 
+// --- Proactive Suggestions Panel ---
+const ProactiveSuggestionsPanel: React.FC<{
+  suggestions: ProactiveSuggestion[];
+  isLoading: boolean;
+  onSelectSuggestion: (prompt: string) => void;
+}> = ({ suggestions, isLoading, onSelectSuggestion }) => {
+  if (isLoading) {
+    return (
+      <div className="flex justify-center p-4">
+        <div className="w-6 h-6 border-2 border-slate-300 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  if (suggestions.length === 0) return null;
+
+  return (
+    <div className="max-w-4xl mx-auto p-4 animate-in fade-in">
+        <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-3 text-center">Need some inspiration?</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {suggestions.map((s, i) => (
+                <button
+                    key={i}
+                    onClick={() => onSelectSuggestion(s.prompt)}
+                    className="w-full text-left p-3 bg-slate-100 dark:bg-slate-700/50 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                >
+                    <p className="font-semibold text-sm text-slate-800 dark:text-slate-100">{s.prompt}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{s.description}</p>
+                </button>
+            ))}
+        </div>
+    </div>
+  );
+};
+
+
 // --- Chat Panel Component (Right Side) ---
-const ChatPanel: React.FC<Pick<ChatViewProps, 'activeSession' | 'agents' | 'onSendMessage' | 'onSelectNote' | 'commands' | 'onOpenCreateCommandModal' | 'onAddAgentsToSession' | 'onUpdateSessionMode'>> = ({
-  activeSession, agents, onSendMessage, onSelectNote, commands, onOpenCreateCommandModal, onAddAgentsToSession, onUpdateSessionMode
+const ChatPanel: React.FC<Pick<ChatViewProps, 'activeSession' | 'agents' | 'onSendMessage' | 'onSelectNote' | 'commands' | 'onOpenCreateCommandModal' | 'onAddAgentsToSession' | 'onUpdateSessionMode' | 'onClearSessionHistory' | 'notes' | 'presenter'>> = ({
+  activeSession, agents, onSendMessage, onSelectNote, commands, onOpenCreateCommandModal, onAddAgentsToSession, onUpdateSessionMode, onClearSessionHistory, notes, presenter
 }) => {
   const [chatInput, setChatInput] = useState('');
   const [isAddAgentModalOpen, setAddAgentModalOpen] = useState(false);
   const [isModeDropdownOpen, setModeDropdownOpen] = useState(false);
+  const [suggestions, setSuggestions] = useState<ProactiveSuggestion[]>([]);
+  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
+  const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false);
+
   const chatEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const modeDropdownRef = useRef<HTMLDivElement>(null);
@@ -173,8 +217,19 @@ const ChatPanel: React.FC<Pick<ChatViewProps, 'activeSession' | 'agents' | 'onSe
   }, [modeDropdownRef]);
 
   useEffect(() => {
+    if (activeSession && activeSession.history.length === 0 && notes.length > 0) {
+      setIsLoadingSuggestions(true);
+      presenter.handleGenerateChatSuggestions(notes)
+        .then(setSuggestions)
+        .finally(() => setIsLoadingSuggestions(false));
+    } else {
+      setSuggestions([]);
+    }
+  }, [activeSession, notes, presenter]);
+
+  useEffect(() => {
       chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [activeSession?.history]);
+  }, [activeSession?.history, suggestions]);
   
   useEffect(() => {
     setChatInput('');
@@ -197,6 +252,11 @@ const ChatPanel: React.FC<Pick<ChatViewProps, 'activeSession' | 'agents' | 'onSe
     setShowCommands(false);
     inputRef.current?.focus();
   }, []);
+  
+  const handleSelectSuggestion = (prompt: string) => {
+    if (!activeSession) return;
+    onSendMessage(activeSession.id, prompt);
+  };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (!showCommands) return;
@@ -308,60 +368,75 @@ const ChatPanel: React.FC<Pick<ChatViewProps, 'activeSession' | 'agents' | 'onSe
                   <UserPlusIcon className="w-5 h-5"/>
               </button>
             )}
+             <button
+                onClick={() => setIsClearConfirmOpen(true)}
+                title="Clear chat history"
+                className="p-2 rounded-full text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50"
+            >
+                <ArrowPathIcon className="w-5 h-5"/>
+            </button>
           </div>
       </div>
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {activeSession.history.map((msg) => {
-            const agent = agents.find(a => a.name === msg.persona);
-            if (msg.role === 'system') return (
-              <div key={msg.id} className="text-center text-xs text-slate-400 dark:text-slate-500 italic my-2">
-                {msg.content}
-              </div>
-            );
-            if (msg.role === 'user') return (
-              <div key={msg.id} className="flex items-start gap-3 max-w-4xl mx-auto justify-end">
-                <div className="p-3 rounded-lg max-w-lg bg-indigo-600 text-white rounded-br-none">
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+        {activeSession.history.length === 0 ? (
+          <ProactiveSuggestionsPanel
+            suggestions={suggestions}
+            isLoading={isLoadingSuggestions}
+            onSelectSuggestion={handleSelectSuggestion}
+          />
+        ) : (
+          activeSession.history.map((msg) => {
+              const agent = agents.find(a => a.name === msg.persona);
+              if (msg.role === 'system') return (
+                <div key={msg.id} className="text-center text-xs text-slate-400 dark:text-slate-500 italic my-2">
+                  {msg.content}
                 </div>
-                <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-600 flex items-center justify-center flex-shrink-0">
-                  <UserIcon className="w-5 h-5 text-slate-600 dark:text-slate-300" />
-                </div>
-              </div>
-            );
-            if (msg.role === 'model' && msg.toolCalls) return <ToolCallCard key={msg.id} toolCalls={msg.toolCalls} text={msg.content} completedToolCallIds={completedToolCallIds} />;
-            if (msg.role === 'tool' && msg.structuredContent) return <ToolResultCard key={msg.id} message={msg} onSelectNote={onSelectNote} />;
-            return (
-              <div key={msg.id} className="flex items-start gap-3 max-w-4xl mx-auto">
-                {agent ? <AgentAvatar agent={agent} /> : <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center flex-shrink-0"><SparklesIcon className="w-5 h-5 text-indigo-500 dark:text-indigo-400" /></div>}
-                <div className="flex flex-col items-start">
-                  <div className="p-3 rounded-lg max-w-lg bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-bl-none">
-                    {msg.persona && <p className="text-xs font-bold mb-1 text-indigo-600 dark:text-indigo-400">{msg.persona}</p>}
-                    
-                    {msg.status === 'thinking' ? (
-                        <ThinkingIndicator />
-                    ) : (
-                        <div className="text-sm leading-relaxed prose prose-slate dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: window.marked.parse(msg.content) }}></div>
-                    )}
-
+              );
+              if (msg.role === 'user') return (
+                <div key={msg.id} className="flex items-start gap-3 max-w-4xl mx-auto justify-end">
+                  <div className="p-3 rounded-lg max-w-lg bg-indigo-600 text-white rounded-br-none">
+                    <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
                   </div>
-                  {msg.sourceNotes && msg.sourceNotes.length > 0 && (
-                    <div className="mt-2 flex flex-wrap gap-2 items-center">
-                        <BookOpenIcon className="w-4 h-4 text-slate-400 dark:text-slate-500" />
-                        <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Sources:</span>
-                        {msg.sourceNotes.map(note => (
-                            <button key={note.id} onClick={() => onSelectNote(note.id)} className="px-2 py-0.5 bg-slate-200 dark:bg-slate-600 text-xs text-slate-700 dark:text-slate-200 rounded-md hover:bg-slate-300 dark:hover:bg-slate-500 transition-colors">
-                                {note.title}
-                            </button>
-                        ))}
-                    </div>
-                  )}
+                  <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-600 flex items-center justify-center flex-shrink-0">
+                    <UserIcon className="w-5 h-5 text-slate-600 dark:text-slate-300" />
+                  </div>
                 </div>
-              </div>
-            );
-        })}
+              );
+              if (msg.role === 'model' && msg.toolCalls) return <ToolCallCard key={msg.id} toolCalls={msg.toolCalls} text={msg.content} completedToolCallIds={completedToolCallIds} />;
+              if (msg.role === 'tool' && msg.structuredContent) return <ToolResultCard key={msg.id} message={msg} onSelectNote={onSelectNote} />;
+              return (
+                <div key={msg.id} className="flex items-start gap-3 max-w-4xl mx-auto">
+                  {agent ? <AgentAvatar agent={agent} /> : <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center flex-shrink-0"><SparklesIcon className="w-5 h-5 text-indigo-500 dark:text-indigo-400" /></div>}
+                  <div className="flex flex-col items-start">
+                    <div className="p-3 rounded-lg max-w-lg bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-bl-none">
+                      {msg.persona && <p className="text-xs font-bold mb-1 text-indigo-600 dark:text-indigo-400">{msg.persona}</p>}
+                      
+                      {msg.status === 'thinking' ? (
+                          <ThinkingIndicator />
+                      ) : (
+                          <div className="text-sm leading-relaxed prose prose-slate dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: window.marked.parse(msg.content) }}></div>
+                      )}
+
+                    </div>
+                    {msg.sourceNotes && msg.sourceNotes.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-2 items-center">
+                          <BookOpenIcon className="w-4 h-4 text-slate-400 dark:text-slate-500" />
+                          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Sources:</span>
+                          {msg.sourceNotes.map(note => (
+                              <button key={note.id} onClick={() => onSelectNote(note.id)} className="px-2 py-0.5 bg-slate-200 dark:bg-slate-600 text-xs text-slate-700 dark:text-slate-200 rounded-md hover:bg-slate-300 dark:hover:bg-slate-500 transition-colors">
+                                  {note.title}
+                              </button>
+                          ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+          })
+        )}
         <div ref={chatEndRef} />
       </div>
-      <div className="p-4 border-t border-slate-200 dark:border-slate-700">
+      <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-700">
         <form onSubmit={handleChatSubmit} className="max-w-4xl mx-auto relative">
           {showCommands && (
             <CommandPalette
@@ -382,7 +457,7 @@ const ChatPanel: React.FC<Pick<ChatViewProps, 'activeSession' | 'agents' | 'onSe
               onKeyDown={handleKeyDown}
               placeholder={`Message ${activeSession.name}...`}
               disabled={isChatting}
-              className="flex-1 w-full bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 rounded-lg px-4 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="flex-1 w-full bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
             <button
               type="submit"
@@ -400,6 +475,18 @@ const ChatPanel: React.FC<Pick<ChatViewProps, 'activeSession' | 'agents' | 'onSe
             agents={availableAgentsToAdd}
             onAddAgents={(agentIds) => onAddAgentsToSession(activeSession.id, agentIds)}
         />
+       <ConfirmationModal
+            isOpen={isClearConfirmOpen}
+            onClose={() => setIsClearConfirmOpen(false)}
+            onConfirm={() => {
+                onClearSessionHistory(activeSession.id);
+                setIsClearConfirmOpen(false);
+            }}
+            title="Clear Chat History"
+            message="Are you sure you want to clear this chat history? This action cannot be undone."
+            confirmButtonText="Clear History"
+            confirmButtonClassName="bg-red-600 hover:bg-red-700"
+        />
     </div>
   );
 };
@@ -411,14 +498,39 @@ const ChatView: React.FC<ChatViewProps> = (props) => {
   const [isNewChatOpen, setIsNewChatOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   
+  const SidebarButton: React.FC<{onClick?: () => void; title: string; children: React.ReactNode; isCollapsed: boolean; isFullWidth?: boolean}> = 
+  ({ onClick, title, children, isCollapsed, isFullWidth = false }) => {
+      const button = (
+        <button 
+          onClick={onClick} 
+          title={isCollapsed ? title : undefined} 
+          className={`flex items-center text-sm font-semibold text-slate-600 dark:text-slate-300 rounded-md hover:bg-slate-200 dark:hover:bg-slate-700/50 overflow-hidden ${isCollapsed ? 'w-10 h-10 justify-center' : 'p-2'} ${isFullWidth ? 'w-full' : ''}`}
+        >
+          {children}
+        </button>
+      );
+
+      if (isCollapsed) {
+          return (
+              <HoverPopup
+                  trigger={button}
+                  content={<div className="bg-slate-800 text-white text-xs font-semibold px-2 py-1 rounded-md shadow-lg">{title}</div>}
+                  popupClassName="absolute left-full ml-2"
+              />
+          );
+      }
+      return button;
+  };
+
+
   return (
     <div className="h-full flex">
       {/* Session List (Left Side) */}
       <div className={`h-full flex flex-col bg-slate-100 dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 transition-all duration-300 ${isSidebarCollapsed ? 'w-16' : 'w-64 md:w-80'}`}>
         <div className={`flex-shrink-0 border-b border-slate-200 dark:border-slate-700 ${isSidebarCollapsed ? 'p-2' : 'p-4'}`}>
-          <button onClick={() => setIsNewChatOpen(true)} className={`w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-slate-800 focus:ring-indigo-500`}>
+          <button onClick={() => setIsNewChatOpen(true)} className={`w-full flex items-center justify-center px-4 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-slate-800 focus:ring-indigo-500 overflow-hidden transition-all`}>
             <PlusIcon className="w-5 h-5 flex-shrink-0"/>
-            {!isSidebarCollapsed && <span>New Chat</span>}
+            <span className={`whitespace-nowrap transition-all duration-200 ${isSidebarCollapsed ? 'max-w-0 opacity-0 ml-0' : 'max-w-xs opacity-100 ml-2'}`}>New Chat</span>
           </button>
         </div>
         <div className="flex-1 overflow-y-auto overflow-x-hidden p-2">
@@ -466,13 +578,13 @@ const ChatView: React.FC<ChatViewProps> = (props) => {
             </ul>
         </div>
         <div className={`p-2 border-t border-slate-200 dark:border-slate-700 flex-shrink-0 flex ${isSidebarCollapsed ? 'flex-col' : 'flex-row'} items-center gap-2`}>
-          <button onClick={() => setIsAgentManagerOpen(true)} className={`w-full flex items-center gap-2 p-2 text-sm font-semibold text-slate-600 dark:text-slate-300 rounded-md hover:bg-slate-200 dark:hover:bg-slate-700/50 ${isSidebarCollapsed ? 'justify-center' : ''}`}>
+          <SidebarButton onClick={() => setIsAgentManagerOpen(true)} title="Manage Agents" isCollapsed={isSidebarCollapsed} isFullWidth={!isSidebarCollapsed}>
             <Cog6ToothIcon className="w-5 h-5 flex-shrink-0"/>
-            {!isSidebarCollapsed && <span className="flex-1 text-left">Manage Agents</span>}
-          </button>
-           <button onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)} title={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"} className={`p-2 rounded-md text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700/50 ${isSidebarCollapsed ? 'w-full justify-center' : 'flex-shrink-0'}`}>
-                {isSidebarCollapsed ? <ChevronDoubleRightIcon className="w-5 h-5"/> : <ChevronDoubleLeftIcon className="w-5 h-5"/>}
-            </button>
+            <span className={`flex-1 text-left whitespace-nowrap transition-all duration-200 ${isSidebarCollapsed ? 'max-w-0 opacity-0' : 'max-w-xs opacity-100 ml-2'}`}>Manage Agents</span>
+          </SidebarButton>
+          <SidebarButton onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)} title={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"} isCollapsed={isSidebarCollapsed}>
+             {isSidebarCollapsed ? <ChevronDoubleRightIcon className="w-5 h-5"/> : <ChevronDoubleLeftIcon className="w-5 h-5"/>}
+          </SidebarButton>
         </div>
       </div>
 
@@ -481,12 +593,15 @@ const ChatView: React.FC<ChatViewProps> = (props) => {
         <ChatPanel 
             activeSession={props.activeSession}
             agents={props.agents}
+            notes={props.notes}
+            presenter={props.presenter}
             onSendMessage={props.onSendMessage}
             onSelectNote={props.onSelectNote}
             commands={props.commands}
             onOpenCreateCommandModal={props.onOpenCreateCommandModal}
             onAddAgentsToSession={props.onAddAgentsToSession}
             onUpdateSessionMode={props.onUpdateSessionMode}
+            onClearSessionHistory={props.onClearSessionHistory}
         />
       </div>
 

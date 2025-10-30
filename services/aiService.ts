@@ -1,4 +1,4 @@
-import { Note, KnowledgeCard, ChatMessage, DebateSynthesis, ToolCall, ProactiveSuggestion } from '../types';
+import { Note, KnowledgeCard, ChatMessage, DebateSynthesis, ToolCall, ProactiveSuggestion, AIAgent } from '../types';
 import { geminiProvider, GEMINI_MODELS } from './providers/geminiProvider';
 import { openAIProvider, dashscopeProvider, deepseekProvider, openRouterProvider } from './providers/openaiProvider';
 import { LLMProvider, GenerateJsonParams, GenerateTextParams, ModelTier, GenerateWithToolsParams, GenerateWithToolsResult, StreamChunk } from './providers/types';
@@ -237,6 +237,35 @@ ${systemInstruction}`;
         model,
         history,
         tools: agentTools,
+        systemInstruction,
+    };
+    return provider.generateContentWithTools(params);
+}
+
+export async function getAgentToolResponse(history: ChatMessage[], agent: AIAgent, allAgentNames: string[]): Promise<GenerateWithToolsResult> {
+    const participantNames = allAgentNames.join(', ');
+    const systemInstruction = `You are ${agent.name}. You are participating in a group chat with other AI agents: ${participantNames}.
+
+**Conversation Format Rules:**
+- User messages are from the human user you are assisting.
+- Messages prefixed like "[Agent Name]: ..." are from other AI agents in the chat.
+- System messages like "[Moderator chose ...]" provide context on the conversation flow.
+
+**Your Current Task:**
+The Moderator has selected you to speak next. Read the entire conversation history to understand the context, then provide your response based on your specific instructions below. You have access to tools.
+
+**CRITICAL RESPONSE INSTRUCTION:**
+You MUST NOT prepend your name or any other prefix (e.g., "[${agent.name}]:" or "[Moderator]:") to your response. The user interface already handles displaying your name. Respond with your message content directly.
+
+Your primary instructions are:
+---
+${agent.systemInstruction}`;
+    
+    const { provider, model } = getConfig('agent_reasoning');
+    const params: GenerateWithToolsParams = {
+        model,
+        history,
+        tools: agentTools, // Use the same tools as the single-agent chat
         systemInstruction,
     };
     return provider.generateContentWithTools(params);

@@ -1,6 +1,4 @@
 
-
-
 import React, { createContext, useContext, useEffect, useRef } from 'react';
 import { useAppStore } from '../stores/appStore';
 import { useNotesStore } from '../stores/notesStore';
@@ -15,8 +13,9 @@ import { WikiManager } from '../managers/WikiManager';
 import { ParliamentManager } from '../managers/ParliamentManager';
 import { CommandManager } from '../managers/CommandManager';
 import { InsightManager } from '../managers/InsightManager';
-import { KnowledgeCard, Note, WikiEntry, WIKI_ROOT_ID, DebateSynthesis, Todo, AIAgent, ChatMessage, DiscussionMode } from '../types';
+import { KnowledgeCard, Note, WikiEntry, WIKI_ROOT_ID, DebateSynthesis, Todo, AIAgent, ChatMessage, DiscussionMode, ProactiveSuggestion } from '../types';
 import { Command } from '../commands';
+import { generateProactiveSuggestions } from '../services/aiService';
 
 // simple debounce utility
 const debounce = <F extends (...args: any[]) => any>(func: F, waitFor: number) => {
@@ -66,12 +65,22 @@ export class Presenter {
   handleShowChat = () => {
     const { sessions, activeSessionId } = useChatStore.getState();
     if (sessions.length === 0) {
-      // First-time user, create a default session with the main companion
+      // First-time user, create a default session with the main companion AND a group chat
       const { agents } = useAgentStore.getState();
       const defaultCompanion = agents.find(a => a.id === 'default-companion');
+      const allDefaultAgents = agents.filter(a => !a.isCustom);
+      
       if (defaultCompanion) {
         // This method will create the session and automatically set it as active
-        this.chatManager.createSession([defaultCompanion.id], 'concurrent');
+        const companionSessionId = this.chatManager.createSession([defaultCompanion.id], 'concurrent');
+        
+        // Create the group chat but don't set it to active
+        if (allDefaultAgents.length > 1) {
+            this.chatManager.createSession(allDefaultAgents.map(a => a.id), 'moderated');
+        }
+        
+        // Set the one-on-one as the active one to start
+        this.handleSetActiveChatSession(companionSessionId);
       }
     } else if (!activeSessionId) {
       // User has sessions but none is active (e.g., after app load).
@@ -226,6 +235,10 @@ ${synthesis.nextSteps.map(p => `- ${p}`).join('\n')}
       });
   }
 
+  handleClearSessionHistory = (sessionId: string) => {
+    this.chatManager.clearSessionHistory(sessionId);
+  }
+
   handleSendMessage = (sessionId: string, message: string) => {
       this.chatManager.sendMessageInSession(sessionId, message);
   }
@@ -236,6 +249,16 @@ ${synthesis.nextSteps.map(p => `- ${p}`).join('\n')}
   
   handleUpdateSessionMode = (sessionId: string, newMode: DiscussionMode) => {
       this.chatManager.updateSessionMode(sessionId, newMode);
+  }
+  
+  handleGenerateChatSuggestions = async (notes: Note[]): Promise<ProactiveSuggestion[]> => {
+    try {
+      const suggestions = await generateProactiveSuggestions(notes);
+      return suggestions;
+    } catch (error) {
+      console.error("Failed to generate proactive chat suggestions:", error);
+      return [];
+    }
   }
 
   handleAgentCreatorChat = async (history: ChatMessage[]) => {

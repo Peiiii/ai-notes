@@ -67,6 +67,7 @@ function AppContent() {
             sessions={sessions}
             activeSession={activeChatSession}
             agents={agents}
+            notes={notes}
             onSendMessage={presenter.handleSendMessage}
             onSelectNote={presenter.handleSelectNote}
             commands={commands}
@@ -74,6 +75,7 @@ function AppContent() {
             onSetActiveSession={presenter.handleSetActiveChatSession}
             onCreateSession={presenter.handleCreateChatSession}
             onDeleteSession={presenter.handleDeleteChatSession}
+            onClearSessionHistory={presenter.handleClearSessionHistory}
             onCreateAgent={presenter.handleCreateAgent}
             onUpdateAgent={presenter.handleUpdateAgent}
             onDeleteAgent={presenter.handleDeleteAgent}
