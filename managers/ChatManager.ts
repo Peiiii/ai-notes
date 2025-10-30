@@ -261,10 +261,10 @@ ${agent.systemInstruction}`;
             const moderatorResponse = await getModeratorResponse(turnHistory, participantNames, Array.from(spokenAgentNames));
             const toolCall = moderatorResponse.toolCalls?.[0];
 
-            if (!toolCall || toolCall.name === 'end_discussion') {
-                const summary = toolCall?.args.summary || "The discussion has concluded.";
+            if (!toolCall || toolCall.name === 'pass_control_to_user') {
+                const reason = toolCall?.args.reason || "All agents have responded. It's now your turn.";
                 const systemMessage: ChatMessage = {
-                    id: crypto.randomUUID(), role: 'system', content: `[Moderator]: ${summary}`
+                    id: crypto.randomUUID(), role: 'system', content: `[Moderator]: ${reason}`
                 };
                 useChatStore.getState().addMessage(session.id, systemMessage);
                 break;

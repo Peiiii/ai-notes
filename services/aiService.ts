@@ -164,17 +164,17 @@ export const moderatorTools: FunctionDeclaration[] = [
         }
     },
     {
-        name: 'end_discussion',
-        description: "Ends the current discussion turn when the user's query has been fully addressed.",
+        name: 'pass_control_to_user',
+        description: "Passes control back to the user when the AI's turn is complete because the user's request has been fulfilled or the conversation has reached a natural stopping point.",
         parameters: {
             type: Type.OBJECT,
             properties: {
-                 summary: {
+                 reason: {
                     type: Type.STRING,
-                    description: "A brief summary of why the discussion is ending."
+                    description: "A brief, user-facing summary of what was accomplished before passing control back."
                 }
             },
-            required: ['summary']
+            required: ['reason']
         }
     }
 ];
@@ -194,10 +194,10 @@ export async function getModeratorResponse(history: ChatMessage[], availableAgen
 2.  **Decide the next action using a tool:**
     *   If the user has asked a question or the previous one is not fully answered, use \`select_next_speaker\` to call on the most relevant agent to continue the conversation.
     *   If the user's request implies multiple participants (e.g., "everyone introduce yourselves"), you MUST call \`select_next_speaker\` for each required agent, one by one, that has not yet spoken in this turn.
-    *   Use \`end_discussion\` ONLY when the conversation has reached a natural conclusion and the user's latest queries are fully satisfied.
+    *   Use \`pass_control_to_user\` ONLY when the conversation has reached a natural conclusion for now, the user's latest queries are fully satisfied, and it's time to wait for the user to speak next. For example, after fulfilling a request like "create a note", you should pass control back.
 
 **CRITICAL RULES:**
-1.  **Don't End Prematurely:** Do not use \`end_discussion\` if the user has just asked a question, even if it's a follow-up. Your primary job is to get the user an answer. If in doubt, select a speaker.
+1.  **Don't Pass Control Prematurely:** Do not use \`pass_control_to_user\` if the user has just asked a question, even if it's a follow-up. Your primary job is to get the user an answer. If in doubt, select a speaker.
 2.  **Re-select Speakers:** It is acceptable to call \`select_next_speaker\` on an agent that has already spoken in this turn if they are the most relevant person to answer a new user query.
 3.  **Tool Only:** You MUST respond with only a tool call. Do not add any conversational text.`;
     

@@ -470,7 +470,7 @@ const ChatView: React.FC<ChatViewProps> = (props) => {
             <Cog6ToothIcon className="w-5 h-5 flex-shrink-0"/>
             {!isSidebarCollapsed && <span className="flex-1 text-left">Manage Agents</span>}
           </button>
-           <button onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)} title={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"} className="p-2 rounded-md text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700/50 flex-shrink-0">
+           <button onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)} title={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"} className={`p-2 rounded-md text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700/50 ${isSidebarCollapsed ? 'w-full justify-center' : 'flex-shrink-0'}`}>
                 {isSidebarCollapsed ? <ChevronDoubleRightIcon className="w-5 h-5"/> : <ChevronDoubleLeftIcon className="w-5 h-5"/>}
             </button>
         </div>
@@ -747,7 +747,7 @@ const NewChatModal: React.FC<NewChatModalProps> = ({ isOpen, onClose, agents, on
     
     return (
         <Modal isOpen={isOpen} onClose={onClose}>
-             <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-lg p-6">
+             <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-lg p-6 transition-all duration-300">
                 <h2 className="text-xl font-bold mb-4">Start New Chat</h2>
                 <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Select one or more AI agents to begin a conversation.</p>
                 <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-2">
@@ -762,22 +762,20 @@ const NewChatModal: React.FC<NewChatModalProps> = ({ isOpen, onClose, agents, on
                     ))}
                 </div>
                 
-                {selectedAgentIds.size > 1 && (
-                    <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
-                        <h3 className="text-base font-semibold mb-3">Discussion Mode</h3>
-                        <div className="space-y-2">
-                            {discussionModes.map(mode => (
-                                <button key={mode.id} onClick={() => setDiscussionMode(mode.id)} className={`w-full text-left p-2 flex items-start gap-3 rounded-lg border-2 transition-colors ${discussionMode === mode.id ? 'bg-indigo-50 dark:bg-indigo-900/50 border-indigo-500' : 'bg-slate-100 dark:bg-slate-700/50 border-transparent hover:border-slate-300 dark:hover:border-slate-600'}`}>
-                                    <mode.icon className="w-5 h-5 mt-0.5 text-indigo-500 dark:text-indigo-400 flex-shrink-0"/>
-                                    <div>
-                                        <p className="font-semibold">{mode.name}</p>
-                                        <p className="text-xs text-slate-500 dark:text-slate-400">{mode.description}</p>
-                                    </div>
-                                </button>
-                            ))}
-                        </div>
+                <div className={`mt-4 pt-4 border-t border-slate-200 dark:border-slate-700 transition-opacity duration-300 ${selectedAgentIds.size > 1 ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
+                    <h3 className="text-base font-semibold mb-3">Discussion Mode</h3>
+                    <div className="space-y-2">
+                        {discussionModes.map(mode => (
+                            <button key={mode.id} onClick={() => setDiscussionMode(mode.id)} className={`w-full text-left p-2 flex items-start gap-3 rounded-lg border-2 transition-colors ${discussionMode === mode.id ? 'bg-indigo-50 dark:bg-indigo-900/50 border-indigo-500' : 'bg-slate-100 dark:bg-slate-700/50 border-transparent hover:border-slate-300 dark:hover:border-slate-600'}`}>
+                                <mode.icon className="w-5 h-5 mt-0.5 text-indigo-500 dark:text-indigo-400 flex-shrink-0"/>
+                                <div>
+                                    <p className="font-semibold">{mode.name}</p>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400">{mode.description}</p>
+                                </div>
+                            </button>
+                        ))}
                     </div>
-                )}
+                </div>
 
                 <div className="flex justify-end pt-4 mt-2 border-t border-slate-200 dark:border-slate-700">
                     <button onClick={handleStartChat} disabled={selectedAgentIds.size === 0} className="px-4 py-2 font-semibold bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-slate-400 dark:disabled:bg-slate-600">
