@@ -1,6 +1,7 @@
+
 import { useNotesStore } from '../stores/notesStore';
 import { Note, ChatMessage } from '../types';
-import { generateTitleForNote } from '../services/aiService';
+import { generateTitleForNote } from '../services/noteAIService';
 
 const TITLE_GENERATION_LENGTH_THRESHOLD = 70;
 

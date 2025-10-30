@@ -1,9 +1,10 @@
+
 import { useChatStore } from '../stores/chatStore';
 import { useNotesStore } from '../stores/notesStore';
 import { useAgentStore } from '../stores/agentStore';
 import { ChatMessage, Note, ChatSession, AIAgent, DiscussionMode } from '../types';
-// Fix: Import 'generateThreadChatResponse' to resolve 'Cannot find name' error.
-import { getAgentResponse, getModeratorResponse, getAgentToolResponse, searchNotesInCorpus, generateThreadChatResponse } from '../services/aiService';
+import { getAgentResponse, getModeratorResponse, getAgentToolResponse, searchNotesInCorpus } from '../services/agentAIService';
+import { generateThreadChatResponse } from '../services/noteAIService';
 import { NotesManager } from './NotesManager';
 
 const discussionModeNames: Record<DiscussionMode, string> = {

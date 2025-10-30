@@ -1,7 +1,8 @@
+
 import { useStudioStore } from '../stores/studioStore';
 import { useNotesStore } from '../stores/notesStore';
 import { Todo, KnowledgeCard, PulseReport, MindMapNode } from '../types';
-import { generateSummary, generatePulseReport, generateMindMap } from '../services/aiService';
+import { generateSummary, generatePulseReport, generateMindMap } from '../services/studioAIService';
 
 function simpleHash(str: string): string {
   let hash = 0;

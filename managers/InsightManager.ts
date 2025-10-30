@@ -1,8 +1,10 @@
+
 import { useInsightStore } from '../stores/insightStore';
 import { useNotesStore } from '../stores/notesStore';
 import { useStudioStore } from '../stores/studioStore';
 import { Insight, Note } from '../types';
-import { getLiveInsights, searchNotesInCorpus } from '../services/aiService';
+import { getLiveInsights } from '../services/insightAIService';
+import { searchNotesInCorpus } from '../services/agentAIService';
 
 export class InsightManager {
   private currentRequest: Promise<void> | null = null;

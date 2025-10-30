@@ -1,4 +1,5 @@
 
+
 import React, { createContext, useContext, useEffect, useRef } from 'react';
 import { useAppStore } from '../stores/appStore';
 import { useNotesStore } from '../stores/notesStore';
@@ -15,7 +16,8 @@ import { CommandManager } from '../managers/CommandManager';
 import { InsightManager } from '../managers/InsightManager';
 import { KnowledgeCard, Note, WikiEntry, WIKI_ROOT_ID, DebateSynthesis, Todo, AIAgent, ChatMessage, DiscussionMode, ProactiveSuggestion } from '../types';
 import { Command } from '../commands';
-import { generateProactiveSuggestions } from '../services/aiService';
+import { generateProactiveSuggestions } from '../services/insightAIService';
+import { getCreatorAgentResponse } from '../services/agentAIService';
 
 // simple debounce utility
 const debounce = <F extends (...args: any[]) => any>(func: F, waitFor: number) => {
@@ -262,7 +264,6 @@ ${synthesis.nextSteps.map(p => `- ${p}`).join('\n')}
   }
 
   handleAgentCreatorChat = async (history: ChatMessage[]) => {
-      const { getCreatorAgentResponse } = await import('../services/aiService');
       const response = await getCreatorAgentResponse(history);
       
       let finalAgent: AIAgent | null = null;
