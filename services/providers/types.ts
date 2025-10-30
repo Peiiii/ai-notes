@@ -18,6 +18,7 @@ export interface GenerateWithToolsParams {
   tools: any[];
   systemInstruction?: string;
   useGoogleSearch?: boolean;
+  agentCount?: number;
 }
 
 export interface GenerateWithToolsResult {

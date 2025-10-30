@@ -96,7 +96,7 @@ class OpenAICompatibleProvider implements LLMProvider {
     }
 
     async generateContentWithTools(params: GenerateWithToolsParams): Promise<GenerateWithToolsResult> {
-        const { model, history, tools, systemInstruction } = params;
+        const { model, history, tools, systemInstruction, agentCount } = params;
         const apiModel = this.modelMap[model];
 
         const openAITools = tools.map(tool => ({
@@ -108,8 +108,10 @@ class OpenAICompatibleProvider implements LLMProvider {
             }
         }));
 
+        const shouldPrefix = (agentCount ?? 2) > 1;
+
         const messages = history.map(msg => {
-            const content = msg.role === 'model' && msg.persona ? `[${msg.persona}]: ${msg.content}` : msg.content;
+            const content = shouldPrefix && msg.role === 'model' && msg.persona ? `[${msg.persona}]: ${msg.content}` : msg.content;
             
             if (msg.role === 'model' && msg.toolCalls) {
                 return {

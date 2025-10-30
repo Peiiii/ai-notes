@@ -11,10 +11,11 @@ export const GEMINI_MODELS: Record<ModelTier, string> = {
 };
 
 // --- New Robust History Mapping Function ---
-function historyToContents(history: ChatMessage[]): any[] {
+function historyToContents(history: ChatMessage[], agentCount?: number): any[] {
     const contents: any[] = [];
     let i = 0;
     const historyWithoutSystem = history.filter(m => m.role !== 'system');
+    const shouldPrefix = (agentCount ?? 2) > 1;
 
     while (i < historyWithoutSystem.length) {
         const msg = historyWithoutSystem[i];
@@ -28,7 +29,7 @@ function historyToContents(history: ChatMessage[]): any[] {
         } else if (msg.role === 'model') {
             const modelParts = [];
             if (msg.content) {
-                const textContent = msg.persona ? `[${msg.persona}]: ${msg.content}` : msg.content;
+                const textContent = shouldPrefix && msg.persona ? `[${msg.persona}]: ${msg.content}` : msg.content;
                 modelParts.push({ text: textContent });
             }
             if (msg.toolCalls) {
@@ -121,10 +122,10 @@ class GeminiProvider implements LLMProvider {
     }
     
     async generateContentWithTools(params: GenerateWithToolsParams): Promise<GenerateWithToolsResult> {
-        const { model, history, tools, systemInstruction, useGoogleSearch } = params;
+        const { model, history, tools, systemInstruction, useGoogleSearch, agentCount } = params;
         const geminiModel = GEMINI_MODELS[model];
 
-        const contents = historyToContents(history);
+        const contents = historyToContents(history, agentCount);
 
         try {
             const geminiToolsConfig: any[] = tools?.length > 0 ? [{ functionDeclarations: tools }] : [];

@@ -12,6 +12,19 @@ const discussionModeNames: Record<DiscussionMode, string> = {
     moderated: 'Moderated',
 };
 
+const parseMentions = (text: string, agents: AIAgent[]): AIAgent[] => {
+    if (!text.includes('@')) return [];
+    const mentionRegex = /@([\w\s-]+)/g;
+    const mentionedNames = new Set<string>();
+    let match;
+    while ((match = mentionRegex.exec(text)) !== null) {
+        mentionedNames.add(match[1].trim());
+    }
+    if (mentionedNames.size === 0) return [];
+
+    return agents.filter(agent => mentionedNames.has(agent.name));
+};
+
 export class ChatManager {
     private notesManager: NotesManager;
 
@@ -127,41 +140,50 @@ export class ChatManager {
 
         useChatStore.getState().addMessage(sessionId, userMessage);
         
+        const { agents } = useAgentStore.getState();
+        const participants = agents.filter(a => session.participantIds.includes(a.id));
+        const mentionedAgents = parseMentions(message, participants);
+
         switch (session.discussionMode) {
             case 'turn_based':
-                await this._handleTurnBasedMessage(session, userMessage);
+                await this._handleTurnBasedMessage(session, userMessage, mentionedAgents);
                 break;
             case 'moderated':
-                await this._handleModeratedMessage(session, userMessage);
+                await this._handleModeratedMessage(session, userMessage, mentionedAgents);
                 break;
             case 'concurrent':
             default:
-                await this._handleConcurrentMessage(session, userMessage);
+                await this._handleConcurrentMessage(session, userMessage, mentionedAgents);
                 break;
         }
     }
 
-    private _handleConcurrentMessage = async (session: ChatSession, userMessage: ChatMessage) => {
+    private _handleConcurrentMessage = async (session: ChatSession, userMessage: ChatMessage, mentionedAgents: AIAgent[]) => {
         const { agents } = useAgentStore.getState();
-        const participants = agents.filter(a => session.participantIds.includes(a.id));
+        const allParticipants = agents.filter(a => session.participantIds.includes(a.id));
+        
+        // If agents are mentioned, only they respond. Otherwise, all respond.
+        const respondingAgents = mentionedAgents.length > 0 ? mentionedAgents : allParticipants;
+        
         const conversationHistoryForAI = [...session.history, userMessage].filter(m => m.role !== 'system');
-        const participantNames = participants.map(p => p.name);
+        const participantNames = allParticipants.map(p => p.name);
 
-        const responsePromises = participants.map(agent => {
+        const responsePromises = respondingAgents.map(agent => {
             return this._runAgentTurn(agent, conversationHistoryForAI, session.id, participantNames);
         });
 
         await Promise.all(responsePromises);
     }
     
-    private _handleTurnBasedMessage = async (session: ChatSession, userMessage: ChatMessage) => {
+    private _handleTurnBasedMessage = async (session: ChatSession, userMessage: ChatMessage, mentionedAgents: AIAgent[]) => {
         const { agents } = useAgentStore.getState();
-        const participants = agents.filter(a => session.participantIds.includes(a.id));
-        const participantNames = participants.map(p => p.name);
+        const allParticipants = agents.filter(a => session.participantIds.includes(a.id));
+        const respondingAgents = mentionedAgents.length > 0 ? mentionedAgents : allParticipants;
+        const participantNames = allParticipants.map(p => p.name);
         
         let turnHistory = [...session.history, userMessage].filter(m => m.role !== 'system');
 
-        for (const agent of participants) {
+        for (const agent of respondingAgents) {
             try {
                 const newMessages = await this._runAgentTurn(agent, turnHistory, session.id, participantNames);
                 turnHistory.push(...newMessages);
@@ -194,7 +216,7 @@ export class ChatManager {
                 // If only one agent is in the chat, use the simpler `getAgentResponse` which has broader instructions.
                 // Otherwise, use the multi-agent specific `getAgentToolResponse`.
                 if (allAgentNames.length <= 1) {
-                    response = await getAgentResponse(currentTurnHistory, undefined, agent.systemInstruction);
+                    response = await getAgentResponse(currentTurnHistory, undefined, agent.systemInstruction, allAgentNames.length);
                 } else {
                     response = await getAgentToolResponse(currentTurnHistory, agent, allAgentNames);
                 }
@@ -276,7 +298,7 @@ export class ChatManager {
         return newMessagesForParentHistory;
     }
 
-    private _handleModeratedMessage = async (session: ChatSession, userMessage: ChatMessage) => {
+    private _handleModeratedMessage = async (session: ChatSession, userMessage: ChatMessage, mentionedAgents: AIAgent[]) => {
         const { agents } = useAgentStore.getState();
         const participants = agents.filter(a => session.participantIds.includes(a.id));
         const participantNames = participants.map(p => p.name);
@@ -288,7 +310,8 @@ export class ChatManager {
 
         while (turns < MAX_TURNS) {
             turns++;
-            const moderatorResponse = await getModeratorResponse(turnHistory, participantNames, Array.from(spokenAgentNames));
+            const mentionedAgentNames = mentionedAgents.map(a => a.name);
+            const moderatorResponse = await getModeratorResponse(turnHistory, participantNames, Array.from(spokenAgentNames), mentionedAgentNames);
             const toolCall = moderatorResponse.toolCalls?.[0];
 
             if (!toolCall || toolCall.name === 'pass_control_to_user') {

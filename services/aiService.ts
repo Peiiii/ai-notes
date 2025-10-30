@@ -179,15 +179,19 @@ export const moderatorTools: FunctionDeclaration[] = [
     }
 ];
 
-export async function getModeratorResponse(history: ChatMessage[], availableAgents: string[], spokenAgentNames: string[]): Promise<GenerateWithToolsResult> {
+export async function getModeratorResponse(history: ChatMessage[], availableAgents: string[], spokenAgentNames: string[], mentionedAgentNames: string[]): Promise<GenerateWithToolsResult> {
     const lastUserMessage = history.filter(m => m.role === 'user').pop()?.content || '';
+    const mentionInstruction = mentionedAgentNames.length > 0
+        ? `\n*   **Mentions:** The user specifically mentioned: [${mentionedAgentNames.join(', ')}]. You should strongly prioritize selecting one of these agents if their expertise is relevant.`
+        : '';
+
     const systemInstruction = `You are an expert AI moderator orchestrating a group chat. Your goal is to facilitate a productive conversation that fully addresses all of the user's questions and requests. You are in a continuous decision loop.
 
 **Current State of the Conversation:**
 *   **User's Goal (Analyze the whole history):** Based on the entire chat history, what is the user trying to achieve? Pay special attention to their most recent messages. Is there an unanswered question or a pending request?
 *   **Last User Message:** "${lastUserMessage}"
 *   **Available Agents:** [${availableAgents.join(', ')}]
-*   **Agents who have spoken recently in this turn:** [${spokenAgentNames.join(', ')}]
+*   **Agents who have spoken recently in this turn:** [${spokenAgentNames.join(', ')}]${mentionInstruction}
 
 **Your Process:**
 1.  **Analyze the current state.** Read the latest messages carefully. Is the user's most recent query resolved?
@@ -213,7 +217,7 @@ export async function getModeratorResponse(history: ChatMessage[], availableAgen
 }
 
 // --- Agent Core Function ---
-export async function getAgentResponse(history: ChatMessage[], command?: Command, customSystemInstruction?: string): Promise<GenerateWithToolsResult> {
+export async function getAgentResponse(history: ChatMessage[], command?: Command, customSystemInstruction?: string, agentCount?: number): Promise<GenerateWithToolsResult> {
     let systemInstruction = customSystemInstruction || `You are a powerful AI assistant integrated into a note-taking app. 
 - You can search existing notes to answer questions.
 - You can create new notes.
@@ -240,6 +244,7 @@ ${systemInstruction}`;
         tools: agentTools,
         systemInstruction,
         useGoogleSearch: true,
+        agentCount,
     };
     return provider.generateContentWithTools(params);
 }
@@ -274,6 +279,7 @@ ${agent.systemInstruction}`;
         tools: agentTools, // Use the same tools as the single-agent chat
         systemInstruction,
         useGoogleSearch: true,
+        agentCount: allAgentNames.length,
     };
     return provider.generateContentWithTools(params);
 }
