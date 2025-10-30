@@ -2,7 +2,8 @@ import { useChatStore } from '../stores/chatStore';
 import { useNotesStore } from '../stores/notesStore';
 import { useAgentStore } from '../stores/agentStore';
 import { ChatMessage, Note, ChatSession, AIAgent, DiscussionMode } from '../types';
-import { getAgentTextStream, generateThreadChatResponse, getModeratorResponse, getAgentToolResponse, searchNotesInCorpus } from '../services/aiService';
+// Fix: Import 'generateThreadChatResponse' to resolve 'Cannot find name' error.
+import { getAgentResponse, getModeratorResponse, getAgentToolResponse, searchNotesInCorpus, generateThreadChatResponse } from '../services/aiService';
 import { NotesManager } from './NotesManager';
 
 const discussionModeNames: Record<DiscussionMode, string> = {
@@ -144,54 +145,10 @@ export class ChatManager {
         const { agents } = useAgentStore.getState();
         const participants = agents.filter(a => session.participantIds.includes(a.id));
         const conversationHistoryForAI = [...session.history, userMessage].filter(m => m.role !== 'system');
-        const participantNames = participants.map(p => p.name).join(', ');
-        
-        const modelPlaceholders: ChatMessage[] = participants.map(agent => ({
-            id: crypto.randomUUID(),
-            role: 'model',
-            content: '',
-            persona: agent.name,
-            status: 'thinking',
-        }));
-        useChatStore.getState().addMessages(session.id, modelPlaceholders);
+        const participantNames = participants.map(p => p.name);
 
-        const responsePromises = participants.map(async (agent, index) => {
-            const placeholderId = modelPlaceholders[index].id;
-            const augmentedSystemInstruction = `You are ${agent.name}. You are participating in a group chat with other AI agents: ${participantNames}.
-
-**Conversation Format Rules:**
-- User messages are from the human user you are assisting.
-- Messages prefixed like "[Agent Name]: ..." are from other AI agents in the chat.
-- System messages like "[Moderator chose ...]" provide context on the conversation flow.
-
-**Your Current Task:**
-It's your turn to speak. Read the entire conversation history to understand the context, then provide your response based on your specific instructions below.
-
-**CRITICAL RESPONSE INSTRUCTION:**
-You MUST NOT prepend your name or any other prefix (e.g., "[${agent.name}]:" or "[Moderator]:") to your response. The user interface already handles displaying your name. Respond with your message content directly.
-
-Your primary instructions are:
----
-${agent.systemInstruction}`;
-            try {
-                const stream = await getAgentTextStream(conversationHistoryForAI, augmentedSystemInstruction);
-                
-                let firstChunk = true;
-                for await (const chunk of stream) {
-                    if (firstChunk) {
-                        useChatStore.getState().updateMessageStatus(session.id, placeholderId, 'streaming');
-                        firstChunk = false;
-                    }
-                    useChatStore.getState().appendContentToMessage(session.id, placeholderId, chunk.text || '');
-                }
-                useChatStore.getState().updateMessageStatus(session.id, placeholderId, 'complete');
-            } catch (error) {
-                console.error(`Error from agent ${agent.name}:`, error);
-                useChatStore.getState().updateMessage(session.id, placeholderId, {
-                    content: `Sorry, I encountered an error.`,
-                    status: 'error',
-                });
-            }
+        const responsePromises = participants.map(agent => {
+            return this._runAgentTurn(agent, conversationHistoryForAI, session.id, participantNames);
         });
 
         await Promise.all(responsePromises);
@@ -200,59 +157,18 @@ ${agent.systemInstruction}`;
     private _handleTurnBasedMessage = async (session: ChatSession, userMessage: ChatMessage) => {
         const { agents } = useAgentStore.getState();
         const participants = agents.filter(a => session.participantIds.includes(a.id));
-        const participantNames = participants.map(p => p.name).join(', ');
+        const participantNames = participants.map(p => p.name);
         
         let turnHistory = [...session.history, userMessage].filter(m => m.role !== 'system');
 
         for (const agent of participants) {
-            const placeholderId = crypto.randomUUID();
-            const placeholderMessage: ChatMessage = {
-                id: placeholderId, role: 'model', content: '', persona: agent.name, status: 'thinking'
-            };
-            useChatStore.getState().addMessage(session.id, placeholderMessage);
-
-            const augmentedSystemInstruction = `You are ${agent.name}. You are participating in a group chat with other AI agents: ${participantNames}.
-
-**Conversation Format Rules:**
-- User messages are from the human user you are assisting.
-- Messages prefixed like "[Agent Name]: ..." are from other AI agents in the chat.
-- System messages like "[Moderator chose ...]" provide context on the conversation flow.
-
-**Your Current Task:**
-It's your turn to speak. Read the entire conversation history to understand the context, then provide your response based on your specific instructions below.
-
-**CRITICAL RESPONSE INSTRUCTION:**
-You MUST NOT prepend your name or any other prefix (e.g., "[${agent.name}]:" or "[Moderator]:") to your response. The user interface already handles displaying your name. Respond with your message content directly.
-
-Your primary instructions are:
----
-${agent.systemInstruction}`;
-
             try {
-                const stream = await getAgentTextStream(turnHistory, augmentedSystemInstruction);
-                
-                let firstChunk = true;
-                let fullResponse = "";
-                for await (const chunk of stream) {
-                    if (firstChunk) {
-                        useChatStore.getState().updateMessageStatus(session.id, placeholderId, 'streaming');
-                        firstChunk = false;
-                    }
-                    const textChunk = chunk.text || '';
-                    useChatStore.getState().appendContentToMessage(session.id, placeholderId, textChunk);
-                    fullResponse += textChunk;
-                }
-                useChatStore.getState().updateMessageStatus(session.id, placeholderId, 'complete');
-
-                turnHistory.push({ ...placeholderMessage, content: fullResponse, status: 'complete' });
-
+                const newMessages = await this._runAgentTurn(agent, turnHistory, session.id, participantNames);
+                turnHistory.push(...newMessages);
             } catch (error) {
-                console.error(`Error from agent ${agent.name} in turn-based mode:`, error);
-                useChatStore.getState().updateMessage(session.id, placeholderId, {
-                    content: `Sorry, I encountered an error.`,
-                    status: 'error',
-                });
-                break; // Stop the sequence on error
+                 console.error(`Error from agent ${agent.name} in turn-based mode:`, error);
+                 // The error message is already added inside _runAgentTurn
+                 break; // Stop the sequence on error
             }
         }
     }
@@ -260,74 +176,104 @@ ${agent.systemInstruction}`;
     private async _runAgentTurn(agent: AIAgent, turnHistory: ChatMessage[], sessionId: string, allAgentNames: string[]): Promise<ChatMessage[]> {
         const { updateMessage, addMessage } = useChatStore.getState();
         let currentTurnHistory = [...turnHistory];
-        const newMessagesForModerator: ChatMessage[] = [];
+        const newMessagesForParentHistory: ChatMessage[] = [];
         
         const MAX_TOOL_CALLS = 5;
         let toolCallCount = 0;
 
-        while (toolCallCount < MAX_TOOL_CALLS) {
-            toolCallCount++;
+        // Create initial placeholder
+        const placeholderId = crypto.randomUUID();
+        const placeholderMessage: ChatMessage = { id: placeholderId, role: 'model', content: '', persona: agent.name, status: 'thinking' };
+        addMessage(sessionId, placeholderMessage);
 
-            const placeholderId = crypto.randomUUID();
-            addMessage(sessionId, { id: placeholderId, role: 'model', content: '', persona: agent.name, status: 'thinking' });
+        try {
+            while (toolCallCount < MAX_TOOL_CALLS) {
+                toolCallCount++;
 
-            const response = await getAgentToolResponse(currentTurnHistory, agent, allAgentNames);
-            
-            const modelMessage: ChatMessage = {
-                id: placeholderId,
-                role: 'model',
-                content: response.text || '',
-                persona: agent.name,
-                status: 'complete',
-                toolCalls: response.toolCalls || undefined,
-            };
-            updateMessage(sessionId, placeholderId, modelMessage);
-            currentTurnHistory.push(modelMessage);
-            newMessagesForModerator.push(modelMessage);
-
-            if (!response.toolCalls || response.toolCalls.length === 0) {
-                break; // Agent's turn is over
-            }
-            
-            for (const call of response.toolCalls) {
-                let toolResultContent = "An unknown error occurred with the tool.";
-                let structuredContent: ChatMessage['structuredContent'] | undefined;
+                let response;
+                // If only one agent is in the chat, use the simpler `getAgentResponse` which has broader instructions.
+                // Otherwise, use the multi-agent specific `getAgentToolResponse`.
+                if (allAgentNames.length <= 1) {
+                    response = await getAgentResponse(currentTurnHistory, undefined, agent.systemInstruction);
+                } else {
+                    response = await getAgentToolResponse(currentTurnHistory, agent, allAgentNames);
+                }
                 
-                try {
-                    if (call.name === 'create_note') {
-                        const { title, content } = call.args;
-                        const newNote = this.notesManager.createNewTextNote();
-                        this.notesManager.updateNote(newNote.id, { title, content });
-                        toolResultContent = `Successfully created note titled "${title}".`;
-                        structuredContent = { type: 'create_note_result', message: toolResultContent, noteId: newNote.id, title };
-                    } else if (call.name === 'search_notes') {
-                        const { query } = call.args;
-                        const notes = useNotesStore.getState().notes;
-                        const results = await searchNotesInCorpus(query as string, notes);
-                        toolResultContent = `Found ${results.length} notes matching query: "${query}".`;
-                        structuredContent = { type: 'search_result', notes: results };
-                    }
-                } catch(e) {
-                    console.error("Error executing tool:", e);
-                    toolResultContent = `Error executing tool ${call.name}: ${e instanceof Error ? e.message : String(e)}`;
+                // On the first loop, update the initial placeholder. On subsequent loops (after a tool call), create new messages.
+                const messageId = toolCallCount === 1 ? placeholderId : crypto.randomUUID();
+
+                const modelMessage: ChatMessage = {
+                    id: messageId,
+                    role: 'model',
+                    content: response.text || '',
+                    persona: agent.name,
+                    status: 'complete',
+                    toolCalls: response.toolCalls || undefined,
+                    groundingChunks: response.groundingChunks || undefined,
+                };
+                
+                if (toolCallCount === 1) {
+                    updateMessage(sessionId, messageId, modelMessage);
+                } else {
+                    addMessage(sessionId, modelMessage);
                 }
 
-                const toolMessage: ChatMessage = {
-                    id: crypto.randomUUID(),
-                    role: 'tool',
-                    content: toolResultContent,
-                    tool_call_id: call.id,
-                    toolCalls: [{...call}], // Carry over the call info
-                    structuredContent,
-                };
+                currentTurnHistory.push(modelMessage);
+                newMessagesForParentHistory.push(modelMessage);
 
-                addMessage(sessionId, toolMessage);
-                currentTurnHistory.push(toolMessage);
-                newMessagesForModerator.push(toolMessage);
+                if (!response.toolCalls || response.toolCalls.length === 0) {
+                    break; // Agent's turn is over, no more tools to call.
+                }
+                
+                // If there are tool calls, process them.
+                for (const call of response.toolCalls) {
+                    let toolResultContent = "An unknown error occurred with the tool.";
+                    let structuredContent: ChatMessage['structuredContent'] | undefined;
+                    
+                    try {
+                        if (call.name === 'create_note') {
+                            const { title, content } = call.args;
+                            const newNote = this.notesManager.createNewTextNote();
+                            this.notesManager.updateNote(newNote.id, { title, content });
+                            toolResultContent = `Successfully created note titled "${title}".`;
+                            structuredContent = { type: 'create_note_result', message: toolResultContent, noteId: newNote.id, title };
+                        } else if (call.name === 'search_notes') {
+                            const { query } = call.args;
+                            const notes = useNotesStore.getState().notes;
+                            const results = await searchNotesInCorpus(query as string, notes);
+                            toolResultContent = `Found ${results.length} notes matching query: "${query}".`;
+                            structuredContent = { type: 'search_result', notes: results };
+                        }
+                    } catch(e) {
+                        console.error("Error executing tool:", e);
+                        toolResultContent = `Error executing tool ${call.name}: ${e instanceof Error ? e.message : String(e)}`;
+                    }
+
+                    const toolMessage: ChatMessage = {
+                        id: crypto.randomUUID(),
+                        role: 'tool',
+                        content: toolResultContent,
+                        tool_call_id: call.id,
+                        toolCalls: [{...call}], // Carry over the call info
+                        structuredContent,
+                    };
+
+                    addMessage(sessionId, toolMessage);
+                    currentTurnHistory.push(toolMessage);
+                    newMessagesForParentHistory.push(toolMessage);
+                }
             }
+        } catch (error) {
+            console.error(`Error during agent ${agent.name}'s turn:`, error);
+            updateMessage(sessionId, placeholderId, {
+                content: "Sorry, I encountered an error and cannot respond.",
+                status: 'error',
+            });
+            // Propagate error to stop turn-based sequence
+            throw error;
         }
 
-        return newMessagesForModerator;
+        return newMessagesForParentHistory;
     }
 
     private _handleModeratedMessage = async (session: ChatSession, userMessage: ChatMessage) => {
@@ -375,14 +321,7 @@ ${agent.systemInstruction}`;
                     spokenAgentNames.add(nextAgent.name);
                 } catch (error) {
                     console.error(`Error during agent ${nextAgent.name}'s turn:`, error);
-                    const errorMessage: ChatMessage = {
-                        id: crypto.randomUUID(),
-                        role: 'model',
-                        content: `Sorry, I encountered an error.`,
-                        status: 'error',
-                        persona: nextAgent.name,
-                    };
-                    useChatStore.getState().addMessage(session.id, errorMessage);
+                    // Error message is already added inside _runAgentTurn, so we just break the loop.
                     break;
                 }
             }
@@ -406,6 +345,8 @@ ${agent.systemInstruction}`;
 
         try {
             const updatedNote = useNotesStore.getState().notes.find(n => n.id === noteId)!;
+            // Note: Thread chat is simple, so we keep the old text-only generation.
+            // If it needed tools, we would refactor this to use `_runAgentTurn`.
             const responseContent = await generateThreadChatResponse(updatedNote, message);
             
             const modelMessage: ChatMessage = {

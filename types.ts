@@ -71,6 +71,12 @@ export interface ChatMessage {
     noteId: string;
     title: string;
   };
+  groundingChunks?: {
+    web?: {
+      uri: string;
+      title: string;
+    };
+  }[];
 }
 
 export interface PulseReport {

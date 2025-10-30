@@ -10,6 +10,67 @@ export const GEMINI_MODELS: Record<ModelTier, string> = {
     pro: 'gemini-2.5-pro',
 };
 
+// --- New Robust History Mapping Function ---
+function historyToContents(history: ChatMessage[]): any[] {
+    const contents: any[] = [];
+    let i = 0;
+    const historyWithoutSystem = history.filter(m => m.role !== 'system');
+
+    while (i < historyWithoutSystem.length) {
+        const msg = historyWithoutSystem[i];
+
+        if (msg.role === 'user') {
+            contents.push({
+                role: 'user',
+                parts: [{ text: msg.content }],
+            });
+            i++;
+        } else if (msg.role === 'model') {
+            const modelParts = [];
+            if (msg.content) {
+                const textContent = msg.persona ? `[${msg.persona}]: ${msg.content}` : msg.content;
+                modelParts.push({ text: textContent });
+            }
+            if (msg.toolCalls) {
+                for (const call of msg.toolCalls) {
+                    // Sanitize the call object to match Gemini's expected FunctionCallPart structure
+                    modelParts.push({
+                        functionCall: { name: call.name, args: call.args },
+                    });
+                }
+            }
+            contents.push({ role: 'model', parts: modelParts });
+            i++;
+
+            // After a model turn, check for a sequence of tool responses to group together.
+            const toolResponseParts: any[] = [];
+            while (i < historyWithoutSystem.length && historyWithoutSystem[i].role === 'tool') {
+                const toolMsg = historyWithoutSystem[i];
+                // Use the toolCalls array on the tool message to get the original call name
+                const correspondingCall = toolMsg.toolCalls?.[0];
+                if (correspondingCall) {
+                    toolResponseParts.push({
+                        functionResponse: {
+                            name: correspondingCall.name,
+                            response: { content: toolMsg.content },
+                        },
+                    });
+                }
+                i++; // Consume this tool message
+            }
+            if (toolResponseParts.length > 0) {
+                contents.push({ role: 'tool', parts: toolResponseParts });
+            }
+        } else {
+            // This handles tool messages that were not preceded by a model turn (should not happen in valid history)
+            // or any other unexpected role. We advance the loop to prevent it from getting stuck.
+            i++;
+        }
+    }
+    return contents;
+}
+
+
 class GeminiProvider implements LLMProvider {
     async generateText(params: GenerateTextParams): Promise<string> {
         const { model, prompt, systemInstruction } = params;
@@ -60,42 +121,26 @@ class GeminiProvider implements LLMProvider {
     }
     
     async generateContentWithTools(params: GenerateWithToolsParams): Promise<GenerateWithToolsResult> {
-        const { model, history, tools, systemInstruction } = params;
+        const { model, history, tools, systemInstruction, useGoogleSearch } = params;
         const geminiModel = GEMINI_MODELS[model];
 
-        const contents = history.map(msg => {
-            const textContent = msg.role === 'model' && msg.persona ? `[${msg.persona}]: ${msg.content}` : msg.content;
-
-            if (msg.role === 'tool' && msg.toolCalls?.[0]) {
-                return {
-                    role: 'tool',
-                    parts: [{ functionResponse: { name: msg.toolCalls[0].name, response: { content: msg.content } } }]
-                };
-            }
-            if (msg.role === 'model' && msg.toolCalls) {
-                 return {
-                    role: 'model',
-                    parts: [{ functionCall: msg.toolCalls[0] }]
-                 }
-            }
-            return {
-                role: msg.role === 'model' ? 'model' : 'user',
-                parts: [{ text: textContent }],
-            };
-        }).filter(Boolean);
+        const contents = historyToContents(history);
 
         try {
+            const geminiToolsConfig: any[] = tools?.length > 0 ? [{ functionDeclarations: tools }] : [];
+            if (useGoogleSearch) {
+                geminiToolsConfig.push({ googleSearch: {} });
+            }
+
             const response = await ai.models.generateContent({
                 model: geminiModel,
                 contents: contents,
                 config: {
-                    tools: [{ functionDeclarations: tools }],
+                    ...(geminiToolsConfig.length > 0 && { tools: geminiToolsConfig }),
                     ...(systemInstruction && { systemInstruction }),
                 },
             });
 
-            // Fix: Explicitly map FunctionCall to ToolCall, filtering out invalid calls and providing a default for args.
-            // This handles cases where the response might have function calls without a name or with optional arguments.
             const toolCalls: ToolCall[] | null = response.functionCalls
                 ? response.functionCalls
                     .filter(fc => !!fc.name)
@@ -106,8 +151,9 @@ class GeminiProvider implements LLMProvider {
                     }))
                 : null;
             const text = response.text || null;
+            const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks ?? null;
             
-            return { text, toolCalls };
+            return { text, toolCalls, groundingChunks };
 
         } catch (error) {
             console.error(`Error generating content with tools using Gemini model ${geminiModel}:`, error);

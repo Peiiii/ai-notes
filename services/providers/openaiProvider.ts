@@ -170,7 +170,7 @@ class OpenAICompatibleProvider implements LLMProvider {
                 }).filter(Boolean);
             }
             
-            return { text, toolCalls };
+            return { text, toolCalls, groundingChunks: null };
             
         } catch (error) {
             console.error(`Error generating content with tools using ${this.providerName} model ${apiModel}:`, error);

@@ -17,11 +17,13 @@ export interface GenerateWithToolsParams {
   history: ChatMessage[];
   tools: any[];
   systemInstruction?: string;
+  useGoogleSearch?: boolean;
 }
 
 export interface GenerateWithToolsResult {
   text: string | null;
   toolCalls: ToolCall[] | null;
+  groundingChunks?: any[] | null;
 }
 
 export interface StreamChunk {

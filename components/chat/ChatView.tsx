@@ -28,6 +28,7 @@ import SpeakerWaveIcon from '../icons/SpeakerWaveIcon';
 import ChevronDownIcon from '../icons/ChevronDownIcon';
 import ConfirmationModal from '../ui/ConfirmationModal';
 import HoverPopup from '../ui/HoverPopup';
+import GlobeAltIcon from '../icons/GlobeAltIcon';
 
 // --- Available Icons & Colors for Agent Creation ---
 const agentIcons: Record<string, React.FC<any>> = {
@@ -429,6 +430,37 @@ const ChatPanel: React.FC<Pick<ChatViewProps, 'activeSession' | 'agents' | 'onSe
                           ))}
                       </div>
                     )}
+                    {msg.groundingChunks && msg.groundingChunks.length > 0 && (
+                      <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-600 w-full max-w-lg">
+                        <div className="flex items-center gap-2 mb-2">
+                          <GlobeAltIcon className="w-4 h-4 text-slate-400 dark:text-slate-500" />
+                          <h4 className="text-xs font-semibold text-slate-500 dark:text-slate-400">Sources from the web</h4>
+                        </div>
+                        <ul className="space-y-1.5">
+                          {msg.groundingChunks.map((chunk, index) => {
+                            if (!chunk.web) return null;
+                            try {
+                              const hostname = new URL(chunk.web.uri).hostname;
+                              return (
+                                <li key={index}>
+                                  <a 
+                                    href={chunk.web.uri} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="text-xs text-blue-600 dark:text-blue-400 hover:underline min-w-0 group"
+                                  >
+                                    <p className="truncate font-semibold group-hover:text-blue-500 dark:group-hover:text-blue-300">{chunk.web.title}</p>
+                                    <p className="truncate text-slate-500 dark:text-slate-400">{hostname}</p>
+                                  </a>
+                                </li>
+                              )
+                            } catch(e) {
+                              return null;
+                            }
+                          })}
+                        </ul>
+                      </div>
+                    )}
                   </div>
                 </div>
               );
@@ -436,7 +468,7 @@ const ChatPanel: React.FC<Pick<ChatViewProps, 'activeSession' | 'agents' | 'onSe
         )}
         <div ref={chatEndRef} />
       </div>
-      <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-700">
+      <div className="p-4 border-t border-slate-200 dark:border-slate-700">
         <form onSubmit={handleChatSubmit} className="max-w-4xl mx-auto relative">
           {showCommands && (
             <CommandPalette
@@ -515,7 +547,7 @@ const ChatView: React.FC<ChatViewProps> = (props) => {
               <HoverPopup
                   trigger={button}
                   content={<div className="bg-slate-800 text-white text-xs font-semibold px-2 py-1 rounded-md shadow-lg">{title}</div>}
-                  popupClassName="absolute left-full ml-2"
+                  popupClassName="absolute left-full top-1/2 -translate-y-1/2 ml-2 z-30"
               />
           );
       }

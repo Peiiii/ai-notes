@@ -217,6 +217,7 @@ export async function getAgentResponse(history: ChatMessage[], command?: Command
     let systemInstruction = customSystemInstruction || `You are a powerful AI assistant integrated into a note-taking app. 
 - You can search existing notes to answer questions.
 - You can create new notes.
+- If your internal knowledge is insufficient or the user asks for recent information, use Google Search to find the answer.
 - When answering a question based on a search, be concise and directly state the answer.
 - After answering from a search, ask the user if they would like you to create a new note with the synthesized information.
 - Always respond in the user's language.`;
@@ -238,6 +239,7 @@ ${systemInstruction}`;
         history,
         tools: agentTools,
         systemInstruction,
+        useGoogleSearch: true,
     };
     return provider.generateContentWithTools(params);
 }
@@ -246,13 +248,17 @@ export async function getAgentToolResponse(history: ChatMessage[], agent: AIAgen
     const participantNames = allAgentNames.join(', ');
     const systemInstruction = `You are ${agent.name}. You are participating in a group chat with other AI agents: ${participantNames}.
 
+**Your Capabilities:**
+- You have access to tools like searching notes and creating new ones.
+- You can use Google Search for up-to-date information if the user's query cannot be answered from the conversation history or your own knowledge.
+
 **Conversation Format Rules:**
 - User messages are from the human user you are assisting.
 - Messages prefixed like "[Agent Name]: ..." are from other AI agents in the chat.
 - System messages like "[Moderator chose ...]" provide context on the conversation flow.
 
 **Your Current Task:**
-The Moderator has selected you to speak next. Read the entire conversation history to understand the context, then provide your response based on your specific instructions below. You have access to tools.
+The Moderator has selected you to speak next. Read the entire conversation history to understand the context, then provide your response based on your specific instructions below.
 
 **CRITICAL RESPONSE INSTRUCTION:**
 You MUST NOT prepend your name or any other prefix (e.g., "[${agent.name}]:" or "[Moderator]:") to your response. The user interface already handles displaying your name. Respond with your message content directly.
@@ -267,6 +273,7 @@ ${agent.systemInstruction}`;
         history,
         tools: agentTools, // Use the same tools as the single-agent chat
         systemInstruction,
+        useGoogleSearch: true,
     };
     return provider.generateContentWithTools(params);
 }
