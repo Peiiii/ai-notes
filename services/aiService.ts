@@ -181,23 +181,24 @@ export const moderatorTools: FunctionDeclaration[] = [
 
 export async function getModeratorResponse(history: ChatMessage[], availableAgents: string[], spokenAgentNames: string[]): Promise<GenerateWithToolsResult> {
     const lastUserMessage = history.filter(m => m.role === 'user').pop()?.content || '';
-    const systemInstruction = `You are an expert AI moderator orchestrating a group chat. Your goal is to ensure the user's request is fully and completely addressed by the AI agents. You are in a continuous loop. After each agent speaks, you are re-invoked to decide the next action.
+    const systemInstruction = `You are an expert AI moderator orchestrating a group chat. Your goal is to facilitate a productive conversation that fully addresses all of the user's questions and requests. You are in a continuous decision loop.
 
-**Current State of this Turn:**
-*   **User's Request:** "${lastUserMessage}"
+**Current State of the Conversation:**
+*   **User's Goal (Analyze the whole history):** Based on the entire chat history, what is the user trying to achieve? Pay special attention to their most recent messages. Is there an unanswered question or a pending request?
+*   **Last User Message:** "${lastUserMessage}"
 *   **Available Agents:** [${availableAgents.join(', ')}]
-*   **Agents who have already spoken this turn:** [${spokenAgentNames.join(', ')}]
+*   **Agents who have spoken recently in this turn:** [${spokenAgentNames.join(', ')}]
 
 **Your Process:**
-1.  **Analyze the User's Request.** What is the user's explicit or implicit goal? Does it require multiple agents to respond (e.g., "everyone", "each of you", "all of you")?
-2.  **Compare with who has spoken.** Look at the list of agents who have already spoken this turn.
-3.  **Decide the next action using a tool:**
-    *   If the request requires more input, use \`select_next_speaker\` to call on an agent from the 'Available Agents' list who is **NOT** in the 'already spoken' list.
-    *   Use \`end_discussion\` **ONLY** when the user's request is fully satisfied. For multi-agent requests, this means every required agent has contributed.
+1.  **Analyze the current state.** Read the latest messages carefully. Is the user's most recent query resolved?
+2.  **Decide the next action using a tool:**
+    *   If the user has asked a question or the previous one is not fully answered, use \`select_next_speaker\` to call on the most relevant agent to continue the conversation.
+    *   If the user's request implies multiple participants (e.g., "everyone introduce yourselves"), you MUST call \`select_next_speaker\` for each required agent, one by one, that has not yet spoken in this turn.
+    *   Use \`end_discussion\` ONLY when the conversation has reached a natural conclusion and the user's latest queries are fully satisfied.
 
 **CRITICAL RULES:**
-1.  **Multi-Agent Requests:** If the user's request implies multiple participants (e.g., "everyone introduce yourselves"), you MUST call \`select_next_speaker\` for each required agent, one by one. You are FORBIDDEN from using \`end_discussion\` until every necessary agent has spoken.
-2.  **Mandatory Re-evaluation:** You are re-invoked after every agent's turn. You MUST re-evaluate the state. Do not end the discussion prematurely. Ask yourself: "Based on the user's original request and who has spoken, is there anyone else who needs to contribute?" If yes, you MUST select another speaker.
+1.  **Don't End Prematurely:** Do not use \`end_discussion\` if the user has just asked a question, even if it's a follow-up. Your primary job is to get the user an answer. If in doubt, select a speaker.
+2.  **Re-select Speakers:** It is acceptable to call \`select_next_speaker\` on an agent that has already spoken in this turn if they are the most relevant person to answer a new user query.
 3.  **Tool Only:** You MUST respond with only a tool call. Do not add any conversational text.`;
     
     const { provider, model } = getConfig('agent_reasoning');

@@ -1,4 +1,6 @@
 
+
+
 import React, { createContext, useContext, useEffect, useRef } from 'react';
 import { useAppStore } from '../stores/appStore';
 import { useNotesStore } from '../stores/notesStore';
@@ -62,6 +64,21 @@ export class Presenter {
   };
 
   handleShowChat = () => {
+    const { sessions, activeSessionId } = useChatStore.getState();
+    if (sessions.length === 0) {
+      // First-time user, create a default session with the main companion
+      const { agents } = useAgentStore.getState();
+      const defaultCompanion = agents.find(a => a.id === 'default-companion');
+      if (defaultCompanion) {
+        // This method will create the session and automatically set it as active
+        this.chatManager.createSession([defaultCompanion.id], 'concurrent');
+      }
+    } else if (!activeSessionId) {
+      // User has sessions but none is active (e.g., after app load).
+      // The sessions are already sorted newest-first in the store.
+      this.handleSetActiveChatSession(sessions[0].id);
+    }
+    
     this.appManager.setViewMode('chat');
     this.appManager.setActiveNoteId(null);
   };

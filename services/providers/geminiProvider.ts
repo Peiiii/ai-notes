@@ -64,6 +64,8 @@ class GeminiProvider implements LLMProvider {
         const geminiModel = GEMINI_MODELS[model];
 
         const contents = history.map(msg => {
+            const textContent = msg.role === 'model' && msg.persona ? `[${msg.persona}]: ${msg.content}` : msg.content;
+
             if (msg.role === 'tool' && msg.toolCalls?.[0]) {
                 return {
                     role: 'tool',
@@ -78,7 +80,7 @@ class GeminiProvider implements LLMProvider {
             }
             return {
                 role: msg.role === 'model' ? 'model' : 'user',
-                parts: [{ text: msg.content }],
+                parts: [{ text: textContent }],
             };
         }).filter(Boolean);
 
@@ -117,10 +119,13 @@ class GeminiProvider implements LLMProvider {
         const { model, history, systemInstruction } = params;
         const geminiModel = GEMINI_MODELS[model];
 
-        const contents = history.map(msg => ({
-            role: msg.role === 'model' ? 'model' : 'user',
-            parts: [{ text: msg.content }],
-        }));
+        const contents = history.map(msg => {
+            const textContent = msg.role === 'model' && msg.persona ? `[${msg.persona}]: ${msg.content}` : msg.content;
+            return {
+                role: msg.role === 'model' ? 'model' : 'user',
+                parts: [{ text: textContent }],
+            };
+        });
 
         try {
             const responseStream = await ai.models.generateContentStream({

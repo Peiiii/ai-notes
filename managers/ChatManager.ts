@@ -133,6 +133,7 @@ export class ChatManager {
         const { agents } = useAgentStore.getState();
         const participants = agents.filter(a => session.participantIds.includes(a.id));
         const conversationHistoryForAI = [...session.history, userMessage].filter(m => m.role !== 'system');
+        const participantNames = participants.map(p => p.name).join(', ');
         
         const modelPlaceholders: ChatMessage[] = participants.map(agent => ({
             id: crypto.randomUUID(),
@@ -145,8 +146,24 @@ export class ChatManager {
 
         const responsePromises = participants.map(async (agent, index) => {
             const placeholderId = modelPlaceholders[index].id;
+            const augmentedSystemInstruction = `You are ${agent.name}. You are participating in a group chat with other AI agents: ${participantNames}.
+
+**Conversation Format Rules:**
+- User messages are from the human user you are assisting.
+- Messages prefixed like "[Agent Name]: ..." are from other AI agents in the chat.
+- System messages like "[Moderator chose ...]" provide context on the conversation flow.
+
+**Your Current Task:**
+It's your turn to speak. Read the entire conversation history to understand the context, then provide your response based on your specific instructions below.
+
+**CRITICAL RESPONSE INSTRUCTION:**
+You MUST NOT prepend your name or any other prefix (e.g., "[${agent.name}]:" or "[Moderator]:") to your response. The user interface already handles displaying your name. Respond with your message content directly.
+
+Your primary instructions are:
+---
+${agent.systemInstruction}`;
             try {
-                const stream = await getAgentTextStream(conversationHistoryForAI, agent.systemInstruction);
+                const stream = await getAgentTextStream(conversationHistoryForAI, augmentedSystemInstruction);
                 
                 let firstChunk = true;
                 for await (const chunk of stream) {
@@ -172,6 +189,7 @@ export class ChatManager {
     private _handleTurnBasedMessage = async (session: ChatSession, userMessage: ChatMessage) => {
         const { agents } = useAgentStore.getState();
         const participants = agents.filter(a => session.participantIds.includes(a.id));
+        const participantNames = participants.map(p => p.name).join(', ');
         
         let turnHistory = [...session.history, userMessage].filter(m => m.role !== 'system');
 
@@ -182,8 +200,25 @@ export class ChatManager {
             };
             useChatStore.getState().addMessage(session.id, placeholderMessage);
 
+            const augmentedSystemInstruction = `You are ${agent.name}. You are participating in a group chat with other AI agents: ${participantNames}.
+
+**Conversation Format Rules:**
+- User messages are from the human user you are assisting.
+- Messages prefixed like "[Agent Name]: ..." are from other AI agents in the chat.
+- System messages like "[Moderator chose ...]" provide context on the conversation flow.
+
+**Your Current Task:**
+It's your turn to speak. Read the entire conversation history to understand the context, then provide your response based on your specific instructions below.
+
+**CRITICAL RESPONSE INSTRUCTION:**
+You MUST NOT prepend your name or any other prefix (e.g., "[${agent.name}]:" or "[Moderator]:") to your response. The user interface already handles displaying your name. Respond with your message content directly.
+
+Your primary instructions are:
+---
+${agent.systemInstruction}`;
+
             try {
-                const stream = await getAgentTextStream(turnHistory, agent.systemInstruction);
+                const stream = await getAgentTextStream(turnHistory, augmentedSystemInstruction);
                 
                 let firstChunk = true;
                 let fullResponse = "";
@@ -256,8 +291,25 @@ export class ChatManager {
                 };
                 useChatStore.getState().addMessage(session.id, placeholderMessage);
 
+                const augmentedSystemInstruction = `You are ${nextAgent.name}. You are participating in a group chat with other AI agents: ${participantNames.join(', ')}.
+
+**Conversation Format Rules:**
+- User messages are from the human user you are assisting.
+- Messages prefixed like "[Agent Name]: ..." are from other AI agents in the chat.
+- System messages like "[Moderator chose ...]" provide context on the conversation flow.
+
+**Your Current Task:**
+The Moderator has selected you to speak next. Read the entire conversation history to understand the context, then provide your response based on your specific instructions below.
+
+**CRITICAL RESPONSE INSTRUCTION:**
+You MUST NOT prepend your name or any other prefix (e.g., "[${nextAgent.name}]:" or "[Moderator]:") to your response. The user interface already handles displaying your name. Respond with your message content directly.
+
+Your primary instructions are:
+---
+${nextAgent.systemInstruction}`;
+
                 try {
-                    const stream = await getAgentTextStream(turnHistory, nextAgent.systemInstruction);
+                    const stream = await getAgentTextStream(turnHistory, augmentedSystemInstruction);
                     let fullResponse = "";
                     let firstChunk = true;
                     for await (const chunk of stream) {

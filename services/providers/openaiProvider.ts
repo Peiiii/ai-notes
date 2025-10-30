@@ -109,10 +109,12 @@ class OpenAICompatibleProvider implements LLMProvider {
         }));
 
         const messages = history.map(msg => {
+            const content = msg.role === 'model' && msg.persona ? `[${msg.persona}]: ${msg.content}` : msg.content;
+            
             if (msg.role === 'model' && msg.toolCalls) {
                 return {
                     role: 'assistant',
-                    content: msg.content || null,
+                    content: content || null,
                     tool_calls: msg.toolCalls.map(call => ({
                         id: call.id,
                         type: 'function',
@@ -129,7 +131,7 @@ class OpenAICompatibleProvider implements LLMProvider {
             }
             return {
                 role: msg.role === 'model' ? 'assistant' : 'user',
-                content: msg.content,
+                content: content,
             };
         });
 
@@ -181,10 +183,13 @@ class OpenAICompatibleProvider implements LLMProvider {
         const { model, history, systemInstruction } = params;
         const apiModel = this.modelMap[model];
 
-        const messages: { role: 'system' | 'user' | 'assistant', content: string | null }[] = history.map(msg => ({
-            role: msg.role === 'model' ? 'assistant' : 'user',
-            content: msg.content,
-        }));
+        const messages: { role: 'system' | 'user' | 'assistant', content: string | null }[] = history.map(msg => {
+            const content = msg.role === 'model' && msg.persona ? `[${msg.persona}]: ${msg.content}` : msg.content;
+            return {
+                role: msg.role === 'model' ? 'assistant' : 'user',
+                content: content,
+            };
+        });
 
         if (systemInstruction) {
             messages.unshift({ role: 'system', content: systemInstruction });
