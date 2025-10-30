@@ -1,11 +1,16 @@
 
+
 import { useChatStore } from '../stores/chatStore';
 import { useNotesStore } from '../stores/notesStore';
 import { useAgentStore } from '../stores/agentStore';
 import { ChatMessage, Note, ChatSession, AIAgent, DiscussionMode } from '../types';
-import { getAgentResponse, getModeratorResponse, getAgentToolResponse, searchNotesInCorpus } from '../services/agentAIService';
+import { getAgentResponse, getAgentToolResponse, searchNotesInCorpus } from '../services/agentAIService';
 import { generateThreadChatResponse } from '../services/noteAIService';
 import { NotesManager } from './NotesManager';
+import { IDiscussionStrategy } from './discussionStrategies/IDiscussionStrategy';
+import { ConcurrentStrategy } from './discussionStrategies/ConcurrentStrategy';
+import { TurnBasedStrategy } from './discussionStrategies/TurnBasedStrategy';
+import { ModeratedStrategy } from './discussionStrategies/ModeratedStrategy';
 
 const discussionModeNames: Record<DiscussionMode, string> = {
     concurrent: 'Concurrent',
@@ -28,9 +33,15 @@ const parseMentions = (text: string, agents: AIAgent[]): AIAgent[] => {
 
 export class ChatManager {
     private notesManager: NotesManager;
+    private discussionStrategies: Record<DiscussionMode, IDiscussionStrategy>;
 
     constructor(notesManager: NotesManager) {
         this.notesManager = notesManager;
+        this.discussionStrategies = {
+            concurrent: new ConcurrentStrategy(),
+            turn_based: new TurnBasedStrategy(),
+            moderated: new ModeratedStrategy(),
+        };
     }
 
     createSession = (participantIds: string[], discussionMode: DiscussionMode): string => {
@@ -145,58 +156,18 @@ export class ChatManager {
         const participants = agents.filter(a => session.participantIds.includes(a.id));
         const mentionedAgents = parseMentions(message, participants);
 
-        switch (session.discussionMode) {
-            case 'turn_based':
-                await this._handleTurnBasedMessage(session, userMessage, mentionedAgents);
-                break;
-            case 'moderated':
-                await this._handleModeratedMessage(session, userMessage, mentionedAgents);
-                break;
-            case 'concurrent':
-            default:
-                await this._handleConcurrentMessage(session, userMessage, mentionedAgents);
-                break;
+        const strategy = this.discussionStrategies[session.discussionMode];
+        if (strategy) {
+            // We pass `this` so strategies can access helper methods like _runAgentTurn
+            await strategy.handleMessage(this, session, userMessage, mentionedAgents);
+        } else {
+            console.error(`No strategy found for discussion mode: ${session.discussionMode}`);
+            // Fallback to concurrent
+            await this.discussionStrategies.concurrent.handleMessage(this, session, userMessage, mentionedAgents);
         }
     }
 
-    private _handleConcurrentMessage = async (session: ChatSession, userMessage: ChatMessage, mentionedAgents: AIAgent[]) => {
-        const { agents } = useAgentStore.getState();
-        const allParticipants = agents.filter(a => session.participantIds.includes(a.id));
-        
-        // If agents are mentioned, only they respond. Otherwise, all respond.
-        const respondingAgents = mentionedAgents.length > 0 ? mentionedAgents : allParticipants;
-        
-        const conversationHistoryForAI = [...session.history, userMessage].filter(m => m.role !== 'system');
-        const participantNames = allParticipants.map(p => p.name);
-
-        const responsePromises = respondingAgents.map(agent => {
-            return this._runAgentTurn(agent, conversationHistoryForAI, session.id, participantNames);
-        });
-
-        await Promise.all(responsePromises);
-    }
-    
-    private _handleTurnBasedMessage = async (session: ChatSession, userMessage: ChatMessage, mentionedAgents: AIAgent[]) => {
-        const { agents } = useAgentStore.getState();
-        const allParticipants = agents.filter(a => session.participantIds.includes(a.id));
-        const respondingAgents = mentionedAgents.length > 0 ? mentionedAgents : allParticipants;
-        const participantNames = allParticipants.map(p => p.name);
-        
-        let turnHistory = [...session.history, userMessage].filter(m => m.role !== 'system');
-
-        for (const agent of respondingAgents) {
-            try {
-                const newMessages = await this._runAgentTurn(agent, turnHistory, session.id, participantNames);
-                turnHistory.push(...newMessages);
-            } catch (error) {
-                 console.error(`Error from agent ${agent.name} in turn-based mode:`, error);
-                 // The error message is already added inside _runAgentTurn
-                 break; // Stop the sequence on error
-            }
-        }
-    }
-    
-    private async _runAgentTurn(agent: AIAgent, turnHistory: ChatMessage[], sessionId: string, allAgentNames: string[]): Promise<ChatMessage[]> {
+    public async _runAgentTurn(agent: AIAgent, turnHistory: ChatMessage[], sessionId: string, allAgentNames: string[]): Promise<ChatMessage[]> {
         const { updateMessage, addMessage } = useChatStore.getState();
         let currentTurnHistory = [...turnHistory];
         const newMessagesForParentHistory: ChatMessage[] = [];
@@ -297,59 +268,6 @@ export class ChatManager {
         }
 
         return newMessagesForParentHistory;
-    }
-
-    private _handleModeratedMessage = async (session: ChatSession, userMessage: ChatMessage, mentionedAgents: AIAgent[]) => {
-        const { agents } = useAgentStore.getState();
-        const participants = agents.filter(a => session.participantIds.includes(a.id));
-        const participantNames = participants.map(p => p.name);
-        
-        let turnHistory = [...session.history, userMessage].filter(m => m.role !== 'system');
-        const spokenAgentNames = new Set<string>();
-        let turns = 0;
-        const MAX_TURNS = participants.length + 3; // Prevent infinite loops
-
-        while (turns < MAX_TURNS) {
-            turns++;
-            const mentionedAgentNames = mentionedAgents.map(a => a.name);
-            const moderatorResponse = await getModeratorResponse(turnHistory, participantNames, Array.from(spokenAgentNames), mentionedAgentNames);
-            const toolCall = moderatorResponse.toolCalls?.[0];
-
-            if (!toolCall || toolCall.name === 'pass_control_to_user') {
-                const reason = toolCall?.args.reason || "The discussion goal has been met.";
-                const systemMessage: ChatMessage = {
-                    id: crypto.randomUUID(), role: 'system', content: `[Moderator]: ${reason}`
-                };
-                useChatStore.getState().addMessage(session.id, systemMessage);
-                break;
-            }
-
-            if (toolCall.name === 'select_next_speaker') {
-                const agentName = toolCall.args.agent_name as string;
-                const reason = toolCall.args.reason as string;
-                const nextAgent = participants.find(p => p.name === agentName);
-                
-                if (!nextAgent) {
-                    console.warn(`Moderator chose an invalid agent: ${agentName}`);
-                    continue;
-                }
-                
-                const reasonMessage: ChatMessage = {
-                    id: crypto.randomUUID(), role: 'system', content: `[Moderator chose ${agentName}]: ${reason}`
-                };
-                useChatStore.getState().addMessage(session.id, reasonMessage);
-
-                try {
-                    const newMessages = await this._runAgentTurn(nextAgent, turnHistory, session.id, participantNames);
-                    turnHistory.push(...newMessages);
-                    spokenAgentNames.add(nextAgent.name);
-                } catch (error) {
-                    console.error(`Error during agent ${nextAgent.name}'s turn:`, error);
-                    // Error message is already added inside _runAgentTurn, so we just break the loop.
-                    break;
-                }
-            }
-        }
     }
 
     sendThreadChatMessage = async (noteId: string, message: string) => {
