@@ -1,5 +1,5 @@
 import { GoogleGenAI, FunctionCall } from "@google/genai";
-import { LLMProvider, GenerateTextParams, GenerateJsonParams, ModelTier, GenerateWithToolsParams, GenerateWithToolsResult } from './types';
+import { LLMProvider, GenerateTextParams, GenerateJsonParams, ModelTier, GenerateWithToolsParams, GenerateWithToolsResult, GenerateTextStreamParams, StreamChunk } from './types';
 import { ChatMessage, ToolCall } from "../../types";
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -110,6 +110,38 @@ class GeminiProvider implements LLMProvider {
         } catch (error) {
             console.error(`Error generating content with tools using Gemini model ${geminiModel}:`, error);
             throw new Error("Failed to get agent response from Gemini AI.");
+        }
+    }
+
+    async generateTextStream(params: GenerateTextStreamParams): Promise<AsyncGenerator<StreamChunk>> {
+        const { model, history, systemInstruction } = params;
+        const geminiModel = GEMINI_MODELS[model];
+
+        const contents = history.map(msg => ({
+            role: msg.role === 'model' ? 'model' : 'user',
+            parts: [{ text: msg.content }],
+        }));
+
+        try {
+            const responseStream = await ai.models.generateContentStream({
+                model: geminiModel,
+                contents: contents,
+                config: {
+                    ...(systemInstruction && { systemInstruction }),
+                },
+            });
+
+            async function* mapStream(): AsyncGenerator<StreamChunk> {
+                for await (const chunk of responseStream) {
+                    yield { text: chunk.text || null };
+                }
+            }
+            
+            return mapStream();
+
+        } catch (error) {
+            console.error(`Error generating text stream with Gemini model ${geminiModel}:`, error);
+            throw new Error("Failed to get text stream from Gemini AI.");
         }
     }
 }

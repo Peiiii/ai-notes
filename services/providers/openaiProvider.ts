@@ -1,4 +1,4 @@
-import { LLMProvider, GenerateTextParams, GenerateJsonParams, ModelTier, GenerateWithToolsParams, GenerateWithToolsResult } from './types';
+import { LLMProvider, GenerateTextParams, GenerateJsonParams, ModelTier, GenerateWithToolsParams, GenerateWithToolsResult, GenerateTextStreamParams, StreamChunk } from './types';
 import { ChatMessage, ToolCall } from '../../types';
 
 class OpenAICompatibleProvider implements LLMProvider {
@@ -173,6 +173,84 @@ class OpenAICompatibleProvider implements LLMProvider {
         } catch (error) {
             console.error(`Error generating content with tools using ${this.providerName} model ${apiModel}:`, error);
             throw new Error(`Failed to get agent response from ${this.providerName}.`);
+        }
+    }
+    
+    async generateTextStream(params: GenerateTextStreamParams): Promise<AsyncGenerator<StreamChunk>> {
+        this.checkApiKey();
+        const { model, history, systemInstruction } = params;
+        const apiModel = this.modelMap[model];
+
+        const messages: { role: 'system' | 'user' | 'assistant', content: string | null }[] = history.map(msg => ({
+            role: msg.role === 'model' ? 'assistant' : 'user',
+            content: msg.content,
+        }));
+
+        if (systemInstruction) {
+            messages.unshift({ role: 'system', content: systemInstruction });
+        }
+
+        const body = {
+            model: apiModel,
+            messages: messages,
+            stream: true,
+        };
+
+        try {
+            const response = await fetch(this.apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.apiKey}`,
+                },
+                body: JSON.stringify(body),
+            });
+
+            if (!response.ok || !response.body) {
+                const errorBody = await response.json().catch(() => ({ error: { message: 'Failed to parse error response' } }));
+                console.error(`${this.providerName} API Error:`, errorBody);
+                throw new Error(`${this.providerName} API stream request failed with status ${response.status}: ${errorBody.error?.message}`);
+            }
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+
+            async function* streamGenerator(): AsyncGenerator<StreamChunk> {
+                let buffer = '';
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) {
+                        break;
+                    }
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop() || ''; // Keep the last partial line
+
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            const data = line.substring(6);
+                            if (data.trim() === '[DONE]') {
+                                return;
+                            }
+                            try {
+                                const parsed = JSON.parse(data);
+                                const textChunk = parsed.choices?.[0]?.delta?.content;
+                                if (textChunk) {
+                                    yield { text: textChunk };
+                                }
+                            } catch (e) {
+                                // console.error('Error parsing stream chunk:', data, e);
+                            }
+                        }
+                    }
+                }
+            }
+
+            return streamGenerator();
+
+        } catch (error) {
+            console.error(`Error generating text stream with ${this.providerName} model ${apiModel}:`, error);
+            throw new Error(`Failed to get text stream from ${this.providerName}.`);
         }
     }
 }

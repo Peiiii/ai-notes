@@ -1,8 +1,7 @@
-
 import { Note, KnowledgeCard, ChatMessage, DebateSynthesis, ToolCall, ProactiveSuggestion } from '../types';
 import { geminiProvider, GEMINI_MODELS } from './providers/geminiProvider';
 import { openAIProvider, dashscopeProvider, deepseekProvider, openRouterProvider } from './providers/openaiProvider';
-import { LLMProvider, GenerateJsonParams, GenerateTextParams, ModelTier, GenerateWithToolsParams, GenerateWithToolsResult } from './providers/types';
+import { LLMProvider, GenerateJsonParams, GenerateTextParams, ModelTier, GenerateWithToolsParams, GenerateWithToolsResult, StreamChunk } from './providers/types';
 // Fix: Imported `GoogleGenAI` to resolve 'Cannot find name' error.
 import { GoogleGenAI, Type, FunctionDeclaration, GenerateContentResponse } from "@google/genai";
 import { Command } from '../commands';
@@ -242,29 +241,13 @@ ${systemInstruction}`;
     return provider.generateContentWithTools(params);
 }
 
-export async function getAgentResponseStream(history: ChatMessage[], systemInstruction: string): Promise<AsyncGenerator<GenerateContentResponse>> {
-  const { model: modelTier } = getConfig('agent_reasoning');
-  const geminiModelName = GEMINI_MODELS[modelTier];
-
-  const contents = history.map(msg => ({
-    role: msg.role === 'model' ? 'model' : 'user',
-    parts: [{ text: msg.content }],
-  }));
-
-  try {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-    const response = await ai.models.generateContentStream({
-        model: geminiModelName,
-        contents: contents,
-        config: {
-            systemInstruction: systemInstruction,
-        },
+export async function getAgentTextStream(history: ChatMessage[], systemInstruction: string): Promise<AsyncGenerator<StreamChunk>> {
+    const { provider, model } = getConfig('agent_reasoning');
+    return provider.generateTextStream({
+        model,
+        history,
+        systemInstruction,
     });
-    return response;
-  } catch (error) {
-    console.error(`Error getting streaming agent response:`, error);
-    throw new Error("Failed to get streaming response from Gemini AI.");
-  }
 }
 
 export async function getCreatorAgentResponse(history: ChatMessage[]): Promise<GenerateWithToolsResult> {

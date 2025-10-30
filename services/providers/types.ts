@@ -24,6 +24,13 @@ export interface GenerateWithToolsResult {
   toolCalls: ToolCall[] | null;
 }
 
+export interface StreamChunk {
+  text: string | null;
+}
+
+export type GenerateTextStreamParams = Omit<GenerateWithToolsParams, 'tools'>;
+
+
 /**
  * Defines the contract for any Large Language Model (LLM) provider.
  */
@@ -43,4 +50,9 @@ export interface LLMProvider {
    * This is the core method for agentic behavior.
    */
   generateContentWithTools(params: GenerateWithToolsParams): Promise<GenerateWithToolsResult>;
+
+  /**
+   * Generates a stream of text chunks for real-time responses.
+   */
+  generateTextStream(params: GenerateTextStreamParams): Promise<AsyncGenerator<StreamChunk>>;
 }

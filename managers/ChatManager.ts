@@ -1,9 +1,8 @@
-
 import { useChatStore } from '../stores/chatStore';
 import { useNotesStore } from '../stores/notesStore';
 import { useAgentStore } from '../stores/agentStore';
 import { ChatMessage, Note, ChatSession, AIAgent, DiscussionMode } from '../types';
-import { getAgentResponseStream, generateThreadChatResponse, getModeratorResponse } from '../services/aiService';
+import { getAgentTextStream, generateThreadChatResponse, getModeratorResponse } from '../services/aiService';
 import { NotesManager } from './NotesManager';
 
 const discussionModeNames: Record<DiscussionMode, string> = {
@@ -147,7 +146,7 @@ export class ChatManager {
         const responsePromises = participants.map(async (agent, index) => {
             const placeholderId = modelPlaceholders[index].id;
             try {
-                const stream = await getAgentResponseStream(conversationHistoryForAI, agent.systemInstruction);
+                const stream = await getAgentTextStream(conversationHistoryForAI, agent.systemInstruction);
                 
                 let firstChunk = true;
                 for await (const chunk of stream) {
@@ -184,7 +183,7 @@ export class ChatManager {
             useChatStore.getState().addMessage(session.id, placeholderMessage);
 
             try {
-                const stream = await getAgentResponseStream(turnHistory, agent.systemInstruction);
+                const stream = await getAgentTextStream(turnHistory, agent.systemInstruction);
                 
                 let firstChunk = true;
                 let fullResponse = "";
@@ -258,7 +257,7 @@ export class ChatManager {
                 useChatStore.getState().addMessage(session.id, placeholderMessage);
 
                 try {
-                    const stream = await getAgentResponseStream(turnHistory, nextAgent.systemInstruction);
+                    const stream = await getAgentTextStream(turnHistory, nextAgent.systemInstruction);
                     let fullResponse = "";
                     let firstChunk = true;
                     for await (const chunk of stream) {
