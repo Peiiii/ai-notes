@@ -4,6 +4,7 @@
 
 
 
+
 import React, { useMemo, useEffect, useRef, useState } from 'react';
 import { AIAgent, ChatSession, DiscussionMode, PresetChat } from '../../types';
 import { usePresenter } from '../../presenter';
@@ -95,7 +96,7 @@ const ChatView: React.FC = () => {
   return (
     <div className="h-full flex">
       {/* Session List (Left Side) */}
-      <div className={`h-full flex flex-col bg-slate-100 dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 transition-all duration-300 ${isChatSidebarCollapsed ? 'w-16' : 'w-64 md:w-80'}`}>
+      <div className={`h-full flex flex-col bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-700 transition-all duration-300 ${isChatSidebarCollapsed ? 'w-16' : 'w-64 md:w-80'}`}>
         <div className={`flex-shrink-0 border-b border-slate-200 dark:border-slate-700 ${isChatSidebarCollapsed ? 'p-2' : 'p-4'}`}>
           <button onClick={() => setIsNewChatOpen(true)} className={`w-full flex items-center justify-center px-4 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-slate-800 focus:ring-indigo-500 overflow-hidden transition-all`}>
             <PlusIcon className="w-5 h-5 flex-shrink-0"/>
@@ -113,7 +114,7 @@ const ChatView: React.FC = () => {
 
                     return (
                         <li key={session.id}>
-                            <button onClick={() => presenter.handleSetActiveChatSession(session.id)} className={`w-full text-left p-2 rounded-md flex items-center group transition-colors ${isChatSidebarCollapsed ? 'justify-center' : 'gap-3'} ${activeSession?.id === session.id ? 'bg-indigo-100 dark:bg-indigo-900/50' : 'hover:bg-slate-200 dark:hover:bg-slate-700/50'}`}>
+                            <button onClick={() => presenter.handleSetActiveChatSession(session.id)} className={`w-full text-left p-2 rounded-lg flex items-center group transition-colors ${isChatSidebarCollapsed ? 'justify-center' : 'gap-3'} ${activeSession?.id === session.id ? 'bg-indigo-100 dark:bg-indigo-900/50' : 'bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700'}`}>
                                 
                                 {/* AVATAR LOGIC */}
                                 {isChatSidebarCollapsed ? (
