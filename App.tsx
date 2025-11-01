@@ -46,9 +46,11 @@ function AppContent() {
 
   return (
     <div className="h-screen w-screen flex antialiased text-slate-800 dark:text-slate-200 overflow-x-hidden">
-      <div className="w-full max-w-xs md:w-1/3 md:max-w-sm lg:w-1/4 border-r border-slate-200 dark:border-slate-700 flex-shrink-0">
-        <NoteList />
-      </div>
+      {viewMode !== 'chat' && (
+        <div className="w-full max-w-xs md:w-1/3 md:max-w-sm lg:w-1/4 border-r border-slate-200 dark:border-slate-700 flex-shrink-0">
+          <NoteList />
+        </div>
+      )}
       <main className="flex-1 min-w-0">{renderMainView()}</main>
       <PulseReportModal 
         report={viewingPulseReport} 

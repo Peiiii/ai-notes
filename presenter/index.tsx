@@ -58,6 +58,10 @@ export class Presenter {
     }
   };
 
+  handleReturnToEditor = () => {
+    this.appManager.setViewMode('editor');
+  };
+
   handleSelectNote = (id: string) => {
     this.appManager.setActiveNoteId(id);
     this.appManager.setViewMode('editor');
