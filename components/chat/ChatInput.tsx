@@ -37,9 +37,11 @@ const ChatInput: React.FC = () => {
     
     useEffect(() => {
         const textarea = inputRef.current;
-        if (textarea) {
-            textarea.style.height = 'auto'; // Reset height to recalculate
-            textarea.style.height = `${textarea.scrollHeight}px`; // Set to scroll height
+        if (!textarea) return;
+
+        textarea.style.height = 'auto'; // reset so shrinking works after submit
+        if (chatInput.length > 0) {
+            textarea.style.height = `${textarea.scrollHeight}px`;
         }
     }, [chatInput]);
 
@@ -200,7 +202,7 @@ const ChatInput: React.FC = () => {
                         onKeyDown={handleKeyDown}
                         placeholder={`Message ${activeSession.name}... (Shift + Enter for newline)`}
                         disabled={isChatting}
-                        className="flex-1 w-full bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none max-h-[150px] min-h-11"
+                        className="flex-1 w-full bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none max-h-[150px]"
                     />
                     <button
                         type="submit"
