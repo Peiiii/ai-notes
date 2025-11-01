@@ -514,13 +514,13 @@ const ChatPanel: React.FC = () => {
           <div className="flex gap-2 items-start">
             <textarea
               ref={inputRef}
+              rows={1}
               value={chatInput}
               onChange={handleInputChange}
               onKeyDown={handleKeyDown}
               placeholder={`Message ${activeSession.name}... (Shift + Enter for newline)`}
               disabled={isChatting}
               className="flex-1 w-full bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none overflow-y-auto truncate-placeholder"
-              rows={1}
               style={{maxHeight: '150px'}}
             />
             <button
