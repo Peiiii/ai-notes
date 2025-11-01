@@ -1,6 +1,5 @@
 
 
-
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { usePresenter } from '../../presenter';
 import { useChatStore } from '../../stores/chatStore';
@@ -25,6 +24,8 @@ import { ParticipantAvatarStack, AgentMentionPopup, AgentAvatar } from './ChatUI
 import AddAgentsModal from './AddAgentsModal';
 import ChatBubbleLeftRightIcon from '../icons/ChatBubbleLeftRightIcon';
 import PencilIcon from '../icons/PencilIcon';
+import EllipsisVerticalIcon from '../icons/EllipsisVerticalIcon';
+import RenameChatModal from './RenameChatModal';
 
 
 // --- Discussion Modes ---
@@ -89,19 +90,20 @@ const ChatPanel: React.FC = () => {
   const activeSession = useMemo(() => sessions.find(s => s.id === activeSessionId) || null, [sessions, activeSessionId]);
   
   const [chatInput, setChatInput] = useState('');
-  const [isAddAgentModalOpen, setAddAgentModalOpen] = useState(false);
+  const [isParticipantsModalOpen, setParticipantsModalOpen] = useState(false);
   const [isModeDropdownOpen, setModeDropdownOpen] = useState(false);
   const [suggestions, setSuggestions] = useState<ProactiveSuggestion[]>([]);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false);
-  const [isEditingName, setIsEditingName] = useState(false);
-  const [editingNameValue, setEditingNameValue] = useState(activeSession?.name || '');
+  const [isRenameModalOpen, setIsRenameModalOpen] = useState(false);
+  const [isActionsMenuOpen, setActionsMenuOpen] = useState(false);
 
 
   const chatEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const nameInputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const modeDropdownRef = useRef<HTMLDivElement>(null);
+  const actionsMenuRef = useRef<HTMLDivElement>(null);
+  const previousSessionId = useRef<string | null>(null);
   
   const isChatting = useMemo(() => 
     activeSession?.history.some(m => m.status === 'thinking' || m.status === 'streaming') || false,
@@ -117,36 +119,17 @@ const ChatPanel: React.FC = () => {
   const filteredCommands = commands.filter(c => c.name.toLowerCase().startsWith(commandQuery.toLowerCase()));
   
   useEffect(() => {
-    if (activeSession) {
-        setEditingNameValue(activeSession.name);
-        setIsEditingName(false);
-    }
-  }, [activeSession]);
-
-  useEffect(() => {
-    if (isEditingName) {
-        nameInputRef.current?.focus();
-        nameInputRef.current?.select();
-    }
-  }, [isEditingName]);
-
-  const handleNameSave = () => {
-    if (editingNameValue.trim() && activeSession && editingNameValue.trim() !== activeSession.name) {
-        presenter.handleRenameSession(activeSession.id, editingNameValue.trim());
-    }
-    setIsEditingName(false);
-  };
-
-
-  useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
         if (modeDropdownRef.current && !modeDropdownRef.current.contains(event.target as Node)) {
             setModeDropdownOpen(false);
         }
+        if (actionsMenuRef.current && !actionsMenuRef.current.contains(event.target as Node)) {
+            setActionsMenuOpen(false);
+        }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [modeDropdownRef]);
+  }, [modeDropdownRef, actionsMenuRef]);
 
   useEffect(() => {
     if (activeSession && activeSession.history.length === 0 && notes.length > 0) {
@@ -160,13 +143,22 @@ const ChatPanel: React.FC = () => {
   }, [activeSession, notes, presenter]);
 
   useEffect(() => {
-      chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [activeSession?.history, suggestions]);
+    const isNewSession = previousSessionId.current !== activeSession?.id;
+    chatEndRef.current?.scrollIntoView({ behavior: isNewSession ? 'instant' : 'smooth' });
+    previousSessionId.current = activeSession?.id ?? null;
+  }, [activeSession?.id, activeSession?.history, suggestions]);
   
   useEffect(() => {
     setChatInput('');
     setMentionPopup(null);
   }, [activeSession?.id]);
+  
+  useEffect(() => {
+    if (inputRef.current) {
+        inputRef.current.style.height = 'auto';
+        inputRef.current.style.height = `${inputRef.current.scrollHeight}px`;
+    }
+  }, [chatInput]);
 
   const handleSelectMention = useCallback((agentName: string) => {
     if (!mentionPopup) return;
@@ -186,7 +178,7 @@ const ChatPanel: React.FC = () => {
     }, 0);
   }, [chatInput, mentionPopup]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value;
     const cursorPosition = e.target.selectionStart || 0;
     setChatInput(value);
@@ -234,7 +226,7 @@ const ChatPanel: React.FC = () => {
     presenter.handleSendMessage(activeSession.id, prompt);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (mentionPopup?.visible) {
         if (e.key === 'ArrowDown') {
             e.preventDefault();
@@ -253,28 +245,38 @@ const ChatPanel: React.FC = () => {
         return;
     }
     
-    if (!showCommands) return;
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      const newIndex = (selectedCommandIndex + 1) % (filteredCommands.length > 0 ? filteredCommands.length : 1);
-      setSelectedCommandIndex(newIndex);
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      const newIndex = (selectedCommandIndex - 1 + (filteredCommands.length > 0 ? filteredCommands.length : 1)) % (filteredCommands.length > 0 ? filteredCommands.length : 1);
-      setSelectedCommandIndex(newIndex);
-    } else if (e.key === 'Enter') {
-      e.preventDefault();
-      if (filteredCommands.length > 0 && selectedCommandIndex < filteredCommands.length) {
-        handleSelectCommand(filteredCommands[selectedCommandIndex].name);
-      }
-    } else if (e.key === 'Escape') {
-      e.preventDefault();
-      setShowCommands(false);
+    if (showCommands) {
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          const newIndex = (selectedCommandIndex + 1) % (filteredCommands.length > 0 || showCommands ? 1 : 0);
+          setSelectedCommandIndex(newIndex);
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          const newIndex = (selectedCommandIndex - 1 + (filteredCommands.length > 0 || showCommands ? 1 : 0)) % (filteredCommands.length > 0 || showCommands ? 1 : 0);
+          setSelectedCommandIndex(newIndex);
+        } else if (e.key === 'Enter') {
+          e.preventDefault();
+          if (filteredCommands.length > 0 && selectedCommandIndex < filteredCommands.length) {
+            handleSelectCommand(filteredCommands[selectedCommandIndex].name);
+          } else if (filteredCommands.length === 0 && commandQuery) {
+            presenter.handleOpenCreateCommandModal(commandQuery);
+            setChatInput('');
+            setShowCommands(false);
+          }
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          setShowCommands(false);
+        }
+        return;
+    }
+    
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        handleChatSubmit();
     }
   };
 
-  const handleChatSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleChatSubmit = () => {
     if (!activeSession) return;
     if (chatInput.trim() && !isChatting) {
       presenter.handleSendMessage(activeSession.id, chatInput);
@@ -311,41 +313,20 @@ const ChatPanel: React.FC = () => {
 
   return (
     <div className="h-full flex flex-col bg-white dark:bg-slate-800/50">
-      <div className="p-3 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between gap-3">
+      <div className="p-3 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 flex-1 min-w-0">
             <ParticipantAvatarStack agents={participants} size="lg"/>
-            <div className="flex-1 min-w-0 group">
-                {isEditingName ? (
-                    <input
-                        ref={nameInputRef}
-                        type="text"
-                        value={editingNameValue}
-                        onChange={(e) => setEditingNameValue(e.target.value)}
-                        onBlur={handleNameSave}
-                        onKeyDown={(e) => {
-                            if (e.key === 'Enter') handleNameSave();
-                            if (e.key === 'Escape') {
-                                setEditingNameValue(activeSession.name);
-                                setIsEditingName(false);
-                            }
-                        }}
-                        className="w-full text-lg font-bold bg-slate-100 dark:bg-slate-700 rounded-md px-2 -ml-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-100"
-                    />
-                ) : (
-                    <div className="flex items-center gap-2">
-                        <h1 className="text-lg font-bold text-slate-800 dark:text-slate-100 truncate cursor-pointer" onClick={() => setIsEditingName(true)}>
-                            {activeSession.name}
-                        </h1>
-                        <button 
-                            onClick={() => setIsEditingName(true)}
-                            title="Rename chat"
-                            className="p-1 rounded-full text-slate-500 dark:text-slate-400 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
-                        >
-                            <PencilIcon className="w-4 h-4"/>
-                        </button>
-                    </div>
-                )}
-                <p className="text-sm text-slate-500 dark:text-slate-400 truncate">
+            <div className="flex-1 min-w-0 group/title">
+                <button
+                    onClick={() => setIsRenameModalOpen(true)}
+                    className="flex items-center gap-2 rounded-md -m-1 p-1"
+                >
+                    <h1 className="text-lg font-bold text-slate-800 dark:text-slate-100 truncate">
+                        {activeSession.name}
+                    </h1>
+                    <PencilIcon className="w-4 h-4 text-slate-500 opacity-0 group-hover/title:opacity-100 transition-opacity flex-shrink-0" />
+                </button>
+                <p className="text-sm text-slate-500 dark:text-slate-400 truncate ml-1">
                     {participants.length > 1 ? `${participants.length} Agents` : participants[0]?.description || 'Chat'}
                 </p>
             </div>
@@ -383,22 +364,36 @@ const ChatPanel: React.FC = () => {
                     )}
                 </div>
             )}
-            {availableAgentsToAdd.length > 0 && (
-              <button 
-                  onClick={() => setAddAgentModalOpen(true)}
-                  title="Add agent to chat"
-                  className="p-2 rounded-full text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50"
-              >
-                  <UserPlusIcon className="w-5 h-5"/>
-              </button>
-            )}
-             <button
-                onClick={() => setIsClearConfirmOpen(true)}
-                title="Clear chat history"
-                className="p-2 rounded-full text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50"
+             <button 
+                onClick={() => setParticipantsModalOpen(true)} 
+                title="Manage participants"
+                className="p-2 rounded-full text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 flex-shrink-0"
             >
-                <ArrowPathIcon className="w-5 h-5"/>
+                <UserPlusIcon className="w-5 h-5"/>
             </button>
+             <div className="relative" ref={actionsMenuRef}>
+                <button
+                    onClick={() => setActionsMenuOpen(prev => !prev)}
+                    title="More actions"
+                    className="p-2 rounded-full text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50"
+                >
+                    <EllipsisVerticalIcon className="w-5 h-5"/>
+                </button>
+                {isActionsMenuOpen && (
+                    <div className="absolute top-full right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 z-10 p-1 animate-in fade-in zoom-in-95">
+                        <button
+                            onClick={() => {
+                                setIsClearConfirmOpen(true);
+                                setActionsMenuOpen(false);
+                            }}
+                            className="w-full text-left p-2 flex items-center gap-3 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700 text-sm text-slate-700 dark:text-slate-200"
+                        >
+                            <ArrowPathIcon className="w-4 h-4"/>
+                            Clear History
+                        </button>
+                    </div>
+                )}
+            </div>
           </div>
       </div>
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -491,8 +486,8 @@ const ChatPanel: React.FC = () => {
         )}
         <div ref={chatEndRef} />
       </div>
-      <div className="p-4 border-t border-slate-200 dark:border-slate-700">
-        <form onSubmit={handleChatSubmit} className="max-w-4xl mx-auto relative">
+      <div className="p-4 border-t border-slate-200 dark:border-slate-700 flex-shrink-0">
+        <form onSubmit={(e) => { e.preventDefault(); handleChatSubmit(); }} className="max-w-4xl mx-auto relative">
           {mentionPopup?.visible && (
               <AgentMentionPopup
                   agents={mentionPopup.agents}
@@ -516,21 +511,22 @@ const ChatPanel: React.FC = () => {
                 onCreateCommand={presenter.handleOpenCreateCommandModal}
             />
           )}
-          <div className="flex gap-2">
-            <input
+          <div className="flex gap-2 items-start">
+            <textarea
               ref={inputRef}
-              type="text"
               value={chatInput}
               onChange={handleInputChange}
               onKeyDown={handleKeyDown}
-              placeholder={`Message ${activeSession.name}... (try '@' to mention)`}
+              placeholder={`Message ${activeSession.name}... (Shift + Enter for newline)`}
               disabled={isChatting}
-              className="flex-1 w-full bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="flex-1 w-full bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none overflow-y-auto truncate-placeholder"
+              rows={1}
+              style={{maxHeight: '150px'}}
             />
             <button
               type="submit"
               disabled={isChatting || !chatInput.trim()}
-              className="p-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-slate-300 dark:disabled:bg-slate-600 disabled:cursor-not-allowed transition-colors"
+              className="p-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-slate-300 dark:disabled:bg-slate-600 disabled:cursor-not-allowed transition-colors flex-shrink-0"
             >
               <PaperAirplaneIcon className="w-5 h-5" />
             </button>
@@ -538,9 +534,10 @@ const ChatPanel: React.FC = () => {
         </form>
       </div>
        <AddAgentsModal
-            isOpen={isAddAgentModalOpen}
-            onClose={() => setAddAgentModalOpen(false)}
-            agents={availableAgentsToAdd}
+            isOpen={isParticipantsModalOpen}
+            onClose={() => setParticipantsModalOpen(false)}
+            currentParticipants={participants}
+            availableAgents={availableAgentsToAdd}
             onAddAgents={(agentIds) => presenter.handleAddAgentsToSession(activeSession.id, agentIds)}
         />
        <ConfirmationModal
@@ -554,6 +551,15 @@ const ChatPanel: React.FC = () => {
             message="Are you sure you want to clear this chat history? This action cannot be undone."
             confirmButtonText="Clear History"
             confirmButtonClassName="bg-red-600 hover:bg-red-700"
+        />
+        <RenameChatModal
+            isOpen={isRenameModalOpen}
+            onClose={() => setIsRenameModalOpen(false)}
+            currentName={activeSession.name}
+            onSave={(newName) => {
+                presenter.handleRenameSession(activeSession.id, newName);
+                setIsRenameModalOpen(false);
+            }}
         />
     </div>
   );
