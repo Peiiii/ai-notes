@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { ChatMessage } from '../../types';
 import PaperAirplaneIcon from '../icons/PaperAirplaneIcon';
@@ -80,8 +79,7 @@ const ThreadChatView: React.FC<ThreadChatViewProps> = ({
             type="text"
             value={chatInput}
             onChange={(e) => setChatInput(e.target.value)}
-            placeholder="Chat with this note..."
-            disabled={isChatting}
+            placeholder={isChatting ? "AI is replying..." : "Chat with this note..."}
             className="flex-1 w-full bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 rounded-lg px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
           <button
