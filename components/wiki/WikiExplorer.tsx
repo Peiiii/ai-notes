@@ -37,7 +37,7 @@ const rootWiki: WikiEntry = {
 const WikiExplorer: React.FC = () => {
   const presenter = usePresenter();
   const { notes } = useNotesStore();
-  const { wikis, aiTopics, isLoadingTopics } = useWikiStore();
+  const { wikis, wikiTopics, isLoadingWikiTopics } = useWikiStore();
   const { initialWikiHistory } = useAppStore();
 
   const [subTopics, setSubTopics] = useState<{ title: string; topics: string[] } | null>(null);
@@ -156,8 +156,8 @@ const WikiExplorer: React.FC = () => {
             <WikiStudioHome
                 notes={notes}
                 wikis={wikis}
-                aiTopics={aiTopics}
-                isLoadingTopics={isLoadingTopics}
+                wikiTopics={wikiTopics}
+                isLoadingWikiTopics={isLoadingWikiTopics}
                 onSelectNote={handleSelectNote}
                 onStartWithTopic={handleStartWithTopic}
                 onSelectWiki={(wiki) => setHistory(prev => [...prev, wiki])}

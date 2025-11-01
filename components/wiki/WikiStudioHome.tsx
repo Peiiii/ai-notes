@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Note, WikiEntry, WIKI_ROOT_ID, LoadingState } from '../../types';
 import BookOpenIcon from '../icons/BookOpenIcon';
@@ -6,8 +7,8 @@ import SparklesIcon from '../icons/SparklesIcon';
 interface WikiStudioHomeProps {
     notes: Note[];
     wikis: WikiEntry[];
-    aiTopics: string[];
-    isLoadingTopics: boolean;
+    wikiTopics: string[];
+    isLoadingWikiTopics: boolean;
     onSelectNote: (note: Note) => void;
     onStartWithTopic: (topic: string) => void;
     onSelectWiki: (wiki: WikiEntry) => void;
@@ -17,8 +18,8 @@ interface WikiStudioHomeProps {
 const WikiStudioHome: React.FC<WikiStudioHomeProps> = ({
     notes,
     wikis,
-    aiTopics,
-    isLoadingTopics,
+    wikiTopics,
+    isLoadingWikiTopics,
     onSelectNote,
     onStartWithTopic,
     onSelectWiki,
@@ -81,13 +82,13 @@ const WikiStudioHome: React.FC<WikiStudioHomeProps> = ({
                                 <SparklesIcon className="w-5 h-5 text-purple-500" />
                                 Start a New Topic
                             </h2>
-                            {isLoadingTopics ? (
+                            {isLoadingWikiTopics ? (
                                 <div className="flex items-center justify-center h-40">
                                     <div className="w-6 h-6 border-2 border-slate-300 border-t-transparent rounded-full animate-spin"></div>
                                 </div>
-                            ) : aiTopics.length > 0 ? (
+                            ) : wikiTopics.length > 0 ? (
                                 <div className="space-y-2">
-                                    {aiTopics.map((topic, index) => {
+                                    {wikiTopics.map((topic, index) => {
                                         const isLoading = loadingState?.type === 'explore' && loadingState.id === topic;
                                         return (
                                             <button key={index} onClick={() => onStartWithTopic(topic)} disabled={!!loadingState} className="w-full text-left p-3 rounded-md bg-slate-100 dark:bg-slate-700/50 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors flex items-center justify-between disabled:opacity-50 disabled:cursor-not-allowed">
