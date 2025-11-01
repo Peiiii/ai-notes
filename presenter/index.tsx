@@ -1,6 +1,9 @@
 
 
 
+
+
+
 import React, { createContext, useContext, useEffect, useRef } from 'react';
 import { useAppStore } from '../stores/appStore';
 import { useNotesStore } from '../stores/notesStore';
@@ -15,10 +18,11 @@ import { WikiManager } from '../managers/WikiManager';
 import { ParliamentManager } from '../managers/ParliamentManager';
 import { CommandManager } from '../managers/CommandManager';
 import { InsightManager } from '../managers/InsightManager';
-import { KnowledgeCard, Note, WikiEntry, WIKI_ROOT_ID, DebateSynthesis, Todo, AIAgent, ChatMessage, DiscussionMode, ProactiveSuggestion } from '../types';
+import { KnowledgeCard, Note, WikiEntry, WIKI_ROOT_ID, DebateSynthesis, Todo, AIAgent, ChatMessage, DiscussionMode, ProactiveSuggestion, PresetChat } from '../types';
 import { Command } from '../commands';
 import { generateProactiveSuggestions } from '../services/insightAIService';
 import { getCreatorAgentResponse } from '../services/agentAIService';
+import { presetChats } from '../components/chat/presetChats';
 
 // simple debounce utility
 const debounce = <F extends (...args: any[]) => any>(func: F, waitFor: number) => {
@@ -67,32 +71,11 @@ export class Presenter {
 
   handleShowChat = () => {
     const { sessions, activeSessionId } = useChatStore.getState();
-    if (sessions.length === 0) {
-      // First-time user, create a default session with the main companion AND a debate group chat
-      const { agents } = useAgentStore.getState();
-      
-      // Create the debate chamber first so it's lower in the list
-      const debaterIds = ['default-pragmatist', 'default-visionary', 'default-ethicist', 'default-creative-writer'];
-      const debaterAgents = agents.filter(a => debaterIds.includes(a.id));
-      if (debaterAgents.length > 0) {
-          this.chatManager.createSession(debaterAgents.map(a => a.id), 'moderated', 'Debate Chamber');
-      }
-
-      // Create the one-on-one chat, which will be set active
-      const defaultCompanion = agents.find(a => a.id === 'default-companion');
-      if (defaultCompanion) {
-        // This method will create the session and automatically set it as active
-        const companionSessionId = this.chatManager.createSession([defaultCompanion.id], 'concurrent');
-        // Set the one-on-one as the active one to start
-        this.handleSetActiveChatSession(companionSessionId);
-      }
-
-    } else if (!activeSessionId) {
-      // User has sessions but none is active (e.g., after app load).
-      // The sessions are already sorted newest-first in the store.
+    // If sessions exist but none are active, activate the most recent one.
+    if (sessions.length > 0 && !activeSessionId) {
       this.handleSetActiveChatSession(sessions[0].id);
     }
-    
+    // If sessions.length === 0, the ChatView component will now handle showing the preset modal.
     this.appManager.setViewMode('chat');
     this.appManager.setActiveNoteId(null);
   };
@@ -221,8 +204,8 @@ ${synthesis.nextSteps.map(p => `- ${p}`).join('\n')}
       }));
   }
 
-  handleCreateChatSession = (participantIds: string[], discussionMode: DiscussionMode) => {
-      this.chatManager.createSession(participantIds, discussionMode);
+  handleCreateChatSession = (participantIds: string[], discussionMode: DiscussionMode, name?: string) => {
+      this.chatManager.createSession(participantIds, discussionMode, name);
   }
   
   handleRenameSession = (sessionId: string, newName: string) => {
@@ -314,6 +297,25 @@ ${synthesis.nextSteps.map(p => `- ${p}`).join('\n')}
       
       return { modelMessage, toolResponseMessage, createdAgent: finalAgent };
   }
+
+  handleCreateSessionsFromPresets = (presets: PresetChat[]) => {
+    if (presets.length === 0) return;
+    let lastSessionId: string | null = null;
+    // Create sessions in reverse order so the first one in the list is the last one created, 
+    // and thus at the top of the session list and becomes the active one.
+    [...presets].reverse().forEach(preset => {
+        lastSessionId = this.chatManager.createSession(preset.participantIds, preset.discussionMode, preset.name);
+    });
+
+    if (lastSessionId) {
+        this.handleSetActiveChatSession(lastSessionId);
+    }
+  };
+
+  handleCreateDefaultSessions = () => {
+    const defaultPresets = presetChats.filter(p => p.isDefault);
+    this.handleCreateSessionsFromPresets(defaultPresets);
+  };
 
 
   // --- Live Insights ---

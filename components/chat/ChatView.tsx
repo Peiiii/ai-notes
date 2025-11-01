@@ -1,12 +1,12 @@
 
 
-import React, { useState, useMemo } from 'react';
-import { AIAgent, ChatSession, DiscussionMode } from '../../types';
+
+
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { AIAgent, ChatSession, DiscussionMode, PresetChat } from '../../types';
 import { usePresenter } from '../../presenter';
 import { useChatStore } from '../../stores/chatStore';
 import { useAgentStore } from '../../stores/agentStore';
-import { useNotesStore } from '../../stores/notesStore';
-import { useCommandStore } from '../../stores/commandStore';
 import PlusIcon from '../icons/PlusIcon';
 import TrashIcon from '../icons/TrashIcon';
 import Cog6ToothIcon from '../icons/Cog6ToothIcon';
@@ -17,6 +17,8 @@ import AgentManagerModal from './AgentManagerModal';
 import NewChatModal from './NewChatModal';
 import ChatPanel from './ChatPanel';
 import { AgentAvatar, CompositeAvatar, ParticipantAvatarStack } from './ChatUIComponents';
+import PresetChatModal from './PresetChatModal';
+import ChatBubbleLeftRightIcon from '../icons/ChatBubbleLeftRightIcon';
 
 // --- Main ChatView Component ---
 const ChatView: React.FC = () => {
@@ -28,6 +30,29 @@ const ChatView: React.FC = () => {
   const [isAgentManagerOpen, setIsAgentManagerOpen] = useState(false);
   const [isNewChatOpen, setIsNewChatOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isPresetModalOpen, setIsPresetModalOpen] = useState(false);
+  const firstTimeCheckRef = useRef(false);
+
+  useEffect(() => {
+      if (sessions.length === 0 && !firstTimeCheckRef.current) {
+          setIsPresetModalOpen(true);
+          firstTimeCheckRef.current = true;
+      }
+  }, [sessions]);
+
+  const handleConfirmPresets = (selectedPresets: PresetChat[]) => {
+      presenter.handleCreateSessionsFromPresets(selectedPresets);
+      setIsPresetModalOpen(false);
+  };
+
+  const handleSkipPresets = () => {
+      presenter.handleCreateDefaultSessions();
+      setIsPresetModalOpen(false);
+  };
+
+  const handleBrowsePresets = () => {
+      setIsPresetModalOpen(true);
+  };
   
   const SidebarButton: React.FC<{onClick?: () => void; title: string; children: React.ReactNode; isCollapsed: boolean; isFullWidth?: boolean}> = 
   ({ onClick, title, children, isCollapsed, isFullWidth = false }) => {
@@ -53,6 +78,16 @@ const ChatView: React.FC = () => {
       return button;
   };
 
+  if (sessions.length === 0 && !isPresetModalOpen) {
+      return (
+          <div className="flex flex-col items-center justify-center h-full text-center text-slate-500 dark:text-slate-400 p-4">
+              <ChatBubbleLeftRightIcon className="w-16 h-16 mb-4 text-slate-400 dark:text-slate-500" />
+              <h2 className="text-xl font-semibold">Welcome to Chat</h2>
+              <p className="max-w-sm mt-2">Setting up your first conversations...</p>
+              <div className="w-8 h-8 border-2 border-slate-300 border-t-transparent rounded-full animate-spin mt-4"></div>
+          </div>
+      );
+  }
 
   return (
     <div className="h-full flex">
@@ -125,6 +160,12 @@ const ChatView: React.FC = () => {
       </div>
 
       {/* Modals */}
+      <PresetChatModal
+          isOpen={isPresetModalOpen}
+          onConfirm={handleConfirmPresets}
+          onSkip={handleSkipPresets}
+          isFirstTimeSetup={sessions.length === 0}
+      />
       <AgentManagerModal 
         isOpen={isAgentManagerOpen} 
         onClose={() => setIsAgentManagerOpen(false)}
@@ -138,6 +179,7 @@ const ChatView: React.FC = () => {
         onClose={() => setIsNewChatOpen(false)}
         agents={agents}
         onCreateSession={presenter.handleCreateChatSession}
+        onBrowsePresets={handleBrowsePresets}
       />
     </div>
   );

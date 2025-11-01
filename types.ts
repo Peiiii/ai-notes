@@ -1,4 +1,5 @@
 
+
 export type ViewMode = 'editor' | 'studio' | 'chat' | 'wiki' | 'parliament';
 
 export const WIKI_ROOT_ID = 'wiki_root';
@@ -109,6 +110,15 @@ export interface MindMapData {
 export interface ProactiveSuggestion {
   prompt: string;
   description: string;
+}
+
+export interface PresetChat {
+  id: string;
+  name: string;
+  description: string;
+  participantIds: string[];
+  discussionMode: DiscussionMode;
+  isDefault?: boolean;
 }
 
 // --- Multi-Agent Chat Types ---
