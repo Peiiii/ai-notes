@@ -1,3 +1,4 @@
+
 import { useWikiStore } from '../stores/wikiStore';
 import { useNotesStore } from '../stores/notesStore';
 import { WikiEntry } from '../types';
@@ -9,6 +10,12 @@ import {
 } from '../services/wikiAIService';
 
 export class WikiManager {
+    setActiveWikiHistory = (history: WikiEntry[] | ((prev: WikiEntry[]) => WikiEntry[])) => {
+        useWikiStore.setState(state => ({
+            activeWikiHistory: typeof history === 'function' ? history(state.activeWikiHistory) : history
+        }));
+    };
+
     fetchWikiTopics = async () => {
         const { notes } = useNotesStore.getState();
         const { wikiTopics } = useWikiStore.getState();

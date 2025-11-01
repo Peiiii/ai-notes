@@ -108,6 +108,7 @@ export const useChatStore = create<ChatState>()(
         name: 'ai-notes-chatsessions',
         partialize: (state) => ({ 
             sessions: state.sessions,
+            activeSessionId: state.activeSessionId,
          }),
     }
   )

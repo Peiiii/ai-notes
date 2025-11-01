@@ -11,9 +11,8 @@ interface ErrorBoundaryState {
 }
 
 class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  // Fix: The previous implementation using a class property for state was causing
-  // typing issues. Reverted to using a constructor to properly initialize state
-  // and ensure `this.props` and `this.setState` are available.
+  // Fix: The class property for state was causing issues with 'this' context in some environments.
+  // Switched to a standard constructor to ensure `this.props` and `this.setState` are correctly bound.
   constructor(props: ErrorBoundaryProps) {
     super(props);
     this.state = {

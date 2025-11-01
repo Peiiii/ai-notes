@@ -37,22 +37,23 @@ const rootWiki: WikiEntry = {
 const WikiExplorer: React.FC = () => {
   const presenter = usePresenter();
   const { notes } = useNotesStore();
-  const { wikis, wikiTopics, isLoadingWikiTopics } = useWikiStore();
+  const { wikis, wikiTopics, isLoadingWikiTopics, activeWikiHistory } = useWikiStore();
   const { initialWikiHistory } = useAppStore();
 
   const [subTopics, setSubTopics] = useState<{ title: string; topics: string[] } | null>(null);
   const [loadingState, setLoadingState] = useState<LoadingState | null>(null);
-  const [history, setHistory] = useState<WikiEntry[]>([rootWiki]);
   
+  const setHistory = presenter.wikiManager.setActiveWikiHistory;
+  const history = activeWikiHistory.length > 0 ? activeWikiHistory : [rootWiki];
+
   const currentItem = history.length > 0 ? history[history.length - 1] : null;
 
   useEffect(() => {
     if (initialWikiHistory && initialWikiHistory.length > 0) {
       setHistory([rootWiki, ...initialWikiHistory]);
-    } else {
-      setHistory([rootWiki]);
+      presenter.appManager.setInitialWikiHistory(null); // Clear the one-time trigger
     }
-  }, [initialWikiHistory]);
+  }, [initialWikiHistory, presenter.appManager, setHistory]);
 
 
   useEffect(() => {

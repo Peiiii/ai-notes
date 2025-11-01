@@ -1,3 +1,4 @@
+
 import { useAppStore } from '../stores/appStore';
 import { ViewMode, Note, WikiEntry, PulseReport } from '../types';
 
@@ -25,5 +26,9 @@ export class AppManager {
 
   setActiveModal = (modal: ReturnType<typeof useAppStore.getState>['activeModal']) => {
     useAppStore.setState({ activeModal: modal });
+  }
+
+  setChatSidebarCollapsed = (isCollapsed: boolean) => {
+    useAppStore.setState({ isChatSidebarCollapsed: isCollapsed });
   }
 }
