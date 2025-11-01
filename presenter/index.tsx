@@ -1,5 +1,6 @@
 
 
+
 import React, { createContext, useContext, useEffect, useRef } from 'react';
 import { useAppStore } from '../stores/appStore';
 import { useNotesStore } from '../stores/notesStore';
@@ -67,23 +68,25 @@ export class Presenter {
   handleShowChat = () => {
     const { sessions, activeSessionId } = useChatStore.getState();
     if (sessions.length === 0) {
-      // First-time user, create a default session with the main companion AND a group chat
+      // First-time user, create a default session with the main companion AND a debate group chat
       const { agents } = useAgentStore.getState();
-      const defaultCompanion = agents.find(a => a.id === 'default-companion');
-      const allDefaultAgents = agents.filter(a => !a.isCustom);
       
+      // Create the debate chamber first so it's lower in the list
+      const debaterIds = ['default-pragmatist', 'default-visionary', 'default-ethicist', 'default-creative-writer'];
+      const debaterAgents = agents.filter(a => debaterIds.includes(a.id));
+      if (debaterAgents.length > 0) {
+          this.chatManager.createSession(debaterAgents.map(a => a.id), 'moderated', 'Debate Chamber');
+      }
+
+      // Create the one-on-one chat, which will be set active
+      const defaultCompanion = agents.find(a => a.id === 'default-companion');
       if (defaultCompanion) {
         // This method will create the session and automatically set it as active
         const companionSessionId = this.chatManager.createSession([defaultCompanion.id], 'concurrent');
-        
-        // Create the group chat but don't set it to active
-        if (allDefaultAgents.length > 1) {
-            this.chatManager.createSession(allDefaultAgents.map(a => a.id), 'moderated');
-        }
-        
         // Set the one-on-one as the active one to start
         this.handleSetActiveChatSession(companionSessionId);
       }
+
     } else if (!activeSessionId) {
       // User has sessions but none is active (e.g., after app load).
       // The sessions are already sorted newest-first in the store.
@@ -222,6 +225,10 @@ ${synthesis.nextSteps.map(p => `- ${p}`).join('\n')}
       this.chatManager.createSession(participantIds, discussionMode);
   }
   
+  handleRenameSession = (sessionId: string, newName: string) => {
+      this.chatManager.renameSession(sessionId, newName);
+  };
+
   handleSetActiveChatSession = (sessionId: string | null) => {
       useChatStore.setState({ activeSessionId: sessionId });
   }

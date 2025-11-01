@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { usePresenter } from '../../presenter';
 import { useChatStore } from '../../stores/chatStore';
@@ -23,6 +24,7 @@ import GlobeAltIcon from '../icons/GlobeAltIcon';
 import { ParticipantAvatarStack, AgentMentionPopup, AgentAvatar } from './ChatUIComponents';
 import AddAgentsModal from './AddAgentsModal';
 import ChatBubbleLeftRightIcon from '../icons/ChatBubbleLeftRightIcon';
+import PencilIcon from '../icons/PencilIcon';
 
 
 // --- Discussion Modes ---
@@ -92,9 +94,13 @@ const ChatPanel: React.FC = () => {
   const [suggestions, setSuggestions] = useState<ProactiveSuggestion[]>([]);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editingNameValue, setEditingNameValue] = useState(activeSession?.name || '');
+
 
   const chatEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const nameInputRef = useRef<HTMLInputElement>(null);
   const modeDropdownRef = useRef<HTMLDivElement>(null);
   
   const isChatting = useMemo(() => 
@@ -109,6 +115,28 @@ const ChatPanel: React.FC = () => {
   const [mentionPopup, setMentionPopup] = useState<{ visible: boolean; query: string; agents: AIAgent[], selectedIndex: number; startPos: number; } | null>(null);
 
   const filteredCommands = commands.filter(c => c.name.toLowerCase().startsWith(commandQuery.toLowerCase()));
+  
+  useEffect(() => {
+    if (activeSession) {
+        setEditingNameValue(activeSession.name);
+        setIsEditingName(false);
+    }
+  }, [activeSession]);
+
+  useEffect(() => {
+    if (isEditingName) {
+        nameInputRef.current?.focus();
+        nameInputRef.current?.select();
+    }
+  }, [isEditingName]);
+
+  const handleNameSave = () => {
+    if (editingNameValue.trim() && activeSession && editingNameValue.trim() !== activeSession.name) {
+        presenter.handleRenameSession(activeSession.id, editingNameValue.trim());
+    }
+    setIsEditingName(false);
+  };
+
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -286,8 +314,37 @@ const ChatPanel: React.FC = () => {
       <div className="p-3 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 flex-1 min-w-0">
             <ParticipantAvatarStack agents={participants} size="lg"/>
-            <div className="flex-1 min-w-0">
-                <h1 className="text-lg font-bold text-slate-800 dark:text-slate-100 truncate">{activeSession.name}</h1>
+            <div className="flex-1 min-w-0 group">
+                {isEditingName ? (
+                    <input
+                        ref={nameInputRef}
+                        type="text"
+                        value={editingNameValue}
+                        onChange={(e) => setEditingNameValue(e.target.value)}
+                        onBlur={handleNameSave}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleNameSave();
+                            if (e.key === 'Escape') {
+                                setEditingNameValue(activeSession.name);
+                                setIsEditingName(false);
+                            }
+                        }}
+                        className="w-full text-lg font-bold bg-slate-100 dark:bg-slate-700 rounded-md px-2 -ml-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-100"
+                    />
+                ) : (
+                    <div className="flex items-center gap-2">
+                        <h1 className="text-lg font-bold text-slate-800 dark:text-slate-100 truncate cursor-pointer" onClick={() => setIsEditingName(true)}>
+                            {activeSession.name}
+                        </h1>
+                        <button 
+                            onClick={() => setIsEditingName(true)}
+                            title="Rename chat"
+                            className="p-1 rounded-full text-slate-500 dark:text-slate-400 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                        >
+                            <PencilIcon className="w-4 h-4"/>
+                        </button>
+                    </div>
+                )}
                 <p className="text-sm text-slate-500 dark:text-slate-400 truncate">
                     {participants.length > 1 ? `${participants.length} Agents` : participants[0]?.description || 'Chat'}
                 </p>

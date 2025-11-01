@@ -1,5 +1,6 @@
 
 
+
 import { useChatStore } from '../stores/chatStore';
 import { useNotesStore } from '../stores/notesStore';
 import { useAgentStore } from '../stores/agentStore';
@@ -44,14 +45,14 @@ export class ChatManager {
         };
     }
 
-    createSession = (participantIds: string[], discussionMode: DiscussionMode): string => {
+    createSession = (participantIds: string[], discussionMode: DiscussionMode, name?: string): string => {
         const { agents } = useAgentStore.getState();
         const participants = agents.filter(a => participantIds.includes(a.id));
         if (participants.length === 0) {
             throw new Error("Cannot create a session with no participants.");
         }
 
-        const sessionName = this.generateSessionName(participants);
+        const sessionName = name || this.generateSessionName(participants);
 
         const newSession: ChatSession = {
             id: crypto.randomUUID(),
@@ -70,6 +71,11 @@ export class ChatManager {
         return newSession.id;
     }
     
+    renameSession = (sessionId: string, newName: string) => {
+        if (!newName.trim()) return;
+        useChatStore.getState().updateSession(sessionId, { name: newName.trim() });
+    }
+
     addAgentsToSession = (sessionId: string, agentIdsToAdd: string[]) => {
         const { sessions, addMessage } = useChatStore.getState();
         const session = sessions.find(s => s.id === sessionId);
