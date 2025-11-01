@@ -1,19 +1,10 @@
+
 import React, { useEffect, useRef } from 'react';
+import { usePresenter } from '../../presenter';
+import { useParliamentStore } from '../../stores/parliamentStore';
 import { ChatMessage, DebateSynthesis, ParliamentMode } from '../../types';
 import ArrowLeftIcon from '../icons/ArrowLeftIcon';
 import DocumentPlusIcon from '../icons/DocumentPlusIcon';
-
-interface ConversationViewProps {
-  sessionHistory: ChatMessage[];
-  isSessionActive: boolean;
-  currentSession: {
-    mode: ParliamentMode;
-    topic: string;
-    noteId?: string;
-  } | null;
-  onResetSession: () => void;
-  onSaveSynthesis: (topic: string, synthesis: DebateSynthesis) => void;
-}
 
 const personaDetails: Record<string, { color: string; bgColor: string }> = {
   'The Pragmatist': {
@@ -81,13 +72,10 @@ const SynthesisCard: React.FC<{ synthesis: DebateSynthesis; topic: string; onSav
   )
 };
 
-const ConversationView: React.FC<ConversationViewProps> = ({
-  sessionHistory,
-  isSessionActive,
-  currentSession,
-  onResetSession,
-  onSaveSynthesis,
-}) => {
+const ConversationView: React.FC = () => {
+  const presenter = usePresenter();
+  const { sessionHistory, isSessionActive, currentSession } = useParliamentStore();
+
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -99,7 +87,7 @@ const ConversationView: React.FC<ConversationViewProps> = ({
   return (
     <div className="h-full flex flex-col bg-white dark:bg-slate-800/50">
       <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex items-center gap-4">
-        <button onClick={onResetSession} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+        <button onClick={presenter.parliamentManager.resetSession} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
             <ArrowLeftIcon className="w-5 h-5"/>
         </button>
         <div>
@@ -115,7 +103,7 @@ const ConversationView: React.FC<ConversationViewProps> = ({
                               key={msg.id} 
                               synthesis={msg.synthesisContent} 
                               topic={currentSession.topic} 
-                              onSave={() => onSaveSynthesis(currentSession.topic, msg.synthesisContent!)}
+                              onSave={() => presenter.handleSaveDebateSynthesisAsNote(currentSession.topic, msg.synthesisContent!)}
                            />;
                 }
 
@@ -148,7 +136,7 @@ const ConversationView: React.FC<ConversationViewProps> = ({
       {!isSessionActive && sessionHistory.length > 0 && (
          <div className="p-4 border-t border-slate-200 dark:border-slate-700">
             <div className="max-w-4xl mx-auto flex gap-2">
-                <button onClick={onResetSession} className="w-full bg-indigo-600 text-white font-semibold py-2.5 rounded-lg hover:bg-indigo-700 transition-colors">
+                <button onClick={presenter.parliamentManager.resetSession} className="w-full bg-indigo-600 text-white font-semibold py-2.5 rounded-lg hover:bg-indigo-700 transition-colors">
                     Start a New Session
                 </button>
             </div>

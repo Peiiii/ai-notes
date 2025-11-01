@@ -1,4 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { usePresenter } from '../../presenter';
+import { useAppStore } from '../../stores/appStore';
+import { useNotesStore } from '../../stores/notesStore';
+import { useWikiStore } from '../../stores/wikiStore';
+import { useChatStore } from '../../stores/chatStore';
+import { useInsightStore } from '../../stores/insightStore';
 import { Note, WikiEntry, Insight } from '../../types';
 import BookOpenIcon from '../icons/BookOpenIcon';
 import ChatBubbleLeftRightIcon from '../icons/ChatBubbleLeftRightIcon';
@@ -7,35 +14,16 @@ import InsightPanel from './InsightPanel';
 import LightbulbIcon from '../icons/LightbulbIcon';
 import XMarkIcon from '../icons/XMarkIcon';
 
-interface NoteEditorProps {
-  note: Note | null;
-  onUpdateNote: (id: string, title: string, content: string) => void;
-  onNoteContentChange: (content: string, noteId: string) => void;
-  wikis: WikiEntry[];
-  onViewWikiInStudio: (wikiId: string) => void;
-  isThreadChatting: boolean;
-  onSendThreadChatMessage: (noteId: string, message: string) => void;
-  insights: Insight[];
-  isLoadingInsights: boolean;
-  onAdoptInsightTodo: (task: string) => void;
-  onCreateInsightWiki: (term: string, sourceNoteId: string, contextContent: string) => void;
-  onSelectNote: (noteId: string) => void;
-}
+const NoteEditor: React.FC = () => {
+  const presenter = usePresenter();
+  const { activeNoteId } = useAppStore();
+  const { notes } = useNotesStore();
+  const { wikis } = useWikiStore();
+  const { isThreadChatting } = useChatStore();
+  const { insights, isLoadingInsights } = useInsightStore();
 
-const NoteEditor: React.FC<NoteEditorProps> = ({ 
-    note, 
-    onUpdateNote,
-    onNoteContentChange,
-    wikis,
-    onViewWikiInStudio,
-    isThreadChatting,
-    onSendThreadChatMessage,
-    insights,
-    isLoadingInsights,
-    onAdoptInsightTodo,
-    onCreateInsightWiki,
-    onSelectNote
-}) => {
+  const note = useMemo(() => notes.find(n => n.id === activeNoteId) || null, [notes, activeNoteId]);
+
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [activeSidePanel, setActiveSidePanel] = useState<'chat' | 'insights' | null>(null);
@@ -71,14 +59,14 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
   const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setContent(e.target.value);
     if (note) {
-        onNoteContentChange(e.target.value, note.id);
+        presenter.handleNoteContentChange(e.target.value, note.id);
     }
   };
 
   const handleBlur = () => {
     if (note) {
       if (note.title !== title || note.content !== content) {
-        onUpdateNote(note.id, title, content);
+        presenter.notesManager.updateNote(note.id, { title, content });
       }
     }
   };
@@ -155,7 +143,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
                         {rootWikisFromThisNote.map(wiki => (
                             <button 
                               key={wiki.id} 
-                              onClick={() => onViewWikiInStudio(wiki.id)}
+                              onClick={() => presenter.handleViewWikiInStudio(wiki.id)}
                               className="w-full text-left p-2 rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
                             >
                                 <p className="font-medium text-sm text-slate-800 dark:text-slate-100">{wiki.term}</p>
@@ -181,15 +169,15 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
                     note={note}
                     insights={insights}
                     isLoading={isLoadingInsights}
-                    onAdoptTodo={onAdoptInsightTodo}
-                    onCreateWiki={(term) => onCreateInsightWiki(term, note.id, note.content)}
-                    onSelectNote={onSelectNote}
+                    onAdoptTodo={presenter.handleAdoptInsightTodo}
+                    onCreateWiki={(term) => presenter.handleCreateInsightWiki(term, note.id, note.content)}
+                    onSelectNote={presenter.handleSelectNote}
                 />
             ) : (
                 <ThreadChatView
                     chatHistory={note.threadHistory || []}
                     isChatting={isThreadChatting}
-                    onSendMessage={(message) => onSendThreadChatMessage(note.id, message)}
+                    onSendMessage={(message) => presenter.handleSendThreadMessage(note.id, message)}
                 />
             )}
         </div>

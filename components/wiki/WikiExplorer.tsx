@@ -1,12 +1,19 @@
+
+
 import React, { useState, useEffect } from 'react';
 import { Note, WikiEntry, WIKI_ROOT_ID, LoadingState } from '../../types';
+import { usePresenter } from '../../presenter';
+import { useNotesStore } from '../../stores/notesStore';
+import { useWikiStore } from '../../stores/wikiStore';
+import { useAppStore } from '../../stores/appStore';
 import WikiBreadcrumb from './WikiBreadcrumb';
-import HoverPopup from '../ui/HoverPopup';
 import WikiStudioHome from './WikiStudioHome';
 import TextSelectionPopup from '../ui/TextSelectionPopup';
 import SubTopicsModal from './SubTopicsModal';
 import BookOpenIcon from '../icons/BookOpenIcon';
 import ThoughtBubbleIcon from '../icons/ThoughtBubbleIcon';
+// Fix: Imported the HoverPopup component.
+import HoverPopup from '../ui/HoverPopup';
 
 declare global {
   interface Window {
@@ -16,44 +23,46 @@ declare global {
   }
 }
 
-interface WikiExplorerProps {
-  notes: Note[];
-  wikis: WikiEntry[];
-  history: WikiEntry[];
-  setHistory: React.Dispatch<React.SetStateAction<WikiEntry[]>>;
-  onGenerateWiki: (term: string, sourceNoteId: string, parentId: string | null, contextContent: string) => Promise<WikiEntry>;
-  onRegenerateWiki: (wikiId: string, clearChildren: boolean) => Promise<void>;
-  onGenerateSubTopics: (selection: string, contextContent: string) => Promise<string[]>;
-  onUpdateWiki: (wikiId: string) => void;
-  aiTopics: string[];
-  isLoadingTopics: boolean;
-}
+const rootWiki: WikiEntry = {
+  id: WIKI_ROOT_ID,
+  term: 'Wiki Home',
+  content: 'Welcome to your personal wiki. Explore topics, connect ideas, and build your knowledge base.',
+  createdAt: 0,
+  sourceNoteId: '',
+  parentId: null,
+  suggestedTopics: [],
+};
 
-const WikiExplorer: React.FC<WikiExplorerProps> = ({
-  notes,
-  wikis,
-  history,
-  setHistory,
-  onGenerateWiki,
-  onRegenerateWiki,
-  onGenerateSubTopics,
-  onUpdateWiki,
-  aiTopics,
-  isLoadingTopics,
-}) => {
+
+const WikiExplorer: React.FC = () => {
+  const presenter = usePresenter();
+  const { notes } = useNotesStore();
+  const { wikis, aiTopics, isLoadingTopics } = useWikiStore();
+  const { initialWikiHistory } = useAppStore();
+
   const [subTopics, setSubTopics] = useState<{ title: string; topics: string[] } | null>(null);
   const [loadingState, setLoadingState] = useState<LoadingState | null>(null);
+  const [history, setHistory] = useState<WikiEntry[]>([rootWiki]);
   
   const currentItem = history.length > 0 ? history[history.length - 1] : null;
+
+  useEffect(() => {
+    if (initialWikiHistory && initialWikiHistory.length > 0) {
+      setHistory([rootWiki, ...initialWikiHistory]);
+    } else {
+      setHistory([rootWiki]);
+    }
+  }, [initialWikiHistory]);
+
 
   useEffect(() => {
     setSubTopics(null);
     if (currentItem && 'term' in currentItem && (!currentItem.suggestedTopics || currentItem.suggestedTopics.length === 0)) {
         if (currentItem.id !== WIKI_ROOT_ID) {
-            onUpdateWiki(currentItem.id);
+            presenter.wikiManager.updateWikiWithTopics(currentItem.id);
         }
     }
-  }, [currentItem, onUpdateWiki]);
+  }, [currentItem, presenter.wikiManager]);
 
   const generateNewWiki = async (term: string) => {
     if (!currentItem || loadingState) return;
@@ -64,7 +73,7 @@ const WikiExplorer: React.FC<WikiExplorerProps> = ({
     const parentId = currentItem.id;
     
     try {
-        const newWikiEntry = await onGenerateWiki(term, sourceNoteId, parentId, currentItem.content);
+        const newWikiEntry = await presenter.wikiManager.generateWiki(term, sourceNoteId, parentId, currentItem.content);
         setHistory(prev => [...prev, newWikiEntry]);
     } catch(e) {
         console.error("Failed to generate next wiki", e);
@@ -78,7 +87,7 @@ const WikiExplorer: React.FC<WikiExplorerProps> = ({
     if (!loadingState && currentItem) {
       setLoadingState({ type: 'subtopics' });
       try {
-        const topics = await onGenerateSubTopics(selection, currentItem.content);
+        const topics = await presenter.wikiManager.generateSubTopics(selection, currentItem.content);
         setSubTopics({ title: selection, topics });
       } catch(e) {
         console.error("Failed to suggest topics", e);
@@ -92,7 +101,7 @@ const WikiExplorer: React.FC<WikiExplorerProps> = ({
     if (currentItem && 'term' in currentItem) {
       setLoadingState({type: 'regenerate'});
       try {
-        await onRegenerateWiki(currentItem.id, clearChildren);
+        await presenter.wikiManager.regenerateWiki(currentItem.id, clearChildren);
       } finally {
         setLoadingState(null);
       }
@@ -105,7 +114,7 @@ const WikiExplorer: React.FC<WikiExplorerProps> = ({
     const sourceNoteId = notes.length > 0 ? notes[0].id : 'no-source';
     const contextContent = notes.map(n => `${n.title} ${n.content}`).join('\n');
     try {
-        const newWikiEntry = await onGenerateWiki(topic, sourceNoteId, WIKI_ROOT_ID, contextContent);
+        const newWikiEntry = await presenter.wikiManager.generateWiki(topic, sourceNoteId, WIKI_ROOT_ID, contextContent);
         setHistory(prev => [...prev, newWikiEntry]);
     } catch (e) { console.error("Failed to start with topic", e); } 
     finally { setLoadingState(null); }
@@ -121,7 +130,7 @@ const WikiExplorer: React.FC<WikiExplorerProps> = ({
     setLoadingState({ type: 'explore', id: note.id });
     const term = note.title || `Exploration from Note`;
     try {
-        const newWikiEntry = await onGenerateWiki(term, note.id, WIKI_ROOT_ID, note.content);
+        const newWikiEntry = await presenter.wikiManager.generateWiki(term, note.id, WIKI_ROOT_ID, note.content);
         setHistory(prev => [...prev, newWikiEntry]);
     } catch(e) { console.error("Failed to generate wiki from note", e); } 
     finally { setLoadingState(null); }

@@ -1,15 +1,15 @@
+
 import React, { useState } from 'react';
 import { Note, ParliamentMode } from '../../types';
+import { usePresenter } from '../../presenter';
+import { useNotesStore } from '../../stores/notesStore';
+import { useParliamentStore } from '../../stores/parliamentStore';
 import UsersIcon from '../icons/UsersIcon';
 import SparklesIcon from '../icons/SparklesIcon';
 import ChatBubbleBottomCenterTextIcon from '../icons/ChatBubbleBottomCenterTextIcon';
 
-interface ParliamentHomeProps {
-  notes: Note[];
-  topics: string[];
-  isLoadingTopics: boolean;
-  onStartDebate: (topic: string, noteId?: string) => void;
-  onStartPodcast: (topic: string, noteId?: string) => void;
+interface TopicStarterProps {
+    mode: ParliamentMode;
 }
 
 const ModeSelection: React.FC<{ onSelect: (mode: ParliamentMode) => void }> = ({ onSelect }) => (
@@ -27,21 +27,17 @@ const ModeSelection: React.FC<{ onSelect: (mode: ParliamentMode) => void }> = ({
     </div>
 );
 
-const TopicStarter: React.FC<ParliamentHomeProps & { mode: ParliamentMode }> = ({
-  notes,
-  topics,
-  isLoadingTopics,
-  onStartDebate,
-  onStartPodcast,
-  mode
-}) => {
+const TopicStarter: React.FC<TopicStarterProps> = ({ mode }) => {
+  const presenter = usePresenter();
+  const { notes } = useNotesStore();
+  const { topics, isLoadingTopics } = useParliamentStore();
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
 
   const handleStart = (topic: string, noteId?: string) => {
     if (mode === 'debate') {
-      onStartDebate(topic, noteId);
+      presenter.parliamentManager.startDebate(topic, noteId);
     } else {
-      onStartPodcast(topic, noteId);
+      presenter.parliamentManager.startPodcast(topic, noteId);
     }
   };
 
@@ -111,7 +107,7 @@ const TopicStarter: React.FC<ParliamentHomeProps & { mode: ParliamentMode }> = (
   );
 }
 
-const ParliamentHome: React.FC<ParliamentHomeProps> = (props) => {
+const ParliamentHome: React.FC = () => {
   const [setupMode, setSetupMode] = useState<ParliamentMode | null>(null);
 
   return (
@@ -136,7 +132,7 @@ const ParliamentHome: React.FC<ParliamentHomeProps> = (props) => {
         <div className="space-y-8">
             {!setupMode 
                 ? <ModeSelection onSelect={setSetupMode} /> 
-                : <TopicStarter {...props} mode={setupMode} />
+                : <TopicStarter mode={setupMode} />
             }
         </div>
       </div>

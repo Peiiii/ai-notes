@@ -1,6 +1,10 @@
 
 import React from 'react';
-import { Note, ViewMode } from '../../types';
+import { usePresenter } from '../../presenter';
+import { useNotesStore } from '../../stores/notesStore';
+import { useAppStore } from '../../stores/appStore';
+import { useStudioStore } from '../../stores/studioStore';
+import { ViewMode } from '../../types';
 import DocumentPlusIcon from '../icons/DocumentPlusIcon';
 import TrashIcon from '../icons/TrashIcon';
 import Squares2X2Icon from '../icons/Squares2X2Icon';
@@ -9,35 +13,12 @@ import BookOpenIcon from '../icons/BookOpenIcon';
 import UsersIcon from '../icons/UsersIcon';
 import CpuChipIcon from '../icons/CpuChipIcon';
 
-interface NoteListProps {
-  notes: Note[];
-  activeNoteId: string | null;
-  onSelectNote: (id: string) => void;
-  onNewTextNote: () => void;
-  onDeleteNote: (id: string) => void;
-  onShowStudio: () => void;
-  onShowChat: () => void;
-  onShowWiki: () => void;
-  onShowParliament: () => void;
-  isLoadingAI: boolean;
-  generatingTitleIds: Set<string>;
-  viewMode: ViewMode;
-}
+const NoteList: React.FC = () => {
+  const presenter = usePresenter();
+  const { notes, generatingTitleIds } = useNotesStore();
+  const { activeNoteId, viewMode } = useAppStore();
+  const { isLoadingAI } = useStudioStore();
 
-const NoteList: React.FC<NoteListProps> = ({
-  notes,
-  activeNoteId,
-  onSelectNote,
-  onNewTextNote,
-  onDeleteNote,
-  onShowStudio,
-  onShowChat,
-  onShowWiki,
-  onShowParliament,
-  isLoadingAI,
-  generatingTitleIds,
-  viewMode,
-}) => {
   const sortedNotes = [...notes].sort((a, b) => b.createdAt - a.createdAt);
 
   const getButtonClasses = (buttonViewMode: ViewMode) => {
@@ -62,7 +43,7 @@ const NoteList: React.FC<NoteListProps> = ({
       <div className="p-4 flex flex-col gap-3">
         <div>
             <button
-                onClick={onNewTextNote}
+                onClick={presenter.handleNewTextNote}
                 className="flex w-full items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-slate-800 focus:ring-indigo-500 transition-all"
             >
                 <DocumentPlusIcon className="w-5 h-5" />
@@ -70,22 +51,22 @@ const NoteList: React.FC<NoteListProps> = ({
             </button>
         </div>
         <div className="grid grid-cols-2 gap-2">
-           <button onClick={onShowStudio} className={getButtonClasses('studio')}>
+           <button onClick={presenter.handleShowStudio} className={getButtonClasses('studio')}>
             <Squares2X2Icon className="w-5 h-5" />
             <span>Studio</span>
             {isLoadingAI && viewMode === 'studio' && (
               <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin ml-1"></div>
             )}
           </button>
-          <button onClick={onShowChat} className={getButtonClasses('chat')}>
+          <button onClick={presenter.handleShowChat} className={getButtonClasses('chat')}>
             <ChatBubbleLeftRightIcon className="w-5 h-5" />
             <span>Chat</span>
           </button>
-           <button onClick={onShowWiki} className={getButtonClasses('wiki')}>
+           <button onClick={presenter.handleShowWiki} className={getButtonClasses('wiki')}>
             <BookOpenIcon className="w-5 h-5" />
             <span>Wiki</span>
           </button>
-          <button onClick={onShowParliament} className={getButtonClasses('parliament')}>
+          <button onClick={presenter.handleShowParliament} className={getButtonClasses('parliament')}>
             <UsersIcon className="w-5 h-5" />
             <span>Parliament</span>
           </button>
@@ -102,7 +83,7 @@ const NoteList: React.FC<NoteListProps> = ({
             return (
               <li key={note.id}>
                 <button
-                  onClick={() => onSelectNote(note.id)}
+                  onClick={() => presenter.handleSelectNote(note.id)}
                   className={`w-full text-left p-3 rounded-lg transition-colors group ${
                     note.id === activeNoteId && viewMode === 'editor'
                       ? 'bg-indigo-100 dark:bg-indigo-900/50'
@@ -126,7 +107,7 @@ const NoteList: React.FC<NoteListProps> = ({
                       <div
                         onClick={(e) => {
                           e.stopPropagation();
-                          onDeleteNote(note.id);
+                          presenter.handleDeleteNote(note.id);
                         }}
                         className={`ml-2 p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity ${
                           note.id === activeNoteId && viewMode === 'editor'

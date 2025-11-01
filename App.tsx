@@ -2,16 +2,6 @@
 import React from 'react';
 import { PresenterProvider, usePresenter } from './presenter';
 import { useAppStore } from './stores/appStore';
-import { useNotesStore } from './stores/notesStore';
-import { useChatStore } from './stores/chatStore';
-import { useStudioStore } from './stores/studioStore';
-import { useWikiStore } from './stores/wikiStore';
-import { useParliamentStore } from './stores/parliamentStore';
-import { useCommandStore } from './stores/commandStore';
-import { useInsightStore } from './stores/insightStore';
-import { useAgentStore } from './stores/agentStore';
-
-
 import NoteList from './components/note/NoteList';
 import NoteEditor from './components/note/NoteEditor';
 import Studio from './components/studio/Studio';
@@ -25,131 +15,28 @@ import CreateCommandModal from './components/chat/CreateCommandModal';
 
 function AppContent() {
   const presenter = usePresenter();
-
-  // Subscribe to state from stores
-  const { viewMode, activeNoteId, initialWikiHistory, viewingPulseReport, commandToCreate } = useAppStore();
-  const { notes, generatingTitleIds } = useNotesStore();
-  const { sessions, activeSessionId, isThreadChatting } = useChatStore();
-  const { aiSummary, myTodos, isLoadingAI, isLoadingPulse, pulseReports, mindMapData, isLoadingMindMap } = useStudioStore();
-  const { wikis, wikiTopics, isLoadingWikiTopics } = useWikiStore();
-  const { topics, isLoadingTopics, sessionHistory, isSessionActive, currentSession } = useParliamentStore();
-  const commands = useCommandStore(state => state.getCommands());
-  const { insights, isLoadingInsights } = useInsightStore();
-  const { agents } = useAgentStore();
-
-
-  const activeNote = notes.find((note) => note.id === activeNoteId) || null;
-  const activeChatSession = sessions.find(s => s.id === activeSessionId) || null;
+  const { viewMode, activeNoteId, viewingPulseReport, commandToCreate } = useAppStore();
 
   const renderMainView = () => {
     switch (viewMode) {
       case 'studio':
-        return (
-          <Studio
-            suggestedTodos={aiSummary?.todos || []}
-            myTodos={myTodos}
-            knowledgeCards={aiSummary?.knowledgeCards || []}
-            pulseReports={pulseReports}
-            onToggleTodo={presenter.studioManager.toggleTodo}
-            onAdoptTodo={presenter.studioManager.adoptTodo}
-            onCardToNote={presenter.handleCardToNote}
-            isLoadingPulse={isLoadingPulse}
-            onGeneratePulse={() => presenter.studioManager.generateNewPulseReport()}
-            onViewPulseReport={presenter.appManager.setViewingPulseReport}
-            mindMapData={mindMapData}
-            isLoadingMindMap={isLoadingMindMap}
-            onGenerateMindMap={presenter.studioManager.generateNewMindMap}
-          />
-        );
+        return <Studio />;
       case 'chat':
-        return (
-          <ChatView
-            sessions={sessions}
-            activeSession={activeChatSession}
-            agents={agents}
-            notes={notes}
-            onSendMessage={presenter.handleSendMessage}
-            onSelectNote={presenter.handleSelectNote}
-            commands={commands}
-            onOpenCreateCommandModal={presenter.handleOpenCreateCommandModal}
-            onSetActiveSession={presenter.handleSetActiveChatSession}
-            onCreateSession={presenter.handleCreateChatSession}
-            onDeleteSession={presenter.handleDeleteChatSession}
-            onClearSessionHistory={presenter.handleClearSessionHistory}
-            onCreateAgent={presenter.handleCreateAgent}
-            onUpdateAgent={presenter.handleUpdateAgent}
-            onDeleteAgent={presenter.handleDeleteAgent}
-            onAddAgentsToSession={presenter.handleAddAgentsToSession}
-            onUpdateSessionMode={presenter.handleUpdateSessionMode}
-            presenter={presenter}
-          />
-        );
+        return <ChatView />;
       case 'wiki':
-        return (
-          <WikiStudio
-            notes={notes}
-            wikis={wikis}
-            onGenerateWiki={presenter.wikiManager.generateWiki}
-            onRegenerateWiki={presenter.wikiManager.regenerateWiki}
-            onGenerateSubTopics={presenter.wikiManager.generateSubTopics}
-            aiTopics={wikiTopics}
-            isLoadingTopics={isLoadingWikiTopics}
-            initialHistory={initialWikiHistory}
-            onUpdateWiki={presenter.wikiManager.updateWikiWithTopics}
-          />
-        );
+        return <WikiStudio />;
       case 'parliament':
-        return (
-          <ParliamentView
-            notes={notes}
-            topics={topics}
-            isLoadingTopics={isLoadingTopics}
-            sessionHistory={sessionHistory}
-            isSessionActive={isSessionActive}
-            currentSession={currentSession}
-            onStartDebate={presenter.parliamentManager.startDebate}
-            onStartPodcast={presenter.parliamentManager.startPodcast}
-            onResetSession={presenter.parliamentManager.resetSession}
-            onSaveSynthesis={presenter.handleSaveDebateSynthesisAsNote}
-          />
-        );
+        return <ParliamentView />;
       case 'editor':
       default:
-        return <NoteEditor
-          key={activeNoteId}
-          note={activeNote}
-          onUpdateNote={(id, title, content) => presenter.notesManager.updateNote(id, { title, content })}
-          onNoteContentChange={presenter.handleNoteContentChange}
-          wikis={wikis}
-          onViewWikiInStudio={presenter.handleViewWikiInStudio}
-          isThreadChatting={isThreadChatting}
-          onSendThreadChatMessage={presenter.handleSendThreadMessage}
-          insights={insights}
-          isLoadingInsights={isLoadingInsights}
-          onAdoptInsightTodo={presenter.handleAdoptInsightTodo}
-          onCreateInsightWiki={presenter.handleCreateInsightWiki}
-          onSelectNote={presenter.handleSelectNote}
-        />;
+        return <NoteEditor key={activeNoteId} />;
     }
   };
 
   return (
     <div className="h-screen w-screen flex antialiased text-slate-800 dark:text-slate-200 overflow-x-hidden">
       <div className="w-full max-w-xs md:w-1/3 md:max-w-sm lg:w-1/4 border-r border-slate-200 dark:border-slate-700 flex-shrink-0">
-        <NoteList
-          notes={notes}
-          activeNoteId={activeNoteId}
-          onSelectNote={presenter.handleSelectNote}
-          onNewTextNote={presenter.handleNewTextNote}
-          onDeleteNote={presenter.handleDeleteNote}
-          onShowStudio={presenter.handleShowStudio}
-          onShowChat={presenter.handleShowChat}
-          onShowWiki={presenter.handleShowWiki}
-          onShowParliament={presenter.handleShowParliament}
-          isLoadingAI={isLoadingAI}
-          generatingTitleIds={generatingTitleIds}
-          viewMode={viewMode}
-        />
+        <NoteList />
       </div>
       <main className="flex-1 min-w-0">{renderMainView()}</main>
       <PulseReportModal 

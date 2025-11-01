@@ -1,9 +1,12 @@
 
 
-import React, { useState } from 'react';
-import { Note, AIAgent, ChatSession, DiscussionMode } from '../../types';
-import { Command } from '../../commands';
-import { Presenter } from '../../presenter';
+import React, { useState, useMemo } from 'react';
+import { AIAgent, ChatSession, DiscussionMode } from '../../types';
+import { usePresenter } from '../../presenter';
+import { useChatStore } from '../../stores/chatStore';
+import { useAgentStore } from '../../stores/agentStore';
+import { useNotesStore } from '../../stores/notesStore';
+import { useCommandStore } from '../../stores/commandStore';
 import PlusIcon from '../icons/PlusIcon';
 import TrashIcon from '../icons/TrashIcon';
 import Cog6ToothIcon from '../icons/Cog6ToothIcon';
@@ -15,31 +18,13 @@ import NewChatModal from './NewChatModal';
 import ChatPanel from './ChatPanel';
 import { AgentAvatar, CompositeAvatar, ParticipantAvatarStack } from './ChatUIComponents';
 
-// --- Chat View Props ---
-interface ChatViewProps {
-  sessions: ChatSession[];
-  activeSession: ChatSession | null;
-  agents: AIAgent[];
-  notes: Note[];
-  onSendMessage: (sessionId: string, message: string) => void;
-  onSelectNote: (noteId: string) => void;
-  commands: Command[];
-  onOpenCreateCommandModal: (commandName: string) => void;
-  onSetActiveSession: (sessionId: string | null) => void;
-  onCreateSession: (participantIds: string[], discussionMode: DiscussionMode) => void;
-  onDeleteSession: (sessionId: string) => void;
-  onClearSessionHistory: (sessionId: string) => void;
-  onCreateAgent: (agentData: Omit<AIAgent, 'id' | 'createdAt' | 'isCustom'>) => AIAgent;
-  onUpdateAgent: (agentData: AIAgent) => void;
-  onDeleteAgent: (agentId: string) => void;
-  onAddAgentsToSession: (sessionId: string, agentIds: string[]) => void;
-  onUpdateSessionMode: (sessionId: string, newMode: DiscussionMode) => void;
-  presenter: Presenter;
-}
-
-
 // --- Main ChatView Component ---
-const ChatView: React.FC<ChatViewProps> = (props) => {
+const ChatView: React.FC = () => {
+  const presenter = usePresenter();
+  const { sessions, activeSessionId } = useChatStore();
+  const agents = useAgentStore(state => state.agents);
+  const activeSession = useMemo(() => sessions.find(s => s.id === activeSessionId) || null, [sessions, activeSessionId]);
+
   const [isAgentManagerOpen, setIsAgentManagerOpen] = useState(false);
   const [isNewChatOpen, setIsNewChatOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -81,8 +66,8 @@ const ChatView: React.FC<ChatViewProps> = (props) => {
         </div>
         <div className="flex-1 overflow-y-auto overflow-x-hidden p-2">
             <ul className="space-y-1">
-                {props.sessions.map(session => {
-                    const participants = props.agents.filter(a => session.participantIds.includes(a.id));
+                {sessions.map(session => {
+                    const participants = agents.filter(a => session.participantIds.includes(a.id));
                     if (participants.length === 0) return null;
 
                     const lastMessage = [...session.history].reverse().find(m => m.role !== 'system');
@@ -90,7 +75,7 @@ const ChatView: React.FC<ChatViewProps> = (props) => {
 
                     return (
                         <li key={session.id}>
-                            <button onClick={() => props.onSetActiveSession(session.id)} className={`w-full text-left p-2 rounded-md flex items-center group transition-colors ${isSidebarCollapsed ? 'justify-center' : 'gap-3'} ${props.activeSession?.id === session.id ? 'bg-indigo-100 dark:bg-indigo-900/50' : 'hover:bg-slate-200 dark:hover:bg-slate-700/50'}`}>
+                            <button onClick={() => presenter.handleSetActiveChatSession(session.id)} className={`w-full text-left p-2 rounded-md flex items-center group transition-colors ${isSidebarCollapsed ? 'justify-center' : 'gap-3'} ${activeSession?.id === session.id ? 'bg-indigo-100 dark:bg-indigo-900/50' : 'hover:bg-slate-200 dark:hover:bg-slate-700/50'}`}>
                                 
                                 {/* AVATAR LOGIC */}
                                 {isSidebarCollapsed ? (
@@ -111,10 +96,10 @@ const ChatView: React.FC<ChatViewProps> = (props) => {
                                 {!isSidebarCollapsed && (
                                   <>
                                     <div className="flex-1 overflow-hidden">
-                                        <p className={`text-sm font-semibold truncate ${props.activeSession?.id === session.id ? 'text-indigo-800 dark:text-indigo-200' : 'text-slate-800 dark:text-slate-200'}`}>{session.name}</p>
-                                        <p className={`text-xs truncate ${props.activeSession?.id === session.id ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400'}`}>{lastMessageContent.replace(/\s+/g, ' ')}</p>
+                                        <p className={`text-sm font-semibold truncate ${activeSession?.id === session.id ? 'text-indigo-800 dark:text-indigo-200' : 'text-slate-800 dark:text-slate-200'}`}>{session.name}</p>
+                                        <p className={`text-xs truncate ${activeSession?.id === session.id ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400'}`}>{lastMessageContent.replace(/\s+/g, ' ')}</p>
                                     </div>
-                                    <button onClick={(e) => {e.stopPropagation(); props.onDeleteSession(session.id)}} className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 p-1 rounded-full flex-shrink-0 transition-opacity"><TrashIcon className="w-4 h-4"/></button>
+                                    <button onClick={(e) => {e.stopPropagation(); presenter.handleDeleteChatSession(session.id)}} className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 p-1 rounded-full flex-shrink-0 transition-opacity"><TrashIcon className="w-4 h-4"/></button>
                                   </>
                                 )}
                             </button>
@@ -136,35 +121,23 @@ const ChatView: React.FC<ChatViewProps> = (props) => {
 
       {/* Main Chat Panel (Right Side) */}
       <div className="flex-1 h-full min-w-0">
-        <ChatPanel 
-            activeSession={props.activeSession}
-            agents={props.agents}
-            notes={props.notes}
-            presenter={props.presenter}
-            onSendMessage={props.onSendMessage}
-            onSelectNote={props.onSelectNote}
-            commands={props.commands}
-            onOpenCreateCommandModal={props.onOpenCreateCommandModal}
-            onAddAgentsToSession={props.onAddAgentsToSession}
-            onUpdateSessionMode={props.onUpdateSessionMode}
-            onClearSessionHistory={props.onClearSessionHistory}
-        />
+        <ChatPanel />
       </div>
 
       {/* Modals */}
       <AgentManagerModal 
         isOpen={isAgentManagerOpen} 
         onClose={() => setIsAgentManagerOpen(false)}
-        agents={props.agents}
-        presenter={props.presenter}
-        onUpdateAgent={props.onUpdateAgent}
-        onDeleteAgent={props.onDeleteAgent}
+        agents={agents}
+        presenter={presenter}
+        onUpdateAgent={presenter.handleUpdateAgent}
+        onDeleteAgent={presenter.handleDeleteAgent}
       />
       <NewChatModal
         isOpen={isNewChatOpen}
         onClose={() => setIsNewChatOpen(false)}
-        agents={props.agents}
-        onCreateSession={props.onCreateSession}
+        agents={agents}
+        onCreateSession={presenter.handleCreateChatSession}
       />
     </div>
   );

@@ -1,4 +1,7 @@
+
 import React, { useState } from 'react';
+import { usePresenter } from '../../presenter';
+import { useStudioStore } from '../../stores/studioStore';
 import { Todo, KnowledgeCard, KnowledgeCardType, PulseReport, MindMapData } from '../../types';
 import CheckIcon from '../icons/CheckIcon';
 import LightbulbIcon from '../icons/LightbulbIcon';
@@ -12,22 +15,6 @@ import PulseIcon from '../icons/PulseIcon';
 import MindMapIcon from '../icons/MindMapIcon';
 import MindMap from './MindMap';
 
-interface StudioProps {
-  suggestedTodos: Todo[];
-  myTodos: Todo[];
-  knowledgeCards: KnowledgeCard[];
-  pulseReports: PulseReport[];
-  onToggleTodo: (id: string) => void;
-  onAdoptTodo: (todo: Todo) => void;
-  onCardToNote: (card: KnowledgeCard) => void;
-  isLoadingPulse: boolean;
-  onGeneratePulse: () => void;
-  onViewPulseReport: (report: PulseReport) => void;
-  mindMapData: MindMapData | null;
-  isLoadingMindMap: boolean;
-  onGenerateMindMap: (force?: boolean) => void;
-}
-
 type StudioTab = 'synthesis' | 'mindmap';
 
 const cardTypeDetails: Record<KnowledgeCardType, { icon: React.FC<React.SVGProps<SVGSVGElement>>, color: string, iconColor: string }> = {
@@ -38,13 +25,20 @@ const cardTypeDetails: Record<KnowledgeCardType, { icon: React.FC<React.SVGProps
   idea: { icon: LightbulbIcon, color: 'bg-green-50 dark:bg-green-900/50', iconColor: 'text-green-600 dark:text-green-400' },
 };
 
-const Studio: React.FC<StudioProps> = (props) => {
-  const {
-    suggestedTodos, myTodos, knowledgeCards, pulseReports, onToggleTodo,
-    onAdoptTodo, onCardToNote, isLoadingPulse, onGeneratePulse, onViewPulseReport,
-    mindMapData, isLoadingMindMap, onGenerateMindMap
-  } = props;
-  
+const Studio: React.FC = () => {
+  const presenter = usePresenter();
+  const { suggestedTodos, myTodos, knowledgeCards, pulseReports, isLoadingPulse, mindMapData, isLoadingMindMap } = useStudioStore(
+    state => ({
+        suggestedTodos: state.aiSummary?.todos || [],
+        myTodos: state.myTodos,
+        knowledgeCards: state.aiSummary?.knowledgeCards || [],
+        pulseReports: state.pulseReports,
+        isLoadingPulse: state.isLoadingPulse,
+        mindMapData: state.mindMapData,
+        isLoadingMindMap: state.isLoadingMindMap
+    })
+  );
+
   const [activeTab, setActiveTab] = useState<StudioTab>('synthesis');
 
   const hasSummaryContent = suggestedTodos.length > 0 || myTodos.length > 0 || knowledgeCards.length > 0;
@@ -109,7 +103,7 @@ const Studio: React.FC<StudioProps> = (props) => {
                       <ul className="space-y-2">
                         {myTodos.map((todo) => (
                           <li key={todo.id} className="flex items-center bg-white dark:bg-slate-700/50 p-3 rounded-lg shadow-sm">
-                            <button onClick={() => onToggleTodo(todo.id)} className={`w-6 h-6 flex-shrink-0 rounded-full border-2 flex items-center justify-center mr-3 ${todo.completed ? 'bg-green-500 border-green-500' : 'border-slate-300 dark:border-slate-500'}`}>
+                            <button onClick={() => presenter.studioManager.toggleTodo(todo.id)} className={`w-6 h-6 flex-shrink-0 rounded-full border-2 flex items-center justify-center mr-3 ${todo.completed ? 'bg-green-500 border-green-500' : 'border-slate-300 dark:border-slate-500'}`}>
                               {todo.completed && <CheckIcon className="w-4 h-4 text-white" />}
                             </button>
                             <span className={`flex-1 ${todo.completed ? 'line-through text-slate-400 dark:text-slate-500' : 'text-slate-800 dark:text-slate-200'}`}>
@@ -127,7 +121,7 @@ const Studio: React.FC<StudioProps> = (props) => {
                         {suggestedTodos.map((todo) => (
                           <li key={todo.id} className="flex items-center bg-white dark:bg-slate-700/50 p-3 rounded-lg shadow-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
                             <span className="flex-1 text-slate-800 dark:text-slate-200">{todo.text}</span>
-                            <button onClick={() => onAdoptTodo(todo)} className="ml-4 p-1.5 rounded-full text-slate-500 hover:bg-blue-100 hover:text-blue-600 dark:hover:bg-blue-900/50 dark:text-slate-400 dark:hover:text-blue-400 transition-colors" title="Add to my tasks">
+                            <button onClick={() => presenter.studioManager.adoptTodo(todo)} className="ml-4 p-1.5 rounded-full text-slate-500 hover:bg-blue-100 hover:text-blue-600 dark:hover:bg-blue-900/50 dark:text-slate-400 dark:hover:text-blue-400 transition-colors" title="Add to my tasks">
                               <PlusCircleIcon className="w-6 h-6" />
                             </button>
                           </li>
@@ -171,7 +165,7 @@ const Studio: React.FC<StudioProps> = (props) => {
                             )}
 
                             <div className="text-right mt-4">
-                                <button onClick={() => onCardToNote(card)} className="inline-flex items-center text-xs font-semibold text-slate-600 dark:text-slate-300 bg-black/5 dark:bg-white/10 px-2.5 py-1.5 rounded-md hover:bg-black/10 dark:hover:bg-white/20 transition-colors">
+                                <button onClick={() => presenter.handleCardToNote(card)} className="inline-flex items-center text-xs font-semibold text-slate-600 dark:text-slate-300 bg-black/5 dark:bg-white/10 px-2.5 py-1.5 rounded-md hover:bg-black/10 dark:hover:bg-white/20 transition-colors">
                                     <DocumentPlusIcon className="w-4 h-4 mr-1.5" />
                                     Create Note
                                 </button>
@@ -194,7 +188,7 @@ const Studio: React.FC<StudioProps> = (props) => {
             {mindMapData ? (
               <MindMap
                 data={mindMapData.root}
-                onRegenerate={() => onGenerateMindMap(true)}
+                onRegenerate={() => presenter.studioManager.generateNewMindMap(true)}
                 isLoading={isLoadingMindMap}
               />
             ) : (
@@ -203,7 +197,7 @@ const Studio: React.FC<StudioProps> = (props) => {
                 <h2 className="text-xl font-semibold text-slate-600 dark:text-slate-300">Visualize Your Thoughts</h2>
                 <p className="text-slate-500 dark:text-slate-400 mt-2 max-w-sm mx-auto">Generate a mind map from all your notes to see how your ideas connect.</p>
                 <button
-                  onClick={() => onGenerateMindMap()}
+                  onClick={() => presenter.studioManager.generateNewMindMap()}
                   disabled={isLoadingMindMap}
                   className="mt-6 inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-indigo-400 dark:disabled:bg-indigo-800 transition-colors"
                 >
@@ -230,7 +224,7 @@ const Studio: React.FC<StudioProps> = (props) => {
               <div className="bg-white dark:bg-slate-800/50 p-4 rounded-lg shadow-sm">
                 <p className="text-sm text-slate-600 dark:text-slate-300 mb-4">Get a periodic, narrative report of your thought evolution, new connections, and forgotten threads.</p>
                 <button 
-                  onClick={() => onGeneratePulse()}
+                  onClick={() => presenter.studioManager.generateNewPulseReport()}
                   disabled={isLoadingPulse}
                   className="w-full flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-indigo-400 dark:disabled:bg-indigo-800 transition-colors"
                 >
@@ -250,7 +244,7 @@ const Studio: React.FC<StudioProps> = (props) => {
                       {sortedPulseReports.map(report => (
                         <li key={report.id}>
                           <button 
-                            onClick={() => onViewPulseReport(report)}
+                            onClick={() => presenter.appManager.setViewingPulseReport(report)}
                             className="w-full text-left p-2 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
                           >
                             <p className="font-medium text-sm text-slate-800 dark:text-slate-100">{report.title}</p>

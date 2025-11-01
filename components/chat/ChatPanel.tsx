@@ -1,8 +1,12 @@
 
+
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { usePresenter } from '../../presenter';
+import { useChatStore } from '../../stores/chatStore';
+import { useAgentStore } from '../../stores/agentStore';
+import { useNotesStore } from '../../stores/notesStore';
+import { useCommandStore } from '../../stores/commandStore';
 import { ChatMessage, AIAgent, ChatSession, DiscussionMode, ProactiveSuggestion, Note } from '../../types';
-import { Command } from '../../commands';
-import { Presenter } from '../../presenter';
 import PaperAirplaneIcon from '../icons/PaperAirplaneIcon';
 import UserIcon from '../icons/UserIcon';
 import SparklesIcon from '../icons/SparklesIcon';
@@ -10,22 +14,16 @@ import BookOpenIcon from '../icons/BookOpenIcon';
 import CommandPalette from './CommandPalette';
 import ToolCallCard from './ToolCallCard';
 import ToolResultCard from './ToolResultCard';
-import Modal from '../ui/Modal';
-import PencilIcon from '../icons/PencilIcon';
-import UsersIcon from '../icons/UsersIcon';
 import UserPlusIcon from '../icons/UserPlusIcon';
-import CpuChipIcon from '../icons/CpuChipIcon';
-import LightbulbIcon from '../icons/LightbulbIcon';
-import BeakerIcon from '../icons/BeakerIcon';
-import ChatBubbleLeftRightIcon from '../icons/ChatBubbleLeftRightIcon';
 import ArrowPathIcon from '../icons/ArrowPathIcon';
 import SpeakerWaveIcon from '../icons/SpeakerWaveIcon';
 import ChevronDownIcon from '../icons/ChevronDownIcon';
 import ConfirmationModal from '../ui/ConfirmationModal';
 import GlobeAltIcon from '../icons/GlobeAltIcon';
-// Fix: Added missing import for AgentAvatar.
 import { ParticipantAvatarStack, AgentMentionPopup, AgentAvatar } from './ChatUIComponents';
 import AddAgentsModal from './AddAgentsModal';
+import ChatBubbleLeftRightIcon from '../icons/ChatBubbleLeftRightIcon';
+
 
 // --- Discussion Modes ---
 const discussionModes: { id: DiscussionMode; name: string; description: string; icon: React.FC<any> }[] = [
@@ -33,21 +31,6 @@ const discussionModes: { id: DiscussionMode; name: string; description: string; 
     { id: 'turn_based', name: 'Turn-Based', description: 'Agents respond one after another, seeing previous replies.', icon: ArrowPathIcon },
     { id: 'moderated', name: 'Moderated', description: 'A moderator AI directs the conversation, choosing who speaks.', icon: SpeakerWaveIcon },
 ];
-
-// --- Chat Panel Props ---
-interface ChatPanelProps {
-  activeSession: ChatSession | null;
-  agents: AIAgent[];
-  notes: Note[];
-  onSendMessage: (sessionId: string, message: string) => void;
-  onSelectNote: (noteId: string) => void;
-  commands: Command[];
-  onOpenCreateCommandModal: (commandName: string) => void;
-  onAddAgentsToSession: (sessionId: string, agentIds: string[]) => void;
-  onUpdateSessionMode: (sessionId: string, newMode: DiscussionMode) => void;
-  onClearSessionHistory: (sessionId: string) => void;
-  presenter: Presenter;
-}
 
 const ThinkingIndicator = () => (
     <div className="flex items-center gap-1.5 p-3">
@@ -94,9 +77,15 @@ const ProactiveSuggestionsPanel: React.FC<{
 
 
 // --- Chat Panel Component (Right Side) ---
-const ChatPanel: React.FC<ChatPanelProps> = ({
-  activeSession, agents, onSendMessage, onSelectNote, commands, onOpenCreateCommandModal, onAddAgentsToSession, onUpdateSessionMode, onClearSessionHistory, notes, presenter
-}) => {
+const ChatPanel: React.FC = () => {
+  const presenter = usePresenter();
+  const { sessions, activeSessionId } = useChatStore();
+  const agents = useAgentStore(state => state.agents);
+  const notes = useNotesStore(state => state.notes);
+  const commands = useCommandStore(state => state.getCommands());
+  
+  const activeSession = useMemo(() => sessions.find(s => s.id === activeSessionId) || null, [sessions, activeSessionId]);
+  
   const [chatInput, setChatInput] = useState('');
   const [isAddAgentModalOpen, setAddAgentModalOpen] = useState(false);
   const [isModeDropdownOpen, setModeDropdownOpen] = useState(false);
@@ -214,7 +203,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
   
   const handleSelectSuggestion = (prompt: string) => {
     if (!activeSession) return;
-    onSendMessage(activeSession.id, prompt);
+    presenter.handleSendMessage(activeSession.id, prompt);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -260,7 +249,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
     e.preventDefault();
     if (!activeSession) return;
     if (chatInput.trim() && !isChatting) {
-      onSendMessage(activeSession.id, chatInput);
+      presenter.handleSendMessage(activeSession.id, chatInput);
       setChatInput('');
       setShowCommands(false);
       setMentionPopup(null);
@@ -321,7 +310,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
                                 <button
                                     key={mode.id}
                                     onClick={() => {
-                                        onUpdateSessionMode(activeSession.id, mode.id);
+                                        presenter.handleUpdateSessionMode(activeSession.id, mode.id);
                                         setModeDropdownOpen(false);
                                     }}
                                     className="w-full text-left p-2 flex items-start gap-3 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700"
@@ -381,7 +370,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
                 </div>
               );
               if (msg.role === 'model' && msg.toolCalls) return <ToolCallCard key={msg.id} toolCalls={msg.toolCalls} text={msg.content} completedToolCallIds={completedToolCallIds} />;
-              if (msg.role === 'tool' && msg.structuredContent) return <ToolResultCard key={msg.id} message={msg} onSelectNote={onSelectNote} />;
+              if (msg.role === 'tool' && msg.structuredContent) return <ToolResultCard key={msg.id} message={msg} onSelectNote={presenter.handleSelectNote} />;
               return (
                 <div key={msg.id} className="flex items-start gap-3 max-w-4xl mx-auto">
                   {agent ? <AgentAvatar agent={agent} /> : <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center flex-shrink-0"><SparklesIcon className="w-5 h-5 text-indigo-500 dark:text-indigo-400" /></div>}
@@ -401,7 +390,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
                           <BookOpenIcon className="w-4 h-4 text-slate-400 dark:text-slate-500" />
                           <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Sources:</span>
                           {msg.sourceNotes.map(note => (
-                              <button key={note.id} onClick={() => onSelectNote(note.id)} className="px-2 py-0.5 bg-slate-200 dark:bg-slate-600 text-xs text-slate-700 dark:text-slate-200 rounded-md hover:bg-slate-300 dark:hover:bg-slate-500 transition-colors">
+                              <button key={note.id} onClick={() => presenter.handleSelectNote(note.id)} className="px-2 py-0.5 bg-slate-200 dark:bg-slate-600 text-xs text-slate-700 dark:text-slate-200 rounded-md hover:bg-slate-300 dark:hover:bg-slate-500 transition-colors">
                                   {note.title}
                               </button>
                           ))}
@@ -467,7 +456,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
                 selectedIndex={selectedCommandIndex}
                 onSelect={handleSelectCommand}
                 onHover={setSelectedCommandIndex}
-                onCreateCommand={onOpenCreateCommandModal}
+                onCreateCommand={presenter.handleOpenCreateCommandModal}
             />
           )}
           <div className="flex gap-2">
@@ -495,13 +484,13 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
             isOpen={isAddAgentModalOpen}
             onClose={() => setAddAgentModalOpen(false)}
             agents={availableAgentsToAdd}
-            onAddAgents={(agentIds) => onAddAgentsToSession(activeSession.id, agentIds)}
+            onAddAgents={(agentIds) => presenter.handleAddAgentsToSession(activeSession.id, agentIds)}
         />
        <ConfirmationModal
             isOpen={isClearConfirmOpen}
             onClose={() => setIsClearConfirmOpen(false)}
             onConfirm={() => {
-                onClearSessionHistory(activeSession.id);
+                presenter.handleClearSessionHistory(activeSession.id);
                 setIsClearConfirmOpen(false);
             }}
             title="Clear Chat History"
