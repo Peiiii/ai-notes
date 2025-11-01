@@ -1,9 +1,4 @@
 
-
-
-
-
-
 import React, { createContext, useContext, useEffect, useRef } from 'react';
 import { useAppStore } from '../stores/appStore';
 import { useNotesStore } from '../stores/notesStore';
@@ -20,7 +15,6 @@ import { CommandManager } from '../managers/CommandManager';
 import { InsightManager } from '../managers/InsightManager';
 import { KnowledgeCard, Note, WikiEntry, WIKI_ROOT_ID, DebateSynthesis, Todo, AIAgent, ChatMessage, DiscussionMode, ProactiveSuggestion, PresetChat } from '../types';
 import { Command } from '../commands';
-import { generateProactiveSuggestions } from '../services/insightAIService';
 import { getCreatorAgentResponse } from '../services/agentAIService';
 import { presetChats } from '../components/chat/presetChats';
 
@@ -243,16 +237,6 @@ ${synthesis.nextSteps.map(p => `- ${p}`).join('\n')}
       this.chatManager.updateSessionMode(sessionId, newMode);
   }
   
-  handleGenerateChatSuggestions = async (notes: Note[]): Promise<ProactiveSuggestion[]> => {
-    try {
-      const suggestions = await generateProactiveSuggestions(notes);
-      return suggestions;
-    } catch (error) {
-      console.error("Failed to generate proactive chat suggestions:", error);
-      return [];
-    }
-  }
-
   handleAgentCreatorChat = async (history: ChatMessage[]) => {
       const response = await getCreatorAgentResponse(history);
       
@@ -317,6 +301,11 @@ ${synthesis.nextSteps.map(p => `- ${p}`).join('\n')}
     this.handleCreateSessionsFromPresets(defaultPresets);
   };
 
+  // --- Modal Management ---
+  handleOpenAddAgentsModal = () => this.appManager.setActiveModal('addAgents');
+  handleOpenClearChatConfirmModal = () => this.appManager.setActiveModal('clearChatConfirm');
+  handleOpenRenameChatModal = () => this.appManager.setActiveModal('renameChat');
+  handleCloseModal = () => this.appManager.setActiveModal(null);
 
   // --- Live Insights ---
   debouncedGetInsights = debounce(this.insightManager.getInsightsForNote, 1500);

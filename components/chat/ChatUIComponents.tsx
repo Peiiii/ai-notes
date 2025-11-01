@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { AIAgent } from '../../types';
 import SparklesIcon from '../icons/SparklesIcon';
@@ -102,7 +101,7 @@ export const AgentMentionPopup: React.FC<{
             className={`w-full text-left p-2 rounded-md flex items-center gap-3 ${selectedIndex === index ? 'bg-indigo-100 dark:bg-indigo-900/50' : 'hover:bg-slate-100 dark:hover:bg-slate-700/50'}`}
           >
             <AgentAvatar agent={agent} />
-            <div>
+            <div className="overflow-hidden">
               <p className={`font-semibold text-sm ${selectedIndex === index ? 'text-indigo-800 dark:text-indigo-200' : 'text-slate-800 dark:text-slate-200'}`}>{agent.name}</p>
               <p className={`text-xs truncate ${selectedIndex === index ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400'}`}>{agent.description}</p>
             </div>

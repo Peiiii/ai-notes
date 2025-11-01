@@ -1,12 +1,11 @@
 
-
-
 import { useChatStore } from '../stores/chatStore';
 import { useNotesStore } from '../stores/notesStore';
 import { useAgentStore } from '../stores/agentStore';
 import { ChatMessage, Note, ChatSession, AIAgent, DiscussionMode } from '../types';
 import { getAgentResponse, getAgentToolResponse, searchNotesInCorpus } from '../services/agentAIService';
 import { generateThreadChatResponse } from '../services/noteAIService';
+import { generateProactiveSuggestions } from '../services/insightAIService';
 import { NotesManager } from './NotesManager';
 import { IDiscussionStrategy } from './discussionStrategies/IDiscussionStrategy';
 import { ConcurrentStrategy } from './discussionStrategies/ConcurrentStrategy';
@@ -316,4 +315,25 @@ export class ChatManager {
             useChatStore.setState({ isThreadChatting: false });
         }
     };
+
+    fetchProactiveSuggestions = async () => {
+        const { activeSessionId, sessions } = useChatStore.getState();
+        const activeSession = sessions.find(s => s.id === activeSessionId);
+        const { notes } = useNotesStore.getState();
+
+        if (activeSession && activeSession.history.length === 0 && notes.length > 0) {
+            useChatStore.setState({ isLoadingSuggestions: true, suggestions: [] });
+            try {
+                const suggestions = await generateProactiveSuggestions(notes);
+                useChatStore.setState({ suggestions });
+            } catch (error) {
+                console.error("Failed to generate proactive chat suggestions:", error);
+                useChatStore.setState({ suggestions: [] });
+            } finally {
+                useChatStore.setState({ isLoadingSuggestions: false });
+            }
+        } else {
+            useChatStore.setState({ suggestions: [], isLoadingSuggestions: false });
+        }
+    }
 }

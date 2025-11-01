@@ -2,6 +2,8 @@
 import React from 'react';
 import { PresenterProvider, usePresenter } from './presenter';
 import { useAppStore } from './stores/appStore';
+import { useChatStore } from './stores/chatStore';
+import { useAgentStore } from './stores/agentStore';
 import NoteList from './components/note/NoteList';
 import NoteEditor from './components/note/NoteEditor';
 import Studio from './components/studio/Studio';
@@ -11,11 +13,17 @@ import WikiStudio from './components/wiki/WikiStudio';
 import ParliamentView from './components/parliament/ParliamentView';
 import ErrorBoundary from './components/ui/ErrorBoundary';
 import CreateCommandModal from './components/chat/CreateCommandModal';
+import AddAgentsModal from './components/chat/AddAgentsModal';
+import ConfirmationModal from './components/ui/ConfirmationModal';
+import RenameChatModal from './components/chat/RenameChatModal';
 
 
 function AppContent() {
   const presenter = usePresenter();
-  const { viewMode, activeNoteId, viewingPulseReport, commandToCreate } = useAppStore();
+  const { viewMode, activeNoteId, viewingPulseReport, commandToCreate, activeModal } = useAppStore();
+  const { activeSessionId, sessions } = useChatStore();
+  const agents = useAgentStore(state => state.agents);
+  const activeSession = sessions.find(s => s.id === activeSessionId);
 
   const renderMainView = () => {
     switch (viewMode) {
@@ -33,6 +41,9 @@ function AppContent() {
     }
   };
 
+  const participants = activeSession ? agents.filter(a => activeSession.participantIds.includes(a.id)) : [];
+  const availableAgentsToAdd = activeSession ? agents.filter(a => !activeSession.participantIds.includes(a.id)) : [];
+
   return (
     <div className="h-screen w-screen flex antialiased text-slate-800 dark:text-slate-200 overflow-x-hidden">
       <div className="w-full max-w-xs md:w-1/3 md:max-w-sm lg:w-1/4 border-r border-slate-200 dark:border-slate-700 flex-shrink-0">
@@ -49,6 +60,38 @@ function AppContent() {
         onCreateCommand={presenter.handleCreateCommand}
         initialCommandName={commandToCreate || ''}
       />
+       {activeSession && (
+        <>
+          <AddAgentsModal
+            isOpen={activeModal === 'addAgents'}
+            onClose={presenter.handleCloseModal}
+            currentParticipants={participants}
+            availableAgents={availableAgentsToAdd}
+            onAddAgents={(agentIds) => presenter.handleAddAgentsToSession(activeSession.id, agentIds)}
+          />
+          <ConfirmationModal
+            isOpen={activeModal === 'clearChatConfirm'}
+            onClose={presenter.handleCloseModal}
+            onConfirm={() => {
+              presenter.handleClearSessionHistory(activeSession.id);
+              presenter.handleCloseModal();
+            }}
+            title="Clear Chat History"
+            message="Are you sure you want to clear this chat history? This action cannot be undone."
+            confirmButtonText="Clear History"
+            confirmButtonClassName="bg-red-600 hover:bg-red-700"
+          />
+          <RenameChatModal
+            isOpen={activeModal === 'renameChat'}
+            onClose={presenter.handleCloseModal}
+            currentName={activeSession.name}
+            onSave={(newName) => {
+              presenter.handleRenameSession(activeSession.id, newName);
+              presenter.handleCloseModal();
+            }}
+          />
+        </>
+      )}
     </div>
   );
 }

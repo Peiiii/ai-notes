@@ -22,4 +22,8 @@ export class AppManager {
   setCommandToCreate = (commandName: string | null) => {
     useAppStore.setState({ commandToCreate: commandName });
   }
+
+  setActiveModal = (modal: ReturnType<typeof useAppStore.getState>['activeModal']) => {
+    useAppStore.setState({ activeModal: modal });
+  }
 }

@@ -8,6 +8,7 @@ interface AppState {
   initialWikiHistory: WikiEntry[] | null;
   viewingPulseReport: PulseReport | null;
   commandToCreate: string | null;
+  activeModal: 'addAgents' | 'clearChatConfirm' | 'renameChat' | null;
 }
 
 export const useAppStore = create<AppState>(() => ({
@@ -16,4 +17,5 @@ export const useAppStore = create<AppState>(() => ({
   initialWikiHistory: null,
   viewingPulseReport: null,
   commandToCreate: null,
+  activeModal: null,
 }));

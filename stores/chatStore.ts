@@ -1,12 +1,14 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { ChatSession, ChatMessage } from '../types';
+import { ChatSession, ChatMessage, ProactiveSuggestion } from '../types';
 
 interface ChatState {
   sessions: ChatSession[];
   activeSessionId: string | null;
   isThreadChatting: boolean; // Keep this for note-specific chats
+  suggestions: ProactiveSuggestion[];
+  isLoadingSuggestions: boolean;
   
   // New granular methods for better state management with streams
   addMessage: (sessionId: string, message: ChatMessage) => void;
@@ -23,6 +25,8 @@ export const useChatStore = create<ChatState>()(
       sessions: [],
       activeSessionId: null,
       isThreadChatting: false,
+      suggestions: [],
+      isLoadingSuggestions: false,
       
       addMessage: (sessionId, message) => {
         set(state => ({
