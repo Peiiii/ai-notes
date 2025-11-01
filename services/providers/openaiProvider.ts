@@ -67,15 +67,20 @@ class OpenAICompatibleProvider implements LLMProvider {
     }
 
     async generateJson<T>(params: GenerateJsonParams): Promise<T> {
-        const { model, prompt, systemInstruction } = params;
+        const { model, prompt, schema, systemInstruction } = params;
         const apiModel = this.modelMap[model];
 
         const messages: { role: 'system' | 'user', content: string }[] = [];
         let systemPrompt = systemInstruction || "";
-        systemPrompt += "\nYou must respond in a valid JSON format.";
+        systemPrompt += `\nYou must respond in a valid JSON format that strictly adheres to the following JSON schema. Do not include any explanations or markdown formatting.`;
+    
+        if (schema) {
+            systemPrompt += `\n\nSCHEMA:\n${JSON.stringify(schema, null, 2)}`;
+        }
+        
         messages.push({ role: 'system', content: systemPrompt });
         
-        const userPrompt = `${prompt}\n\nIMPORTANT: Respond with a single, valid JSON object only. Do not include any other text, explanations, or markdown formatting.`;
+        const userPrompt = `${prompt}\n\nIMPORTANT: Respond with a single, valid JSON object that conforms to the schema provided in the system instructions.`;
         messages.push({ role: 'user', content: userPrompt });
 
         try {
