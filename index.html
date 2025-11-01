@@ -52,6 +52,12 @@
     word-break: break-all;
     overflow-x: auto;
   }
+  /* Truncate placeholder text if it's too long */
+  .truncate-placeholder::placeholder {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 </style>
   <script type="importmap">
 {
@@ -69,7 +75,7 @@
   }
 }
 </script>
-  <script type="module" crossorigin src="/assets/index-C8rOjkoa.js"></script>
+  <script type="module" crossorigin src="/assets/index-C9PldxcO.js"></script>
 </head>
   <body class="bg-slate-50 dark:bg-slate-900">
     <div id="root"></div>
