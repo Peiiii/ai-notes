@@ -38,7 +38,7 @@ const AgentDetailPanel: React.FC<AgentDetailPanelProps> = ({ agent, onStartEdit,
             </div>
             <div>
                 <h4 className="font-semibold text-slate-800 dark:text-slate-200 mb-2">System Instructions</h4>
-                <div className="p-3 bg-slate-100 dark:bg-slate-900/50 rounded-lg text-sm text-slate-600 dark:text-slate-300 whitespace-pre-wrap font-mono">
+                <div className="p-3 bg-slate-100 dark:bg-slate-900/50 rounded-lg text-sm text-slate-600 dark:text-slate-300 whitespace-pre-wrap font-mono max-h-64 overflow-y-auto">
                     {agent.systemInstruction}
                 </div>
             </div>
