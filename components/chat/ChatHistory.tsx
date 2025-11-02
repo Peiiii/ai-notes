@@ -10,6 +10,8 @@ import BookOpenIcon from '../icons/BookOpenIcon';
 import GlobeAltIcon from '../icons/GlobeAltIcon';
 import ToolCallCard from './ToolCallCard';
 import { ChatMessage } from '../../types';
+import ClickPopover from '../ui/ClickPopover';
+import AgentProfileCard from './AgentProfileCard';
 
 const ThinkingIndicator = () => (
     <div className="flex items-center gap-1.5 p-3">
@@ -110,7 +112,19 @@ const ChatHistory: React.FC = () => {
 
                 return (
                     <div key={msg.id} className="flex items-start gap-3 max-w-4xl mx-auto">
-                    {agent ? <AgentAvatar agent={agent} /> : <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center flex-shrink-0"><SparklesIcon className="w-5 h-5 text-indigo-500 dark:text-indigo-400" /></div>}
+                    {agent ? (
+                        <ClickPopover content={<AgentProfileCard agent={agent} />}>
+                            {({ onClick, ref }) => (
+                                <button ref={ref} onClick={onClick} className="rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-slate-800">
+                                    <AgentAvatar agent={agent} />
+                                </button>
+                            )}
+                        </ClickPopover>
+                    ) : (
+                        <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center flex-shrink-0">
+                            <SparklesIcon className="w-5 h-5 text-indigo-500 dark:text-indigo-400" />
+                        </div>
+                    )}
                     <div className="flex flex-col items-start">
                         <div className="p-3 rounded-lg max-w-lg bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-bl-none">
                         {msg.persona && participants.length > 1 && <p className="text-xs font-bold mb-1 text-indigo-600 dark:text-indigo-400">{msg.persona}</p>}

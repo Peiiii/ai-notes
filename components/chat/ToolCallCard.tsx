@@ -8,6 +8,8 @@ import CheckCircleIcon from '../icons/CheckCircleIcon';
 import { AgentAvatar } from './ChatUIComponents';
 import BookOpenIcon from '../icons/BookOpenIcon';
 import ChevronRightIcon from '../icons/ChevronRightIcon';
+import ClickPopover from '../ui/ClickPopover';
+import AgentProfileCard from './AgentProfileCard';
 
 
 const toolIconMap: { [key: string]: React.FC<any> } = {
@@ -87,7 +89,13 @@ const ToolCallCard: React.FC<ToolCallCardProps> = ({ toolCalls, text, agent, too
   return (
     <div className="flex items-start gap-3 max-w-4xl mx-auto">
       {agent ? (
-        <AgentAvatar agent={agent} />
+        <ClickPopover content={<AgentProfileCard agent={agent} />}>
+            {({ onClick, ref }) => (
+                <button ref={ref} onClick={onClick} className="rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-slate-800">
+                    <AgentAvatar agent={agent} />
+                </button>
+            )}
+        </ClickPopover>
       ) : (
         <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center flex-shrink-0">
           <CpuChipIcon className="w-5 h-5 text-slate-500 dark:text-slate-400" />
