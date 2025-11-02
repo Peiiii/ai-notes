@@ -109,7 +109,7 @@ const WikiExplorer: React.FC = () => {
     const contextContent = notes.map(n => `${n.title} ${n.content}`).join('\n');
     try {
         const newWikiEntry = await presenter.wikiManager.generateWiki(topic, sourceNoteId, WIKI_ROOT_ID, contextContent);
-        setHistory(prev => [...prev, newWikiEntry]);
+        setHistory([rootWiki, newWikiEntry]);
     } catch (e) { console.error("Failed to start with topic", e); } 
     finally { setLoadingState(null); }
   };
@@ -118,14 +118,14 @@ const WikiExplorer: React.FC = () => {
     if (loadingState) return;
     const existingWiki = wikis.find(w => w.sourceNoteId === note.id && w.parentId === WIKI_ROOT_ID);
     if (existingWiki) {
-        setHistory(prev => [...prev, existingWiki]);
+        setHistory([rootWiki, existingWiki]);
         return;
     }
     setLoadingState({ type: 'explore', id: note.id });
     const term = note.title || `Exploration from Note`;
     try {
         const newWikiEntry = await presenter.wikiManager.generateWiki(term, note.id, WIKI_ROOT_ID, note.content);
-        setHistory(prev => [...prev, newWikiEntry]);
+        setHistory([rootWiki, newWikiEntry]);
     } catch(e) { console.error("Failed to generate wiki from note", e); } 
     finally { setLoadingState(null); }
   };
@@ -154,7 +154,7 @@ const WikiExplorer: React.FC = () => {
                 isLoadingWikiTopics={isLoadingWikiTopics}
                 onSelectNote={handleSelectNote}
                 onStartWithTopic={handleStartWithTopic}
-                onSelectWiki={(wiki) => setHistory(prev => [...prev, wiki])}
+                onSelectWiki={(wiki) => setHistory([rootWiki, wiki])}
                 loadingState={loadingState}
             />
         ) : (
