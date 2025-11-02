@@ -15,11 +15,12 @@ import CreateCommandModal from './components/chat/CreateCommandModal';
 import AddAgentsModal from './components/chat/AddAgentsModal';
 import ConfirmationModal from './components/ui/ConfirmationModal';
 import RenameChatModal from './components/chat/RenameChatModal';
+import NotePreviewSidebar from './components/ui/NotePreviewSidebar';
 
 
 function AppContent() {
   const presenter = usePresenter();
-  const { viewMode, activeNoteId, viewingPulseReport, commandToCreate, activeModal } = useAppStore();
+  const { viewMode, activeNoteId, viewingPulseReport, commandToCreate, activeModal, previewingNoteId } = useAppStore();
   const { activeSessionId, sessions } = useChatStore();
   const agents = useAgentStore(state => state.agents);
   const activeSession = sessions.find(s => s.id === activeSessionId);
@@ -42,6 +43,11 @@ function AppContent() {
 
   const participants = activeSession ? agents.filter(a => activeSession.participantIds.includes(a.id)) : [];
   const availableAgentsToAdd = activeSession ? agents.filter(a => !activeSession.participantIds.includes(a.id)) : [];
+
+  const handleGoToNoteFromPreview = (noteId: string) => {
+    presenter.handleSelectNote(noteId);
+    presenter.appManager.setPreviewingNoteId(null);
+  };
 
   return (
     <div className="h-screen w-screen flex antialiased text-slate-800 dark:text-slate-200 overflow-x-hidden">
@@ -92,6 +98,13 @@ function AppContent() {
             }}
           />
         </>
+      )}
+      {previewingNoteId && (
+        <NotePreviewSidebar
+          noteId={previewingNoteId}
+          onClose={() => presenter.appManager.setPreviewingNoteId(null)}
+          onGoToNote={handleGoToNoteFromPreview}
+        />
       )}
     </div>
   );

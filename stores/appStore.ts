@@ -12,11 +12,12 @@ interface AppState {
   viewingPulseReport: PulseReport | null;
   commandToCreate: string | null;
   activeModal: 'addAgents' | 'clearChatConfirm' | 'renameChat' | null;
+  previewingNoteId: string | null;
 }
 
 export const useAppStore = create<AppState>()(
   persist(
-    () => ({
+    (set) => ({
       viewMode: 'editor',
       activeNoteId: null,
       isChatSidebarCollapsed: false,
@@ -24,6 +25,7 @@ export const useAppStore = create<AppState>()(
       viewingPulseReport: null,
       commandToCreate: null,
       activeModal: null,
+      previewingNoteId: null,
     }),
     {
       name: 'ai-notes-app-state',

@@ -18,10 +18,10 @@ const toolIconMap: { [key: string]: React.FC<any> } = {
 
 interface ToolResultContentProps {
     message: ChatMessage;
-    onSelectNote: (noteId: string) => void;
+    onPreviewNote: (noteId: string) => void;
 }
 
-const ToolResultContent: React.FC<ToolResultContentProps> = ({ message, onSelectNote }) => {
+const ToolResultContent: React.FC<ToolResultContentProps> = ({ message, onPreviewNote }) => {
     const { structuredContent } = message;
     const [isCollapsed, setIsCollapsed] = useState(
         structuredContent?.type === 'search_result' && structuredContent.notes.length > 3
@@ -47,7 +47,7 @@ const ToolResultContent: React.FC<ToolResultContentProps> = ({ message, onSelect
                 {!isCollapsed && (
                     <div className="space-y-1 pl-2 border-l-2 border-slate-300 dark:border-slate-600 animate-in fade-in">
                         {structuredContent.notes.map(note => (
-                            <button key={note.id} onClick={() => onSelectNote(note.id)} className="w-full text-left p-2 rounded-md hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">
+                            <button key={note.id} onClick={() => onPreviewNote(note.id)} className="w-full text-left p-2 rounded-md hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">
                                 <div className="flex items-center gap-2">
                                     <BookOpenIcon className="w-4 h-4 text-slate-500 flex-shrink-0" />
                                     <span className="font-medium text-sm truncate">{note.title || 'Untitled Note'}</span>
@@ -64,7 +64,7 @@ const ToolResultContent: React.FC<ToolResultContentProps> = ({ message, onSelect
         return (
             <p className="text-sm text-slate-600 dark:text-slate-300">
                 {structuredContent.message}{' '}
-                <button onClick={() => onSelectNote(structuredContent.noteId)} className="font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
+                <button onClick={() => onPreviewNote(structuredContent.noteId)} className="font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
                     View Note
                 </button>
             </p>
@@ -80,10 +80,10 @@ interface ToolCallCardProps {
   text?: string | null;
   agent?: AIAgent;
   toolResults?: { [key: string]: ChatMessage };
-  onSelectNote: (noteId: string) => void;
+  onPreviewNote: (noteId: string) => void;
 }
 
-const ToolCallCard: React.FC<ToolCallCardProps> = ({ toolCalls, text, agent, toolResults = {}, onSelectNote }) => {
+const ToolCallCard: React.FC<ToolCallCardProps> = ({ toolCalls, text, agent, toolResults = {}, onPreviewNote }) => {
   return (
     <div className="flex items-start gap-3 max-w-4xl mx-auto">
       {agent ? (
@@ -123,7 +123,7 @@ const ToolCallCard: React.FC<ToolCallCardProps> = ({ toolCalls, text, agent, too
                 </pre>
                 {isCompleted && (
                     <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-600/50">
-                        <ToolResultContent message={resultMessage} onSelectNote={onSelectNote} />
+                        <ToolResultContent message={resultMessage} onPreviewNote={onPreviewNote} />
                     </div>
                 )}
               </div>

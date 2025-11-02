@@ -31,4 +31,8 @@ export class AppManager {
   setChatSidebarCollapsed = (isCollapsed: boolean) => {
     useAppStore.setState({ isChatSidebarCollapsed: isCollapsed });
   }
+
+  setPreviewingNoteId = (id: string | null) => {
+    useAppStore.setState({ previewingNoteId: id });
+  }
 }

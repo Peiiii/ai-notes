@@ -67,6 +67,10 @@ export class Presenter {
     this.appManager.setViewMode('editor');
   };
 
+  handlePreviewNote = (noteId: string) => {
+    this.appManager.setPreviewingNoteId(noteId);
+  };
+
   handleShowChat = () => {
     const { sessions, activeSessionId } = useChatStore.getState();
     // If sessions exist but none are active, activate the most recent one.

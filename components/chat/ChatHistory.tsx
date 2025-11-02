@@ -101,7 +101,7 @@ const ChatHistory: React.FC = () => {
                         text={msg.content} 
                         agent={agent} 
                         toolResults={msg.attachedToolResults}
-                        onSelectNote={presenter.handleSelectNote}
+                        onPreviewNote={presenter.handlePreviewNote}
                     />;
                 }
                 
