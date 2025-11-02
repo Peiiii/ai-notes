@@ -1,4 +1,3 @@
-
 import { ChatMessage, ToolCall, AIAgent, Note } from '../types';
 import { Command } from '../commands';
 import { getConfig } from './aiService';
@@ -49,6 +48,22 @@ export const createNewAgentTool: FunctionDeclaration = {
         required: ['name', 'description', 'systemInstruction']
     }
 };
+
+export const updateAgentTool: FunctionDeclaration = {
+    name: 'update_agent',
+    description: "Updates an existing AI agent's properties based on the user's request. Use this tool to apply changes to an agent's configuration.",
+    parameters: {
+        type: Type.OBJECT,
+        properties: {
+            name: { type: Type.STRING, description: "The new name for the AI agent." },
+            description: { type: Type.STRING, description: "The new short description for the agent." },
+            systemInstruction: { type: Type.STRING, description: "The new detailed system instructions for the agent." },
+            icon: { type: Type.STRING, description: "The new icon for the agent. Must be one of: SparklesIcon, BookOpenIcon, CpuChipIcon, LightbulbIcon, BeakerIcon, UsersIcon." },
+            color: { type: Type.STRING, description: "The new color for the agent. Must be one of: slate, indigo, sky, purple, amber, rose, green." }
+        },
+    }
+};
+
 
 export const moderatorTools: FunctionDeclaration[] = [
     {
@@ -200,12 +215,18 @@ export async function getAgentTextStream(history: ChatMessage[], systemInstructi
 }
 
 export async function getCreatorAgentResponse(history: ChatMessage[]): Promise<GenerateWithToolsResult> {
-    const systemInstruction = `You are the 'Agent Architect'. Your role is to help the user create a new AI agent by having a friendly conversation with them.
-- Your goal is to gather three key pieces of information: a **name**, a short **description**, and the detailed **system instructions** for the new agent.
-- Guide the user step-by-step. Start by asking for the name. Then the description. Then the system instructions.
-- Be encouraging and helpful throughout the process.
-- Once you are confident you have all three pieces of information, you MUST use the \`create_new_agent\` tool to finalize the creation.
-- You can also suggest an icon and color for the agent, but it's not required.`;
+    const systemInstruction = `You are the 'Agent Architect', a helpful and creative AI partner. Your goal is to guide the user in creating a new AI agent by making the process as easy as possible.
+
+**Core Directives:**
+1.  **Be Proactive & Reduce User Burden:** Your primary goal is to minimize the user's effort. If the user is unsure about any detail (like a name, description, or instructions), you MUST proactively suggest creative and relevant options. Do not simply ask them for the information again. Act as a creative partner.
+2.  **Efficiently Gather Information:** Your goal is to collect a \`name\`, \`description\`, and \`systemInstruction\`. Ask for them conversationally, but if the user provides multiple pieces of information at once, acknowledge them and move on.
+3.  **Match User's Language:** You MUST respond in the same language the user is communicating in.
+4.  **Use the Tool:** Once you have the three required pieces of information, you MUST use the \`create_new_agent\` tool to create the agent.
+5.  **No Prefixes:** Your responses MUST NOT contain any prefixes like "[Agent Architect]:". Respond directly.
+
+**Example Proactive Interaction:**
+User: "I need a new agent but I'm not sure what to call it."
+You: "Of course! How about one of these names: 'Idea Weaver', 'Concept Crafter', or 'Synapse'? We can also come up with something else if you'd like."`;
 
     const { provider, model } = getConfig('agent_reasoning'); // Reuse the reasoning model
     const params: GenerateWithToolsParams = {
@@ -213,6 +234,38 @@ export async function getCreatorAgentResponse(history: ChatMessage[]): Promise<G
         history,
         tools: [createNewAgentTool],
         systemInstruction,
+        agentCount: 1,
+    };
+    return provider.generateContentWithTools(params);
+}
+
+export async function getEditorAgentResponse(history: ChatMessage[], currentAgent: AIAgent): Promise<GenerateWithToolsResult> {
+    const systemInstruction = `You are the 'Agent Architect', a helpful and creative AI partner. Your task is to help the user edit an existing AI agent by making the process as effortless as possible.
+
+**Core Directives:**
+1.  **Be Proactive & Reduce User Burden:** This is your most important directive. When the user expresses a desire to change something but doesn't provide a specific value (e.g., "give it a cuter name"), you MUST proactively suggest 2-3 creative and relevant options for them to choose from. Do not force the user to think of the answer themselves. Your job is to provide solutions.
+2.  **Match User's Language:** You MUST respond in the same language the user is communicating in.
+3.  **Use the Tool:** Once the user agrees on the changes, you MUST use the \`update_agent\` tool to apply them. Only include the parameters in the tool call that the user wants to change.
+4.  **No Prefixes:** Your responses MUST NOT contain any prefixes like "[Agent Architect]:". Respond directly.
+
+**Example Proactive Interaction (in Chinese):**
+User: "改个更可爱的名字"
+You: "好的！叫“萌聊宝”或者“甜心派”怎么样？或者您有其他想法吗？"
+
+**Current Agent Configuration:**
+- Name: ${currentAgent.name}
+- Description: ${currentAgent.description}
+- Icon: ${currentAgent.icon}
+- Color: ${currentAgent.color}
+- System Instructions: ${currentAgent.systemInstruction}`;
+
+    const { provider, model } = getConfig('agent_reasoning');
+    const params: GenerateWithToolsParams = {
+        model,
+        history,
+        tools: [updateAgentTool],
+        systemInstruction,
+        agentCount: 1,
     };
     return provider.generateContentWithTools(params);
 }

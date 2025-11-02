@@ -16,11 +16,12 @@ import AddAgentsModal from './components/chat/AddAgentsModal';
 import ConfirmationModal from './components/ui/ConfirmationModal';
 import RenameChatModal from './components/chat/RenameChatModal';
 import NotePreviewSidebar from './components/ui/NotePreviewSidebar';
+import AgentHubModal from './components/agent-hub/AgentHubModal';
 
 
 function AppContent() {
   const presenter = usePresenter();
-  const { viewMode, activeNoteId, viewingPulseReport, commandToCreate, activeModal, previewingNoteId } = useAppStore();
+  const { viewMode, activeNoteId, viewingPulseReport, commandToCreate, activeModal, previewingNoteId, isAgentHubOpen } = useAppStore();
   const { activeSessionId, sessions } = useChatStore();
   const agents = useAgentStore(state => state.agents);
   const activeSession = sessions.find(s => s.id === activeSessionId);
@@ -66,6 +67,11 @@ function AppContent() {
         onClose={() => presenter.appManager.setCommandToCreate(null)}
         onCreateCommand={presenter.handleCreateCommand}
         initialCommandName={commandToCreate || ''}
+      />
+      <AgentHubModal
+        isOpen={isAgentHubOpen}
+        onClose={presenter.handleCloseAgentHub}
+        presenter={presenter}
       />
        {activeSession && (
         <>
@@ -114,9 +120,10 @@ function AppContent() {
 function App() {
   return (
     <PresenterProvider>
-      {/* Fix: Explicitly passed the 'children' prop to the ErrorBoundary component to satisfy a strict type checker. */}
-      {/* Fix: Explicitly pass children prop to ErrorBoundary to resolve TS error. */}
-      <ErrorBoundary children={<AppContent />} />
+      {/* Fix: Wrap AppContent in ErrorBoundary to provide children and fix missing property error. */}
+      <ErrorBoundary>
+        <AppContent />
+      </ErrorBoundary>
     </PresenterProvider>
   );
 }

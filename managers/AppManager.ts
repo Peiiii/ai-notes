@@ -35,4 +35,8 @@ export class AppManager {
   setPreviewingNoteId = (id: string | null) => {
     useAppStore.setState({ previewingNoteId: id });
   }
+  
+  setIsAgentHubOpen = (isOpen: boolean) => {
+    useAppStore.setState({ isAgentHubOpen: isOpen });
+  }
 }

@@ -12,7 +12,6 @@ import ChevronDoubleLeftIcon from '../icons/ChevronDoubleLeftIcon';
 import ChevronDoubleRightIcon from '../icons/ChevronDoubleRightIcon';
 import ArrowLeftIcon from '../icons/ArrowLeftIcon';
 import HoverPopup from '../ui/HoverPopup';
-import AgentManagerModal from './AgentManagerModal';
 import NewChatModal from './NewChatModal';
 import ChatPanel from './ChatPanel';
 import { AgentAvatar, CompositeAvatar, ParticipantAvatarStack } from './ChatUIComponents';
@@ -27,7 +26,6 @@ const ChatView: React.FC = () => {
   const agents = useAgentStore(state => state.agents);
   const activeSession = useMemo(() => sessions.find(s => s.id === activeSessionId) || null, [sessions, activeSessionId]);
 
-  const [isAgentManagerOpen, setIsAgentManagerOpen] = useState(false);
   const [isNewChatOpen, setIsNewChatOpen] = useState(false);
   const [isPresetModalOpen, setIsPresetModalOpen] = useState(false);
   const firstTimeCheckRef = useRef(false);
@@ -152,7 +150,7 @@ const ChatView: React.FC = () => {
             </ul>
         </div>
         <div className={`p-2 border-t border-slate-200 dark:border-slate-700 flex-shrink-0 flex ${isChatSidebarCollapsed ? 'flex-col' : 'flex-row'} items-center gap-2`}>
-          <SidebarButton onClick={() => setIsAgentManagerOpen(true)} title="Manage Agents" isCollapsed={isChatSidebarCollapsed} isFullWidth={!isChatSidebarCollapsed}>
+          <SidebarButton onClick={presenter.handleOpenAgentHub} title="Manage Agents" isCollapsed={isChatSidebarCollapsed} isFullWidth={!isChatSidebarCollapsed}>
             <Cog6ToothIcon className="w-5 h-5 flex-shrink-0"/>
             <span className={`flex-1 text-left whitespace-nowrap transition-all duration-200 ${isChatSidebarCollapsed ? 'max-w-0 opacity-0' : 'max-w-xs opacity-100 ml-2'}`}>Manage Agents</span>
           </SidebarButton>
@@ -173,14 +171,6 @@ const ChatView: React.FC = () => {
           onConfirm={handleConfirmPresets}
           onSkip={handleSkipPresets}
           isFirstTimeSetup={sessions.length === 0}
-      />
-      <AgentManagerModal 
-        isOpen={isAgentManagerOpen} 
-        onClose={() => setIsAgentManagerOpen(false)}
-        agents={agents}
-        presenter={presenter}
-        onUpdateAgent={presenter.handleUpdateAgent}
-        onDeleteAgent={presenter.handleDeleteAgent}
       />
       <NewChatModal
         isOpen={isNewChatOpen}

@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useRef } from 'react';
 import { useAppStore } from '../stores/appStore';
 import { useNotesStore } from '../stores/notesStore';
@@ -15,7 +14,7 @@ import { CommandManager } from '../managers/CommandManager';
 import { InsightManager } from '../managers/InsightManager';
 import { KnowledgeCard, Note, WikiEntry, WIKI_ROOT_ID, DebateSynthesis, Todo, AIAgent, ChatMessage, DiscussionMode, ProactiveSuggestion, PresetChat } from '../types';
 import { Command } from '../commands';
-import { getCreatorAgentResponse } from '../services/agentAIService';
+import { getCreatorAgentResponse, getEditorAgentResponse } from '../services/agentAIService';
 import { presetChats } from '../components/chat/presetChats';
 
 // simple debounce utility
@@ -289,6 +288,37 @@ ${synthesis.nextSteps.map(p => `- ${p}`).join('\n')}
       
       return { modelMessage, toolResponseMessage, createdAgent: finalAgent };
   }
+  
+  handleAgentEditorChat = async (history: ChatMessage[], agent: AIAgent) => {
+    const response = await getEditorAgentResponse(history, agent);
+    
+    let wasUpdated = false;
+    let toolResponseMessage: ChatMessage | null = null;
+    
+    if (response.toolCalls && response.toolCalls[0]?.name === 'update_agent') {
+        const call = response.toolCalls[0];
+        const updatedData = { ...agent, ...call.args };
+        this.handleUpdateAgent(updatedData);
+
+        toolResponseMessage = {
+            id: crypto.randomUUID(),
+            role: 'tool',
+            content: `Successfully updated agent: ${agent.name}`,
+            tool_call_id: call.id
+        };
+        wasUpdated = true;
+    }
+
+    const modelMessage: ChatMessage = {
+        id: crypto.randomUUID(),
+        role: 'model',
+        content: response.text || (wasUpdated ? 'I have applied the changes.' : 'I am ready to help you edit this agent.'),
+        toolCalls: response.toolCalls || undefined,
+        persona: "Agent Architect",
+    };
+
+    return { modelMessage, toolResponseMessage, wasUpdated };
+  }
 
   handleCreateSessionsFromPresets = (presets: PresetChat[]) => {
     if (presets.length === 0) return;
@@ -310,6 +340,8 @@ ${synthesis.nextSteps.map(p => `- ${p}`).join('\n')}
   };
 
   // --- Modal Management ---
+  handleOpenAgentHub = () => this.appManager.setIsAgentHubOpen(true);
+  handleCloseAgentHub = () => this.appManager.setIsAgentHubOpen(false);
   handleOpenAddAgentsModal = () => this.appManager.setActiveModal('addAgents');
   handleOpenClearChatConfirmModal = () => this.appManager.setActiveModal('clearChatConfirm');
   handleOpenRenameChatModal = () => this.appManager.setActiveModal('renameChat');
