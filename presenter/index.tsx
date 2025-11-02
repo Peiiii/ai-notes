@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useRef } from 'react';
 import { useAppStore } from '../stores/appStore';
 import { useNotesStore } from '../stores/notesStore';
@@ -320,6 +321,11 @@ ${synthesis.nextSteps.map(p => `- ${p}`).join('\n')}
     return { modelMessage, toolResponseMessage, wasUpdated };
   }
 
+  handleEditAgentFromProfile = (agentId: string) => {
+    this.appManager.setAgentToEditId(agentId);
+    this.appManager.setIsAgentHubOpen(true);
+  };
+
   handleCreateSessionsFromPresets = (presets: PresetChat[]) => {
     if (presets.length === 0) return;
     let lastSessionId: string | null = null;
@@ -341,7 +347,10 @@ ${synthesis.nextSteps.map(p => `- ${p}`).join('\n')}
 
   // --- Modal Management ---
   handleOpenAgentHub = () => this.appManager.setIsAgentHubOpen(true);
-  handleCloseAgentHub = () => this.appManager.setIsAgentHubOpen(false);
+  handleCloseAgentHub = () => {
+    this.appManager.setAgentToEditId(null);
+    this.appManager.setIsAgentHubOpen(false);
+  }
   handleOpenAddAgentsModal = () => this.appManager.setActiveModal('addAgents');
   handleOpenClearChatConfirmModal = () => this.appManager.setActiveModal('clearChatConfirm');
   handleOpenRenameChatModal = () => this.appManager.setActiveModal('renameChat');

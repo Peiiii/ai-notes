@@ -14,6 +14,7 @@ interface AppState {
   activeModal: 'addAgents' | 'clearChatConfirm' | 'renameChat' | null;
   previewingNoteId: string | null;
   isAgentHubOpen: boolean;
+  agentToEditId: string | null;
 }
 
 export const useAppStore = create<AppState>()(
@@ -28,6 +29,7 @@ export const useAppStore = create<AppState>()(
       activeModal: null,
       previewingNoteId: null,
       isAgentHubOpen: false,
+      agentToEditId: null,
     }),
     {
       name: 'ai-notes-app-state',

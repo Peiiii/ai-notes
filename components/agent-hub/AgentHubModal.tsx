@@ -1,6 +1,8 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { Presenter } from '../../presenter';
 import { useAgentStore } from '../../stores/agentStore';
+import { useAppStore } from '../../stores/appStore';
 import { AIAgent } from '../../types';
 import Modal from '../ui/Modal';
 import { AgentAvatar } from '../chat/ChatUIComponents';
@@ -22,17 +24,26 @@ interface AgentHubModalProps {
 const AgentHubModal: React.FC<AgentHubModalProps> = ({ isOpen, onClose, presenter }) => {
     const agents = useAgentStore(state => state.agents);
     const sortedAgents = useMemo(() => [...agents].sort((a, b) => a.createdAt - b.createdAt), [agents]);
+    const agentToEditId = useAppStore(state => state.agentToEditId);
 
     const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
     const [viewMode, setViewMode] = useState<ViewMode>('placeholder');
     const [searchQuery, setSearchQuery] = useState('');
     
     useEffect(() => {
+        // This effect synchronizes the modal's view with the application state when it opens.
         if (isOpen) {
-            setViewMode('placeholder');
-            setSelectedAgentId(null);
+            if (agentToEditId && sortedAgents.some(a => a.id === agentToEditId)) {
+                // If an agent ID is passed for editing, switch to edit mode.
+                setSelectedAgentId(agentToEditId);
+                setViewMode('edit');
+            } else {
+                // Otherwise, show the default placeholder view.
+                setViewMode('placeholder');
+                setSelectedAgentId(null);
+            }
         }
-    }, [isOpen]);
+    }, [isOpen, agentToEditId, sortedAgents]);
 
     const filteredAgents = useMemo(() => sortedAgents.filter(agent => 
         agent.name.toLowerCase().includes(searchQuery.toLowerCase()) ||

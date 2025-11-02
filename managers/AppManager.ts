@@ -39,4 +39,8 @@ export class AppManager {
   setIsAgentHubOpen = (isOpen: boolean) => {
     useAppStore.setState({ isAgentHubOpen: isOpen });
   }
+
+  setAgentToEditId = (id: string | null) => {
+    useAppStore.setState({ agentToEditId: id });
+  }
 }

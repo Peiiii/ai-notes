@@ -114,7 +114,17 @@ const ChatHistory: React.FC = () => {
                 return (
                     <div key={msg.id} className="flex items-start gap-3 max-w-4xl mx-auto">
                     {agent ? (
-                        <ClickPopover content={<AgentProfileCard agent={agent} />}>
+                        <ClickPopover
+                            content={({ close }) => (
+                                <AgentProfileCard
+                                    agent={agent}
+                                    onEdit={(agentId) => {
+                                        presenter.handleEditAgentFromProfile(agentId);
+                                        close();
+                                    }}
+                                />
+                            )}
+                        >
                             {({ onClick, ref }) => (
                                 <button ref={ref} onClick={onClick} className="rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-slate-800">
                                     <AgentAvatar agent={agent} />

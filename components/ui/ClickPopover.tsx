@@ -1,9 +1,10 @@
+
 import React, { useState, useRef, useEffect, useLayoutEffect, ReactElement, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 
 interface ClickPopoverProps {
   children: (props: { onClick: () => void; 'aria-expanded': boolean; ref: React.RefObject<any> }) => ReactElement;
-  content: ReactElement;
+  content: ReactElement | ((helpers: { close: () => void }) => ReactElement);
   className?: string;
 }
 
@@ -83,7 +84,7 @@ const ClickPopover: React.FC<ClickPopoverProps> = ({ children, content }) => {
           className="fixed z-50"
           style={{ top: `${position.top}px`, left: `${position.left}px` }}
         >
-          {content}
+          {typeof content === 'function' ? content({ close: () => setIsOpen(false) }) : content}
         </div>,
         document.body
       )}

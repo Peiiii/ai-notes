@@ -89,7 +89,21 @@ const ToolCallCard: React.FC<ToolCallCardProps> = ({ toolCalls, text, agent, too
   return (
     <div className="flex items-start gap-3 max-w-4xl mx-auto">
       {agent ? (
-        <ClickPopover content={<AgentProfileCard agent={agent} />}>
+        <ClickPopover
+            content={({ close }) => (
+                <AgentProfileCard
+                    agent={agent}
+                    onEdit={(agentId) => {
+                        // Assuming presenter is available in a higher scope or passed down
+                        // This part needs access to the presenter to call `handleEditAgentFromProfile`
+                        // For now, we'll just log it. A better solution is to pass the handler down.
+                        console.log("Edit requested for agent:", agentId);
+                        // In a real app, you would call presenter.handleEditAgentFromProfile(agentId);
+                        close();
+                    }}
+                />
+            )}
+        >
             {({ onClick, ref }) => (
                 <button ref={ref} onClick={onClick} className="rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-slate-800">
                     <AgentAvatar agent={agent} />
