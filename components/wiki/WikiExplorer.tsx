@@ -14,14 +14,7 @@ import BookOpenIcon from '../icons/BookOpenIcon';
 import ThoughtBubbleIcon from '../icons/ThoughtBubbleIcon';
 // Fix: Imported the HoverPopup component.
 import HoverPopup from '../ui/HoverPopup';
-
-declare global {
-  interface Window {
-    marked: {
-      parse: (markdown: string) => string;
-    };
-  }
-}
+import MarkdownRenderer from '../ui/MarkdownRenderer';
 
 const rootWiki: WikiEntry = {
   id: WIKI_ROOT_ID,
@@ -234,10 +227,7 @@ const WikiExplorer: React.FC = () => {
                         )}
                         isDisabled={!!loadingState || currentItem.id === WIKI_ROOT_ID}
                     >
-                        <div
-                            className="prose prose-lg prose-slate dark:prose-invert max-w-none"
-                            dangerouslySetInnerHTML={{ __html: window.marked.parse(currentItem.content) }}
-                        ></div>
+                        <MarkdownRenderer content={currentItem.content} className="prose-lg" />
                     </TextSelectionPopup>
 
                     {wikis.filter(w => w.parentId === currentItem.id).length > 0 && (

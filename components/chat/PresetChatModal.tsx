@@ -20,7 +20,8 @@ const PresetChatModal: React.FC<PresetChatModalProps> = ({ isOpen, onConfirm, on
     useEffect(() => {
         if (isOpen) {
             // Pre-select the default chats for the first-time setup
-            const defaultIds = isFirstTimeSetup ? new Set(presetChats.filter(p => p.isDefault).map(p => p.id)) : new Set();
+            // Fix: Explicitly type the empty Set to avoid a TypeScript error where it's inferred as Set<unknown>.
+            const defaultIds = isFirstTimeSetup ? new Set(presetChats.filter(p => p.isDefault).map(p => p.id)) : new Set<string>();
             setSelectedIds(defaultIds);
         }
     }, [isOpen, isFirstTimeSetup]);

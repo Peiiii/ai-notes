@@ -12,6 +12,7 @@ import ToolCallCard from './ToolCallCard';
 import { ChatMessage } from '../../types';
 import ClickPopover from '../ui/ClickPopover';
 import AgentProfileCard from './AgentProfileCard';
+import MarkdownRenderer from '../ui/MarkdownRenderer';
 
 const ThinkingIndicator = () => (
     <div className="flex items-center gap-1.5 p-3">
@@ -132,7 +133,7 @@ const ChatHistory: React.FC = () => {
                         {msg.status === 'thinking' ? (
                             <ThinkingIndicator />
                         ) : (
-                            <div className="text-sm leading-relaxed prose prose-slate dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: window.marked.parse(msg.content) }}></div>
+                            <MarkdownRenderer content={msg.content} className="text-sm leading-relaxed" />
                         )}
 
                         </div>
