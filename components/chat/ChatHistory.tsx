@@ -9,7 +9,7 @@ import SparklesIcon from '../icons/SparklesIcon';
 import BookOpenIcon from '../icons/BookOpenIcon';
 import GlobeAltIcon from '../icons/GlobeAltIcon';
 import ToolCallCard from './ToolCallCard';
-import ToolResultCard from './ToolResultCard';
+import { ChatMessage } from '../../types';
 
 const ThinkingIndicator = () => (
     <div className="flex items-center gap-1.5 p-3">
@@ -34,15 +34,42 @@ const ChatHistory: React.FC = () => {
         previousSessionId.current = activeSession?.id ?? null;
     }, [activeSession?.id, activeSession?.history]);
 
-    const completedToolCallIds = useMemo(() => {
-        const ids = new Set<string>();
-        activeSession?.history.forEach(msg => {
-            if (msg.role === 'tool' && (msg.toolCalls?.[0]?.id || msg.tool_call_id)) {
-                ids.add(msg.toolCalls?.[0]?.id || msg.tool_call_id!);
+    const processedHistory = useMemo(() => {
+        const history = activeSession?.history || [];
+        if (!history.length) return [];
+
+        const messagesToRender: (ChatMessage & { attachedToolResults?: { [key: string]: ChatMessage } })[] = [];
+        const consumedToolMessageIds = new Set<string>();
+
+        for (let i = 0; i < history.length; i++) {
+            const msg = history[i];
+
+            if (consumedToolMessageIds.has(msg.id)) {
+                continue;
             }
-        });
-        return ids;
+
+            if (msg.role === 'model' && msg.toolCalls && msg.toolCalls.length > 0) {
+                const toolResults: { [key: string]: ChatMessage } = {};
+                const toolCallIds = new Set(msg.toolCalls.map(tc => tc.id).filter(Boolean));
+
+                for (let j = i + 1; j < history.length; j++) {
+                    const potentialResultMsg = history[j];
+                    if (potentialResultMsg.role !== 'tool') continue;
+
+                    const resultToolCallId = potentialResultMsg.tool_call_id || potentialResultMsg.toolCalls?.[0]?.id;
+                    if (resultToolCallId && toolCallIds.has(resultToolCallId)) {
+                        toolResults[resultToolCallId] = potentialResultMsg;
+                        consumedToolMessageIds.add(potentialResultMsg.id);
+                    }
+                }
+                messagesToRender.push({ ...msg, attachedToolResults: toolResults });
+            } else {
+                messagesToRender.push(msg);
+            }
+        }
+        return messagesToRender;
     }, [activeSession?.history]);
+
 
     if (!activeSession) return null;
 
@@ -50,7 +77,7 @@ const ChatHistory: React.FC = () => {
 
     return (
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {activeSession.history.map((msg) => {
+            {processedHistory.map((msg) => {
                 const agent = agents.find(a => a.name === msg.persona);
                 if (msg.role === 'system') return (
                     <div key={msg.id} className="text-center text-xs text-slate-400 dark:text-slate-500 italic my-2">
@@ -68,9 +95,19 @@ const ChatHistory: React.FC = () => {
                     </div>
                 );
                 if (msg.role === 'model' && msg.toolCalls) {
-                    return <ToolCallCard key={msg.id} toolCalls={msg.toolCalls} text={msg.content} completedToolCallIds={completedToolCallIds} agent={agent} />;
+                    return <ToolCallCard 
+                        key={msg.id} 
+                        toolCalls={msg.toolCalls} 
+                        text={msg.content} 
+                        agent={agent} 
+                        toolResults={msg.attachedToolResults}
+                        onSelectNote={presenter.handleSelectNote}
+                    />;
                 }
-                if (msg.role === 'tool' && msg.structuredContent) return <ToolResultCard key={msg.id} message={msg} onSelectNote={presenter.handleSelectNote} />;
+                
+                // Standalone tool results should not be rendered as they are now part of ToolCallCard
+                if (msg.role === 'tool') return null;
+
                 return (
                     <div key={msg.id} className="flex items-start gap-3 max-w-4xl mx-auto">
                     {agent ? <AgentAvatar agent={agent} /> : <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center flex-shrink-0"><SparklesIcon className="w-5 h-5 text-indigo-500 dark:text-indigo-400" /></div>}

@@ -1,11 +1,14 @@
 
-import React from 'react';
-import { ToolCall, AIAgent } from '../../types';
+import React, { useState } from 'react';
+import { ToolCall, AIAgent, ChatMessage } from '../../types';
 import CpuChipIcon from '../icons/CpuChipIcon';
 import MagnifyingGlassIcon from '../icons/MagnifyingGlassIcon';
 import DocumentPlusIcon from '../icons/DocumentPlusIcon';
 import CheckCircleIcon from '../icons/CheckCircleIcon';
 import { AgentAvatar } from './ChatUIComponents';
+import BookOpenIcon from '../icons/BookOpenIcon';
+import ChevronRightIcon from '../icons/ChevronRightIcon';
+
 
 const toolIconMap: { [key: string]: React.FC<any> } = {
   search_notes: MagnifyingGlassIcon,
@@ -13,14 +16,74 @@ const toolIconMap: { [key: string]: React.FC<any> } = {
   default: CpuChipIcon,
 };
 
+interface ToolResultContentProps {
+    message: ChatMessage;
+    onSelectNote: (noteId: string) => void;
+}
+
+const ToolResultContent: React.FC<ToolResultContentProps> = ({ message, onSelectNote }) => {
+    const { structuredContent } = message;
+    const [isCollapsed, setIsCollapsed] = useState(
+        structuredContent?.type === 'search_result' && structuredContent.notes.length > 3
+    );
+
+    if (!structuredContent) {
+        return <p className="text-sm text-slate-600 dark:text-slate-300">{message.content}</p>;
+    }
+
+    if (structuredContent.type === 'search_result') {
+        return (
+            <div>
+                <button 
+                    onClick={() => setIsCollapsed(!isCollapsed)}
+                    className="w-full text-left text-sm text-slate-600 dark:text-slate-300 mb-2 flex items-center justify-between"
+                    disabled={structuredContent.notes.length === 0}
+                >
+                    <span>Found {structuredContent.notes.length} note(s).</span>
+                    {structuredContent.notes.length > 3 && (
+                        <ChevronRightIcon className={`w-4 h-4 transition-transform ${isCollapsed ? '' : 'rotate-90'}`} />
+                    )}
+                </button>
+                {!isCollapsed && (
+                    <div className="space-y-1 pl-2 border-l-2 border-slate-300 dark:border-slate-600 animate-in fade-in">
+                        {structuredContent.notes.map(note => (
+                            <button key={note.id} onClick={() => onSelectNote(note.id)} className="w-full text-left p-2 rounded-md hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">
+                                <div className="flex items-center gap-2">
+                                    <BookOpenIcon className="w-4 h-4 text-slate-500 flex-shrink-0" />
+                                    <span className="font-medium text-sm truncate">{note.title || 'Untitled Note'}</span>
+                                </div>
+                            </button>
+                        ))}
+                    </div>
+                )}
+            </div>
+        );
+    }
+    
+    if (structuredContent.type === 'create_note_result') {
+        return (
+            <p className="text-sm text-slate-600 dark:text-slate-300">
+                {structuredContent.message}{' '}
+                <button onClick={() => onSelectNote(structuredContent.noteId)} className="font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
+                    View Note
+                </button>
+            </p>
+        );
+    }
+    
+    return null;
+};
+
+
 interface ToolCallCardProps {
   toolCalls: ToolCall[];
   text?: string | null;
-  completedToolCallIds: Set<string>;
   agent?: AIAgent;
+  toolResults?: { [key: string]: ChatMessage };
+  onSelectNote: (noteId: string) => void;
 }
 
-const ToolCallCard: React.FC<ToolCallCardProps> = ({ toolCalls, text, completedToolCallIds, agent }) => {
+const ToolCallCard: React.FC<ToolCallCardProps> = ({ toolCalls, text, agent, toolResults = {}, onSelectNote }) => {
   return (
     <div className="flex items-start gap-3 max-w-4xl mx-auto">
       {agent ? (
@@ -35,7 +98,9 @@ const ToolCallCard: React.FC<ToolCallCardProps> = ({ toolCalls, text, completedT
         <div className="space-y-2">
           {toolCalls.map((call) => {
             const Icon = toolIconMap[call.name] || toolIconMap.default;
-            const isCompleted = call.id ? completedToolCallIds.has(call.id) : false;
+            const resultMessage = call.id ? toolResults[call.id] : undefined;
+            const isCompleted = !!resultMessage;
+            
             return (
               <div key={call.id || call.name} className="p-3 bg-slate-100 dark:bg-slate-700/50 rounded-lg border border-slate-200 dark:border-slate-600/50">
                 <div className="flex items-center gap-2 mb-1">
@@ -56,6 +121,11 @@ const ToolCallCard: React.FC<ToolCallCardProps> = ({ toolCalls, text, completedT
                 <pre className="text-xs text-slate-500 dark:text-slate-400 bg-slate-200/50 dark:bg-slate-800/50 p-2 rounded-md whitespace-pre-wrap break-all">
                   <code>{JSON.stringify(call.args, null, 2)}</code>
                 </pre>
+                {isCompleted && (
+                    <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-600/50">
+                        <ToolResultContent message={resultMessage} onSelectNote={onSelectNote} />
+                    </div>
+                )}
               </div>
             );
           })}
