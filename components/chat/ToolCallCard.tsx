@@ -1,10 +1,11 @@
 
 import React from 'react';
-import { ToolCall } from '../../types';
+import { ToolCall, AIAgent } from '../../types';
 import CpuChipIcon from '../icons/CpuChipIcon';
 import MagnifyingGlassIcon from '../icons/MagnifyingGlassIcon';
 import DocumentPlusIcon from '../icons/DocumentPlusIcon';
 import CheckCircleIcon from '../icons/CheckCircleIcon';
+import { AgentAvatar } from './ChatUIComponents';
 
 const toolIconMap: { [key: string]: React.FC<any> } = {
   search_notes: MagnifyingGlassIcon,
@@ -16,14 +17,19 @@ interface ToolCallCardProps {
   toolCalls: ToolCall[];
   text?: string | null;
   completedToolCallIds: Set<string>;
+  agent?: AIAgent;
 }
 
-const ToolCallCard: React.FC<ToolCallCardProps> = ({ toolCalls, text, completedToolCallIds }) => {
+const ToolCallCard: React.FC<ToolCallCardProps> = ({ toolCalls, text, completedToolCallIds, agent }) => {
   return (
     <div className="flex items-start gap-3 max-w-4xl mx-auto">
-      <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center flex-shrink-0">
-        <CpuChipIcon className="w-5 h-5 text-slate-500 dark:text-slate-400" />
-      </div>
+      {agent ? (
+        <AgentAvatar agent={agent} />
+      ) : (
+        <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center flex-shrink-0">
+          <CpuChipIcon className="w-5 h-5 text-slate-500 dark:text-slate-400" />
+        </div>
+      )}
       <div className="flex-1">
         {text && <p className="text-sm text-slate-600 dark:text-slate-300 mb-2">{text}</p>}
         <div className="space-y-2">

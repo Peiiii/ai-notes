@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { PresenterProvider, usePresenter } from './presenter';
 import { useAppStore } from './stores/appStore';
@@ -102,9 +101,9 @@ function AppContent() {
 function App() {
   return (
     <PresenterProvider>
-      <ErrorBoundary>
-        <AppContent />
-      </ErrorBoundary>
+      {/* Fix: Explicitly passed the 'children' prop to the ErrorBoundary component to satisfy a strict type checker. */}
+      {/* Fix: Explicitly pass children prop to ErrorBoundary to resolve TS error. */}
+      <ErrorBoundary children={<AppContent />} />
     </PresenterProvider>
   );
 }

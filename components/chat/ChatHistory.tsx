@@ -1,3 +1,4 @@
+
 import React, { useMemo, useRef, useEffect } from 'react';
 import { usePresenter } from '../../presenter';
 import { useChatStore } from '../../stores/chatStore';
@@ -66,7 +67,9 @@ const ChatHistory: React.FC = () => {
                     </div>
                     </div>
                 );
-                if (msg.role === 'model' && msg.toolCalls) return <ToolCallCard key={msg.id} toolCalls={msg.toolCalls} text={msg.content} completedToolCallIds={completedToolCallIds} />;
+                if (msg.role === 'model' && msg.toolCalls) {
+                    return <ToolCallCard key={msg.id} toolCalls={msg.toolCalls} text={msg.content} completedToolCallIds={completedToolCallIds} agent={agent} />;
+                }
                 if (msg.role === 'tool' && msg.structuredContent) return <ToolResultCard key={msg.id} message={msg} onSelectNote={presenter.handleSelectNote} />;
                 return (
                     <div key={msg.id} className="flex items-start gap-3 max-w-4xl mx-auto">

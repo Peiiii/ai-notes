@@ -73,11 +73,27 @@ const allSchemes: Record<string, CapabilityConfig> = {
     openrouter: buildScheme('openrouter'),
 };
 
-// Create a new scheme for quick testing where all models are 'lite'
+// Create a new scheme for quick testing where most models are 'lite'
 const quickTestScheme = JSON.parse(JSON.stringify(allSchemes.gemini));
 for (const key in quickTestScheme) {
     quickTestScheme[key as keyof CapabilityConfig].model = 'lite';
 }
+
+// Upgrade chat-related models to 'fast' for better conversational performance
+const chatModelKeys: (keyof CapabilityConfig)[] = [
+    'chat',
+    'threadChat',
+    'agent_reasoning',
+    'agent_final_answer',
+    'debateTurn',
+    'podcastTurn',
+];
+for (const key of chatModelKeys) {
+    if (quickTestScheme[key]) {
+        quickTestScheme[key].model = 'fast';
+    }
+}
+
 allSchemes['quick-test'] = quickTestScheme;
 
 
