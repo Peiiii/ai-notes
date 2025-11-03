@@ -1,6 +1,3 @@
-
-
-
 import React, { useState, useEffect } from 'react';
 import { Note, WikiEntry, WIKI_ROOT_ID, LoadingState } from '../../types';
 import { usePresenter } from '../../presenter';
@@ -13,9 +10,12 @@ import TextSelectionPopup from '../ui/TextSelectionPopup';
 import SubTopicsModal from './SubTopicsModal';
 import BookOpenIcon from '../icons/BookOpenIcon';
 import ThoughtBubbleIcon from '../icons/ThoughtBubbleIcon';
-// Fix: Imported the HoverPopup component.
 import HoverPopup from '../ui/HoverPopup';
 import MarkdownRenderer from '../ui/MarkdownRenderer';
+import WikiGraphView from './WikiGraphView';
+import MindMapIcon from '../icons/MindMapIcon';
+import DocumentTextIcon from '../icons/DocumentTextIcon';
+
 
 const rootWiki: WikiEntry = {
   id: WIKI_ROOT_ID,
@@ -37,6 +37,7 @@ const WikiExplorer: React.FC = () => {
 
   const [subTopics, setSubTopics] = useState<{ title: string; topics: string[] } | null>(null);
   const [loadingState, setLoadingState] = useState<LoadingState | null>(null);
+  const [view, setView] = useState<'article' | 'graph'>('article');
   
   const setHistory = presenter.wikiManager.setActiveWikiHistory;
   const history = activeWikiHistory.length > 0 ? activeWikiHistory : [rootWiki];
@@ -96,8 +97,8 @@ const WikiExplorer: React.FC = () => {
   const handleStartWithTopic = (topic: string) => {
     if (loadingState) return;
     const sourceNoteId = notes.length > 0 ? notes[0].id : 'no-source';
-    const contextContent = notes.map(n => `${n.title} ${n.content}`).join('\n');
-    presenter.handleStartWikiExploration(topic, WIKI_ROOT_ID, sourceNoteId, contextContent);
+    // Pass an empty context to trigger the professional/academic prompt
+    presenter.handleStartWikiExploration(topic, WIKI_ROOT_ID, sourceNoteId, '');
   };
   
   const handleSelectNote = (note: Note) => {
@@ -125,7 +126,29 @@ const WikiExplorer: React.FC = () => {
 
         <div className="px-6 md:px-8 pt-6 md:pt-8 pb-4 border-b border-slate-200 dark:border-slate-700">
             <div className="max-w-4xl mx-auto w-full">
-                <WikiBreadcrumb history={history} wikis={wikis} setHistory={setHistory} />
+                 <div className="flex justify-between items-center">
+                    <WikiBreadcrumb history={history} wikis={wikis} setHistory={setHistory} />
+                     {currentItem.id !== WIKI_ROOT_ID && (
+                        <div className="ml-4 flex-shrink-0">
+                            <div className="inline-flex items-center p-1 space-x-1 bg-slate-200 dark:bg-slate-700/50 rounded-lg">
+                                <button
+                                    onClick={() => setView('article')}
+                                    title="Article View"
+                                    className={`p-1.5 rounded-md ${view === 'article' ? 'bg-white dark:bg-slate-800 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
+                                >
+                                    <DocumentTextIcon className="w-5 h-5" />
+                                </button>
+                                <button
+                                    onClick={() => setView('graph')}
+                                    title="Graph View"
+                                    className={`p-1.5 rounded-md ${view === 'graph' ? 'bg-white dark:bg-slate-800 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
+                                >
+                                    <MindMapIcon className="w-5 h-5" />
+                                </button>
+                            </div>
+                        </div>
+                     )}
+                </div>
             </div>
         </div>
 
@@ -138,6 +161,30 @@ const WikiExplorer: React.FC = () => {
                 onSelectNote={handleSelectNote}
                 onStartWithTopic={handleStartWithTopic}
                 onSelectWiki={(wiki) => setHistory([rootWiki, wiki])}
+            />
+        ) : view === 'graph' ? (
+            <WikiGraphView 
+                wikis={wikis}
+                history={history}
+                onNodeSelect={(nodeId) => {
+                    if (nodeId === WIKI_ROOT_ID) {
+                        setHistory([rootWiki]);
+                    } else {
+                        const findPath = (targetId: string): WikiEntry[] => {
+                            const path: WikiEntry[] = [];
+                            let current = wikis.find(w => w.id === targetId);
+                            while (current) {
+                                if (current.id === WIKI_ROOT_ID) break;
+                                path.unshift(current);
+                                current = wikis.find(w => w.id === current.parentId);
+                            }
+                            return [rootWiki, ...path];
+                        };
+                        const newHistory = findPath(nodeId);
+                        setHistory(newHistory);
+                    }
+                    setView('article');
+                }}
             />
         ) : (
             <div className="flex-1 overflow-y-auto p-6 md:p-8">

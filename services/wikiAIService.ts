@@ -3,19 +3,33 @@ import { GenerateJsonParams, GenerateTextParams } from './providers/types';
 import { getConfig } from './aiService';
 import { Type } from "@google/genai";
 
-export async function generateWikiEntry(term: string, contextContent: string): Promise<string> {
-    const prompt = `You are a domain expert with a talent for clear and concise explanations. Your task is to provide a high-quality, professional, and in-depth encyclopedia-style summary for the given "Term", tailored for a learning context.
+export async function generateWikiEntry(term: string, contextContent?: string): Promise<string> {
+    // Trim and check if contextContent has meaningful content
+    const hasContext = contextContent && contextContent.trim().length > 20;
+
+    const prompt = hasContext
+        ? `You are an AI assistant helping a user explore concepts. Your task is to provide a high-quality summary for the given "Term", tailored to the user's learning context.
 
 **Instructions:**
-1.  **Content Quality:** The summary must be comprehensive, covering the most critical aspects, key principles, and relevant context. Go beyond a simple definition.
-2.  **Structure:** Use clean, simple markdown for formatting. Utilize paragraphs, lists, and bold text to create a well-structured and readable entry.
-3.  **Language:** Respond ONLY in the primary language used in the provided "Context Text".
-4.  **Format:** Do NOT include a main title (like '# Term'). The response should begin directly with the content of the summary.
+1.  **Contextual Relevance:** Use the provided "Context Text" to understand the user's perspective and tailor the explanation accordingly, connecting to ideas they are already thinking about.
+2.  **Content Quality:** The summary must be comprehensive, covering critical aspects and relevant context. Go beyond a simple definition.
+3.  **Structure:** Use clean, simple markdown for formatting (paragraphs, lists, bold text).
+4.  **Language:** Respond ONLY in the primary language used in the "Context Text".
+5.  **Format:** Do NOT include a main title (like '# Term'). The response should begin directly with the content.
 
-Context Text (for language detection):
+Context Text:
 ---
 ${contextContent.substring(0, 2000)}
 ---
+
+Term: "${term}"`
+        : `You are a world-class domain expert and encyclopedist. Your task is to write a professional, academic, and in-depth article for the given "Term". The article should be well-structured, comprehensive, and suitable for a university-level student or a professional looking to deepen their knowledge.
+
+**Instructions:**
+1.  **Academic Rigor:** Ensure the content is accurate, detailed, and covers key theories, historical context, and important figures or developments related to the term.
+2.  **Clarity and Structure:** Use clear markdown for headings (##), subheadings (###), lists, and bold text to create a well-organized and readable article.
+3.  **Language:** Respond ONLY in the primary language of the "Term" itself.
+4.  **Format:** Do NOT include a main title (like '# Term'). The response should begin directly with the article content.
 
 Term: "${term}"`;
 

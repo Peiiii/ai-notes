@@ -43,7 +43,13 @@ const WikiBreadcrumb: React.FC<WikiBreadcrumbProps> = ({ history, wikis, setHist
                 className="w-64 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 z-20 p-2 animate-in fade-in zoom-in-95"
             >
                 <button onClick={handleItemClick} className="w-full text-left block px-3 py-2 text-sm font-semibold rounded-md text-slate-800 dark:text-slate-100 bg-slate-100 dark:bg-slate-700/50 mb-1">{title}</button>
+                
                 <div className="border-t border-slate-200 dark:border-slate-700 my-1 -mx-2"></div>
+                <p className="px-3 py-1 text-xs text-slate-500 dark:text-slate-400 max-h-24 overflow-hidden">
+                    {item.content.substring(0, 150)}{item.content.length > 150 ? '...' : ''}
+                </p>
+                <div className="border-t border-slate-200 dark:border-slate-700 my-1 -mx-2"></div>
+                
                 {children.map(child => (
                     <button
                         key={child.id}

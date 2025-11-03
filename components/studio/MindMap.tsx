@@ -96,11 +96,14 @@ const getPath = (source: {x: number, y: number}, target: {x: number, y: number})
 };
 
 // --- Node Component ---
-const MindMapNode: React.FC<{
+interface MindMapNodeProps {
   node: PositionedNode;
   onToggleCollapse: (nodeId: string) => void;
   isCollapsed: boolean;
-}> = React.memo(({ node, onToggleCollapse, isCollapsed }) => {
+  onNodeClick?: (nodeId: string) => void;
+  isActive: boolean;
+}
+const MindMapNode: React.FC<MindMapNodeProps> = React.memo(({ node, onToggleCollapse, isCollapsed, onNodeClick, isActive }) => {
   const hasChildren = node.originalChildren && node.originalChildren.length > 0;
 
   return (
@@ -108,18 +111,24 @@ const MindMapNode: React.FC<{
       className="mindmap-node-group"
       transform={`translate(${node.x}, ${node.y - node.height / 2})`}
       style={{ opacity: 1 }}
+      onClick={() => onNodeClick && onNodeClick(node.id)}
     >
       <foreignObject width={node.width} height={node.height}>
-          <div className="w-full h-full flex items-center justify-center p-1">
-              <div className="mindmap-node-rect w-full h-full bg-slate-200/50 dark:bg-slate-800/50 border border-slate-300 dark:border-slate-700 rounded-xl shadow-sm flex items-center justify-center">
-                  <p className="mindmap-text text-slate-800 dark:text-slate-100">{node.label}</p>
+          <div className="w-full h-full flex items-center justify-center p-1 cursor-pointer">
+              <div className={`mindmap-node-rect w-full h-full bg-slate-200/50 dark:bg-slate-800/50 border rounded-xl shadow-sm flex items-center justify-center transition-colors ${
+                  isActive ? 'border-indigo-500' : 'border-slate-300 dark:border-slate-700'
+              }`}>
+                  <p className={`mindmap-text ${isActive ? 'text-indigo-700 dark:text-indigo-200 font-bold' : 'text-slate-800 dark:text-slate-100'}`}>{node.label}</p>
               </div>
           </div>
       </foreignObject>
       {hasChildren && (
         <g
           className="mindmap-expander"
-          onClick={() => onToggleCollapse(node.id)}
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleCollapse(node.id);
+          }}
           transform={`translate(${node.width}, ${node.height / 2})`}
         >
           <circle className="fill-transparent" r="16" />
@@ -142,23 +151,30 @@ const MindMapNode: React.FC<{
 const renderGraph = (
   node: PositionedNode, 
   onToggleCollapse: (nodeId: string) => void,
-  collapsedNodes: Set<string>
+  collapsedNodes: Set<string>,
+  onNodeClick?: (nodeId: string) => void,
+  activeNodePath?: Set<string>
 ): React.ReactNode[] => {
   const isCollapsed = collapsedNodes.has(node.id);
+  const isActive = activeNodePath?.has(node.id) ?? false;
   let elements: React.ReactNode[] = [
     <MindMapNode
       key={node.id}
       node={node}
       onToggleCollapse={onToggleCollapse}
       isCollapsed={isCollapsed}
+      onNodeClick={onNodeClick}
+      isActive={isActive}
     />
   ];
   if (!isCollapsed) {
     node.children.forEach(child => {
+      const isChildActive = activeNodePath?.has(child.id) ?? false;
+      const isPathActive = isActive && isChildActive;
       elements.push(
         <path
           key={`${node.id}-${child.id}`}
-          className="mindmap-path text-slate-300 dark:text-slate-600"
+          className={`mindmap-path transition-colors ${isPathActive ? 'text-indigo-400 dark:text-indigo-500' : 'text-slate-300 dark:text-slate-600'}`}
           stroke="currentColor"
           d={getPath(
             { x: node.x + node.width, y: node.y },
@@ -166,14 +182,22 @@ const renderGraph = (
           )}
         />
       );
-      elements = elements.concat(renderGraph(child, onToggleCollapse, collapsedNodes));
+      elements = elements.concat(renderGraph(child, onToggleCollapse, collapsedNodes, onNodeClick, activeNodePath));
     });
   }
   return elements;
 };
 
 // --- Main MindMap Component ---
-const MindMap: React.FC<{ data: MindMapNodeData; onRegenerate: () => void; isLoading: boolean; }> = ({ data, onRegenerate, isLoading }) => {
+interface MindMapProps { 
+    data: MindMapNodeData; 
+    onRegenerate: () => void; 
+    isLoading: boolean;
+    onNodeClick?: (nodeId: string) => void;
+    activeNodePath?: Set<string>;
+}
+
+const MindMap: React.FC<MindMapProps> = ({ data, onRegenerate, isLoading, onNodeClick, activeNodePath }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const fullScreenContainerRef = useRef<HTMLDivElement>(null);
   const [isFullScreen, setIsFullScreen] = useState(false);
@@ -337,7 +361,7 @@ const MindMap: React.FC<{ data: MindMapNodeData; onRegenerate: () => void; isLoa
     zoom(factor, centerX, centerY);
   };
   
-  const allElements = useMemo(() => renderGraph(layout, handleToggleCollapse, collapsedNodes), [layout, collapsedNodes, handleToggleCollapse]);
+  const allElements = useMemo(() => renderGraph(layout, handleToggleCollapse, collapsedNodes, onNodeClick, activeNodePath), [layout, collapsedNodes, handleToggleCollapse, onNodeClick, activeNodePath]);
   
   const containerClasses = isFullScreen
     ? "fixed inset-0 z-50 w-screen h-screen bg-slate-100 dark:bg-slate-900"
