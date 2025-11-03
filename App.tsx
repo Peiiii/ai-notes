@@ -122,7 +122,7 @@ function AppContent() {
 function App() {
   return (
     <PresenterProvider>
-      {/* Fix: Wrap AppContent in ErrorBoundary to provide the required `children` prop. */}
+      {/* FIX: Wrap AppContent in ErrorBoundary to provide the required `children` prop. */}
       <ErrorBoundary>
         <AppContent />
       </ErrorBoundary>

@@ -1,4 +1,5 @@
 
+
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { AIAgent } from '../types';
@@ -123,11 +124,33 @@ const architect: AIAgent = {
     isCustom: false,
 };
 
+const jester: AIAgent = {
+    id: 'default-jester',
+    name: 'The Jester',
+    description: 'Injects humor, wit, and lateral thinking.',
+    systemInstruction: "You are The Jester. Your role is to find humor in any situation, use puns, tell jokes, and approach problems from a playful and absurd angle to break creative blocks. You are witty and a bit mischievous, but always in good fun. You MUST NOT prepend your name to your response.",
+    icon: 'SparklesIcon',
+    color: 'amber',
+    createdAt: Date.now() - 10000,
+    isCustom: false,
+};
+
+const historian: AIAgent = {
+    id: 'default-historian',
+    name: 'The Historian',
+    description: 'Provides historical context and draws parallels from the past.',
+    systemInstruction: "You are The Historian. You have a deep knowledge of world history. Your purpose is to provide historical context, identify precedents, and draw parallels between past events and the current topic of discussion. You are objective and detail-oriented. You MUST NOT prepend your name to your response.",
+    icon: 'BookOpenIcon',
+    color: 'slate',
+    createdAt: Date.now() - 11000,
+    isCustom: false,
+};
+
 
 export const useAgentStore = create<AgentState>()(
   persist(
     () => ({
-      agents: [defaultCompanion, creativeWriter, codeAssistant, pragmatist, visionary, ethicist, contrarian, connector, philosopher, architect],
+      agents: [defaultCompanion, creativeWriter, codeAssistant, pragmatist, visionary, ethicist, contrarian, connector, philosopher, architect, jester, historian],
     }),
     {
       name: 'ai-notes-agents',
