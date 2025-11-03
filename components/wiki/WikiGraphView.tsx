@@ -21,11 +21,20 @@ const buildTree = (wikis: WikiEntry[], parentId: string | null): MindMapNodeData
 
 const WikiGraphView: React.FC<WikiGraphViewProps> = ({ wikis, history, onNodeSelect }) => {
     const treeData = useMemo(() => {
+        const rootChildren = buildTree(wikis, WIKI_ROOT_ID);
+        const orphanedChildren = wikis
+          .filter(w => w.parentId !== WIKI_ROOT_ID && w.parentId !== null && !wikis.some(p => p.id === w.parentId))
+          .map(wiki => ({
+            id: wiki.id,
+            label: wiki.term,
+            children: buildTree(wikis, wiki.id),
+          }));
+
         return {
           root: {
             id: WIKI_ROOT_ID,
             label: "Wiki Home",
-            children: buildTree(wikis, WIKI_ROOT_ID)
+            children: [...rootChildren, ...orphanedChildren]
           }
         };
     }, [wikis]);

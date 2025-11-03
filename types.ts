@@ -171,6 +171,6 @@ export type ExplorationPanelMode = 'tray' | 'sidebar';
 export interface Exploration {
   id: string;
   term: string;
-  status: 'loading' | 'complete' | 'error';
+  status: 'loading' | 'complete' | 'error' | 'visited';
   wikiEntry?: WikiEntry;
 }

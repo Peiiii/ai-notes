@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Note, WikiEntry, WIKI_ROOT_ID, LoadingState } from '../../types';
 import { usePresenter } from '../../presenter';
 import { useNotesStore } from '../../stores/notesStore';
@@ -15,6 +15,7 @@ import MarkdownRenderer from '../ui/MarkdownRenderer';
 import WikiGraphView from './WikiGraphView';
 import MindMapIcon from '../icons/MindMapIcon';
 import DocumentTextIcon from '../icons/DocumentTextIcon';
+import LightbulbIcon from '../icons/LightbulbIcon';
 
 
 const rootWiki: WikiEntry = {
@@ -43,6 +44,12 @@ const WikiExplorer: React.FC = () => {
   const history = activeWikiHistory.length > 0 ? activeWikiHistory : [rootWiki];
 
   const currentItem = history.length > 0 ? history[history.length - 1] : null;
+
+  // Derived state for connections
+  const branches = useMemo(() => currentItem ? wikis.filter(w => w.parentId === currentItem.id) : [], [wikis, currentItem]);
+  const suggestedTopics = useMemo(() => currentItem?.suggestedTopics || [], [currentItem]);
+  const hasBranches = branches.length > 0;
+  const hasSuggestions = suggestedTopics.length > 0;
 
   useEffect(() => {
     if (initialWikiHistory && initialWikiHistory.length > 0) {
@@ -125,7 +132,7 @@ const WikiExplorer: React.FC = () => {
         />
 
         <div className="px-6 md:px-8 pt-6 md:pt-8 pb-4 border-b border-slate-200 dark:border-slate-700">
-            <div className="max-w-4xl mx-auto w-full">
+            <div className="max-w-6xl mx-auto w-full">
                  <div className="flex justify-between items-center">
                     <WikiBreadcrumb history={history} wikis={wikis} setHistory={setHistory} />
                      {currentItem.id !== WIKI_ROOT_ID && (
@@ -187,103 +194,117 @@ const WikiExplorer: React.FC = () => {
                 }}
             />
         ) : (
-            <div className="flex-1 overflow-y-auto p-6 md:p-8">
-                <div className="max-w-4xl mx-auto w-full">
-                    <div className="flex items-start justify-between gap-4 mb-2">
-                        <h1 className="text-3xl font-bold text-slate-900 dark:text-white">{currentItem.term}</h1>
-                        <div className="flex-shrink-0">
-                           <HoverPopup
-                                trigger={
-                                    <button disabled={!!loadingState} className="text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 px-3 py-1.5 rounded-md bg-slate-100 dark:bg-slate-700/50 disabled:opacity-50 flex items-center gap-2">
-                                        {loadingState?.type === 'regenerate' && <div className="w-4 h-4 border-2 border-slate-400 dark:border-slate-500 border-t-transparent rounded-full animate-spin"></div>}
-                                        Regenerate
+             <div className="flex-1 overflow-y-auto">
+                <div className="max-w-4xl mx-auto w-full px-6 md:px-8 py-6 md:py-8">
+                    <main>
+                        <div className="flex items-start justify-between gap-4 mb-2">
+                            <h1 className="text-3xl font-bold text-slate-900 dark:text-white">{currentItem.term}</h1>
+                            <div className="flex-shrink-0">
+                            <HoverPopup
+                                    trigger={
+                                        <button disabled={!!loadingState} className="text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 px-3 py-1.5 rounded-md bg-slate-100 dark:bg-slate-700/50 disabled:opacity-50 flex items-center gap-2">
+                                            {loadingState?.type === 'regenerate' && <div className="w-4 h-4 border-2 border-slate-400 dark:border-slate-500 border-t-transparent rounded-full animate-spin"></div>}
+                                            Regenerate
+                                        </button>
+                                    }
+                                    content={
+                                        <div className="w-64 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 p-2 animate-in fade-in zoom-in-95">
+                                            <p className="text-xs text-slate-500 dark:text-slate-400 px-2 pb-2">Choose an option:</p>
+                                            <button onClick={() => handleRegen(false)} className="w-full text-left block px-3 py-2 text-sm rounded-md hover:bg-slate-100 dark:hover:bg-slate-700">
+                                                <span className="font-semibold block">Update This Entry</span>
+                                                <span className="text-xs text-slate-500 dark:text-slate-400">Regenerate content for this topic only.</span>
+                                            </button>
+                                            <button onClick={() => handleRegen(true)} className="w-full text-left block px-3 py-2 text-sm rounded-md hover:bg-slate-100 dark:hover:bg-slate-700">
+                                                <span className="font-semibold block">Update & Clear Branch</span>
+                                                <span className="text-xs text-slate-500 dark:text-slate-400">Regenerate and delete all sub-topics created from this entry.</span>
+                                            </button>
+                                        </div>
+                                    }
+                                    popupClassName="absolute top-full right-0 mt-2 z-20"
+                                    className="relative"
+                                />
+                            </div>
+                        </div>
+                        
+                        <TextSelectionPopup
+                            renderPopupContent={({ text, close }) => (
+                                <div className="animate-in fade-in zoom-in-95 duration-150 flex items-center bg-slate-800 rounded-lg shadow-lg">
+                                    <button
+                                        onClick={() => {
+                                            generateNewWiki(text);
+                                            close();
+                                        }}
+                                        disabled={isExploring || !!loadingState}
+                                        className="flex items-center gap-2 text-sm px-3 py-1.5 text-white hover:bg-slate-700 rounded-l-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        <BookOpenIcon className="w-4 h-4" />
+                                        Explore
                                     </button>
-                                }
-                                content={
-                                    <div className="w-64 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 p-2 animate-in fade-in zoom-in-95">
-                                        <p className="text-xs text-slate-500 dark:text-slate-400 px-2 pb-2">Choose an option:</p>
-                                        <button onClick={() => handleRegen(false)} className="w-full text-left block px-3 py-2 text-sm rounded-md hover:bg-slate-100 dark:hover:bg-slate-700">
-                                            <span className="font-semibold block">Update This Entry</span>
-                                            <span className="text-xs text-slate-500 dark:text-slate-400">Regenerate content for this topic only.</span>
-                                        </button>
-                                        <button onClick={() => handleRegen(true)} className="w-full text-left block px-3 py-2 text-sm rounded-md hover:bg-slate-100 dark:hover:bg-slate-700">
-                                            <span className="font-semibold block">Update & Clear Branch</span>
-                                            <span className="text-xs text-slate-500 dark:text-slate-400">Regenerate and delete all sub-topics created from this entry.</span>
-                                        </button>
+                                    <div className="w-px h-4 bg-slate-600"></div>
+                                    <button
+                                        onClick={() => {
+                                            handleSuggestTopics(text);
+                                            close();
+                                        }}
+                                        disabled={isExploring || !!loadingState}
+                                        className="flex items-center gap-2 text-sm px-3 py-1.5 text-white hover:bg-slate-700 rounded-r-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        {loadingState?.type === 'subtopics' ? (
+                                            <div className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin"></div>
+                                        ) : (
+                                            <ThoughtBubbleIcon className="w-4 h-4" />
+                                        )}
+                                        Suggest Topics
+                                    </button>
+                                </div>
+                            )}
+                            isDisabled={isExploring || !!loadingState || currentItem.id === WIKI_ROOT_ID}
+                        >
+                            <MarkdownRenderer content={currentItem.content} className="prose-lg" />
+                        </TextSelectionPopup>
+                        
+                        <div className="mt-12 pt-8 border-t border-slate-200 dark:border-slate-700">
+                            {hasBranches && (
+                                <div className={hasSuggestions ? 'mb-8' : ''}>
+                                    <h3 className="text-xl font-semibold mb-4 text-slate-800 dark:text-slate-100">Branches from this topic</h3>
+                                    <div className="flex flex-wrap gap-3">
+                                        {branches.map(wiki => (
+                                            <button key={wiki.id} onClick={() => setHistory(prev => [...prev, wiki])} className="px-4 py-2 bg-slate-100 text-slate-700 dark:bg-slate-700/50 dark:text-slate-300 rounded-full font-medium text-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+                                                {wiki.term}
+                                            </button>
+                                        ))}
                                     </div>
-                                }
-                                popupClassName="absolute top-full right-0 mt-2 z-20"
-                                className="relative"
-                            />
-                        </div>
-                    </div>
-                    
-                    <TextSelectionPopup
-                        renderPopupContent={({ text, close }) => (
-                            <div className="animate-in fade-in zoom-in-95 duration-150 flex items-center bg-slate-800 rounded-lg shadow-lg">
-                                <button
-                                    onClick={() => {
-                                        generateNewWiki(text);
-                                        close();
-                                    }}
-                                    disabled={isExploring || !!loadingState}
-                                    className="flex items-center gap-2 text-sm px-3 py-1.5 text-white hover:bg-slate-700 rounded-l-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    <BookOpenIcon className="w-4 h-4" />
-                                    Explore
-                                </button>
-                                <div className="w-px h-4 bg-slate-600"></div>
-                                <button
-                                    onClick={() => {
-                                        handleSuggestTopics(text);
-                                        close();
-                                    }}
-                                    disabled={isExploring || !!loadingState}
-                                    className="flex items-center gap-2 text-sm px-3 py-1.5 text-white hover:bg-slate-700 rounded-r-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    {loadingState?.type === 'subtopics' ? (
-                                        <div className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin"></div>
-                                    ) : (
-                                        <ThoughtBubbleIcon className="w-4 h-4" />
-                                    )}
-                                    Suggest Topics
-                                </button>
-                            </div>
-                        )}
-                        isDisabled={isExploring || !!loadingState || currentItem.id === WIKI_ROOT_ID}
-                    >
-                        <MarkdownRenderer content={currentItem.content} className="prose-lg" />
-                    </TextSelectionPopup>
+                                </div>
+                            )}
+                            
+                            {hasSuggestions && (
+                                <div>
+                                    <h3 className="text-xl font-semibold mb-4 text-slate-800 dark:text-slate-100">Further Exploration</h3>
+                                    <div className="flex flex-wrap gap-3">
+                                        {suggestedTopics.map(topic => {
+                                            const isLoading = explorations.some(e => e.status === 'loading' && e.term === topic);
+                                            return (
+                                                <button key={topic} onClick={() => generateNewWiki(topic)} disabled={isExploring || !!loadingState} className="px-4 py-2 bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300 rounded-full font-medium text-sm hover:bg-indigo-200 dark:hover:bg-indigo-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
+                                                    {isLoading && <div className="w-4 h-4 border-2 border-indigo-400/50 border-t-indigo-400 rounded-full animate-spin"></div>}
+                                                    {topic}
+                                                </button>
+                                            )
+                                        })}
+                                    </div>
+                                </div>
+                            )}
 
-                    {wikis.filter(w => w.parentId === currentItem.id).length > 0 && (
-                        <div className="mt-12 pt-8 border-t border-slate-200 dark:border-slate-700">
-                            <h3 className="text-xl font-semibold mb-4 text-slate-800 dark:text-slate-100">Branches from this topic</h3>
-                            <div className="flex flex-wrap gap-3">
-                                {wikis.filter(w => w.parentId === currentItem.id).map(wiki => (
-                                    <button key={wiki.id} onClick={() => setHistory(prev => [...prev, wiki])} className="px-4 py-2 bg-slate-100 text-slate-700 dark:bg-slate-700/50 dark:text-slate-300 rounded-full font-medium text-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
-                                        {wiki.term}
-                                    </button>
-                                ))}
-                            </div>
+                            {!hasBranches && !hasSuggestions && (
+                                <div className="text-center py-8 px-4 bg-slate-100/50 dark:bg-slate-800/20 rounded-lg">
+                                    <LightbulbIcon className="w-10 h-10 mx-auto text-slate-400 dark:text-slate-500 mb-3" />
+                                    <h3 className="font-semibold text-slate-700 dark:text-slate-200">You've reached a leaf node</h3>
+                                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-sm mx-auto">
+                                        Highlight any text in the article to discover new paths, or go back to explore other branches.
+                                    </p>
+                                </div>
+                            )}
                         </div>
-                    )}
-                    
-                    {currentItem.suggestedTopics && currentItem.suggestedTopics.length > 0 && (
-                        <div className="mt-12 pt-8 border-t border-slate-200 dark:border-slate-700">
-                            <h3 className="text-xl font-semibold mb-4 text-slate-800 dark:text-slate-100">Further Exploration</h3>
-                            <div className="flex flex-wrap gap-3">
-                                {currentItem.suggestedTopics.map(topic => {
-                                     const isLoading = explorations.some(e => e.status === 'loading' && e.term === topic);
-                                    return (
-                                        <button key={topic} onClick={() => generateNewWiki(topic)} disabled={isExploring || !!loadingState} className="px-4 py-2 bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300 rounded-full font-medium text-sm hover:bg-indigo-200 dark:hover:bg-indigo-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
-                                            {isLoading && <div className="w-4 h-4 border-2 border-indigo-400/50 border-t-indigo-400 rounded-full animate-spin"></div>}
-                                            {topic}
-                                        </button>
-                                    )
-                                })}
-                            </div>
-                        </div>
-                    )}
+                    </main>
                 </div>
             </div>
         )}

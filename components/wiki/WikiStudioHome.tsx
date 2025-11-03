@@ -78,7 +78,7 @@ const WikiStudioHome: React.FC<WikiStudioHomeProps> = ({
                         </button>
                     </form>
 
-                    <div className="max-w-xl mx-auto mt-6 text-center h-10">
+                    <div className="max-w-xl mx-auto mt-6 text-center min-h-[40px] flex items-center justify-center">
                         {isLoadingWikiTopics ? (
                             <div className="flex justify-center items-center h-full">
                                 <div className="w-6 h-6 border-2 border-slate-300 border-t-transparent rounded-full animate-spin"></div>
@@ -101,7 +101,11 @@ const WikiStudioHome: React.FC<WikiStudioHomeProps> = ({
                                     )
                                 })}
                             </div>
-                        ) : null}
+                        ) : (
+                            <p className="text-sm text-slate-500 dark:text-slate-400 animate-in fade-in">
+                                AI will suggest topics to explore here based on your notes.
+                            </p>
+                        )}
                     </div>
                 </div>
 

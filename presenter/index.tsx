@@ -4,6 +4,7 @@
 
 
 
+
 import React, { createContext, useContext, useEffect, useRef } from 'react';
 import { useAppStore } from '../stores/appStore';
 import { useNotesStore } from '../stores/notesStore';
@@ -164,7 +165,7 @@ export class Presenter {
 
   handleNavigateToWikiFromExploration = (wikiEntry: WikiEntry, explorationId: string) => {
     this.handleViewWikiInStudio(wikiEntry.id);
-    this.appManager.removeExploration(explorationId);
+    this.appManager.updateExploration(explorationId, { status: 'visited' });
   }
 
   handleDismissExploration = (id: string) => {
