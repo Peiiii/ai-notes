@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { Note, WikiEntry, WIKI_ROOT_ID, LoadingState } from '../../types';
 import { usePresenter } from '../../presenter';
@@ -41,7 +42,18 @@ const WikiExplorer: React.FC = () => {
   const [view, setView] = useState<'article' | 'graph'>('article');
   
   const setHistory = presenter.wikiManager.setActiveWikiHistory;
-  const history = activeWikiHistory.length > 0 ? activeWikiHistory : [rootWiki];
+
+  const history = useMemo(() => {
+    if (activeWikiHistory.length === 0) {
+      return [rootWiki];
+    }
+    if (activeWikiHistory[0]?.id !== WIKI_ROOT_ID) {
+      // State is potentially invalid, prepend root to recover, filtering duplicates
+      return [rootWiki, ...activeWikiHistory.filter(item => item.id !== WIKI_ROOT_ID)];
+    }
+    return activeWikiHistory;
+  }, [activeWikiHistory]);
+
 
   const currentItem = history.length > 0 ? history[history.length - 1] : null;
 
@@ -131,7 +143,7 @@ const WikiExplorer: React.FC = () => {
             onSelectTopic={generateNewWiki}
         />
 
-        <div className="px-6 md:px-8 pt-6 md:pt-8 pb-4 border-b border-slate-200 dark:border-slate-700">
+        <div className="px-6 md:px-8 pt-4 pb-4 border-b border-slate-200 dark:border-slate-700">
             <div className="max-w-6xl mx-auto w-full">
                  <div className="flex justify-between items-center">
                     <WikiBreadcrumb history={history} wikis={wikis} setHistory={setHistory} />
@@ -195,7 +207,7 @@ const WikiExplorer: React.FC = () => {
             />
         ) : (
              <div className="flex-1 overflow-y-auto">
-                <div className="max-w-4xl mx-auto w-full px-6 md:px-8 py-6 md:py-8">
+                <div className="max-w-4xl mx-auto w-full px-6 md:px-8 pt-6 pb-8">
                     <main>
                         <div className="flex items-start justify-between gap-4 mb-2">
                             <h1 className="text-3xl font-bold text-slate-900 dark:text-white">{currentItem.term}</h1>

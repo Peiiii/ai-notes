@@ -18,6 +18,7 @@ interface AppState {
   agentToEditId: string | null;
   explorations: Exploration[];
   explorationPanelMode: ExplorationPanelMode;
+  hasUsedExploration: boolean;
 }
 
 export const useAppStore = create<AppState>()(
@@ -36,6 +37,7 @@ export const useAppStore = create<AppState>()(
       agentToEditId: null,
       explorations: [],
       explorationPanelMode: 'tray',
+      hasUsedExploration: false,
     }),
     {
       name: 'ai-notes-app-state',
@@ -45,6 +47,7 @@ export const useAppStore = create<AppState>()(
         isChatSidebarCollapsed: state.isChatSidebarCollapsed,
         isMainSidebarCollapsed: state.isMainSidebarCollapsed,
         explorationPanelMode: state.explorationPanelMode,
+        hasUsedExploration: state.hasUsedExploration,
       }),
     }
   )

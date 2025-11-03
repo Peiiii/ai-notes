@@ -1,10 +1,4 @@
 
-
-
-
-
-
-
 import React, { createContext, useContext, useEffect, useRef } from 'react';
 import { useAppStore } from '../stores/appStore';
 import { useNotesStore } from '../stores/notesStore';
@@ -151,6 +145,12 @@ export class Presenter {
   
   // --- New Wiki Exploration Flow ---
   handleStartWikiExploration = (term: string, parentId: string, sourceNoteId: string, contextContent: string) => {
+    const { hasUsedExploration } = useAppStore.getState();
+    if (!hasUsedExploration) {
+      this.appManager.setExplorationPanelMode('sidebar');
+      useAppStore.setState({ hasUsedExploration: true });
+    }
+
     const explorationId = this.appManager.addExploration(term);
     
     this.wikiManager.generateWiki(term, sourceNoteId, parentId, contextContent)
@@ -424,9 +424,7 @@ ${synthesis.nextSteps.map(p => `- ${p}`).join('\n')}
   }
   
   handleCreateInsightWiki = (term: string, sourceNoteId: string, contextContent: string) => {
-      this.wikiManager.generateWiki(term, sourceNoteId, null, contextContent).then(newWiki => {
-          this.handleViewWikiInStudio(newWiki.id);
-      });
+      this.handleStartWikiExploration(term, WIKI_ROOT_ID, sourceNoteId, contextContent);
   }
 }
 

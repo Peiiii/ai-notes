@@ -44,10 +44,10 @@ const WikiStudioHome: React.FC<WikiStudioHomeProps> = ({
     const isCustomTopicLoading = explorations.some(e => e.status === 'loading' && e.term === customTopic.trim());
 
     return (
-        <div className="h-full flex flex-col p-6 md:p-8 overflow-y-auto">
+        <div className="h-full flex flex-col px-6 md:px-8 pt-0 pb-8 overflow-y-auto">
             <div className="max-w-4xl mx-auto w-full">
                 {/* Main Header & Search */}
-                <div className="text-center pt-8 pb-12">
+                <div className="text-center pt-4 pb-10">
                     <div className="inline-flex items-center gap-3 mb-4">
                       <BookOpenIcon className="w-8 h-8 text-indigo-500" />
                       <h1 className="text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">
