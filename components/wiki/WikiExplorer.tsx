@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { Note, WikiEntry, WIKI_ROOT_ID, LoadingState } from '../../types';
 import { usePresenter } from '../../presenter';
@@ -81,7 +82,7 @@ const WikiExplorer: React.FC = () => {
   }, [currentItem, presenter.wikiManager]);
 
   const generateNewWiki = (term: string) => {
-    if (!currentItem || loadingState) return;
+    if (!currentItem) return;
     
     const sourceNoteId = 'sourceNoteId' in currentItem ? currentItem.sourceNoteId : (notes[0]?.id || 'no-source');
     presenter.handleStartWikiExploration(term, currentItem.id, sourceNoteId, currentItem.content);
@@ -121,7 +122,6 @@ const WikiExplorer: React.FC = () => {
   };
   
   const handleSelectNote = (note: Note) => {
-    if (loadingState) return;
     const existingWiki = wikis.find(w => w.sourceNoteId === note.id && w.parentId === WIKI_ROOT_ID);
     if (existingWiki) {
         setHistory([rootWiki, existingWiki]);
@@ -133,8 +133,6 @@ const WikiExplorer: React.FC = () => {
 
   if (!currentItem) return null;
   
-  const isExploring = explorations.some(e => e.status === 'loading');
-  
   return (
      <div className="h-full flex flex-col">
         <SubTopicsModal
@@ -143,7 +141,7 @@ const WikiExplorer: React.FC = () => {
             onSelectTopic={generateNewWiki}
         />
 
-        <div className="px-6 md:px-8 pt-4 pb-4 border-b border-slate-200 dark:border-slate-700">
+        <div className="px-6 md:px-8 py-2 border-b border-slate-200 dark:border-slate-700">
             <div className="max-w-6xl mx-auto w-full">
                  <div className="flex justify-between items-center">
                     <WikiBreadcrumb history={history} wikis={wikis} setHistory={setHistory} />
@@ -246,7 +244,6 @@ const WikiExplorer: React.FC = () => {
                                             generateNewWiki(text);
                                             close();
                                         }}
-                                        disabled={isExploring || !!loadingState}
                                         className="flex items-center gap-2 text-sm px-3 py-1.5 text-white hover:bg-slate-700 rounded-l-lg disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
                                         <BookOpenIcon className="w-4 h-4" />
@@ -258,7 +255,7 @@ const WikiExplorer: React.FC = () => {
                                             handleSuggestTopics(text);
                                             close();
                                         }}
-                                        disabled={isExploring || !!loadingState}
+                                        disabled={loadingState?.type === 'subtopics'}
                                         className="flex items-center gap-2 text-sm px-3 py-1.5 text-white hover:bg-slate-700 rounded-r-lg disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
                                         {loadingState?.type === 'subtopics' ? (
@@ -270,7 +267,7 @@ const WikiExplorer: React.FC = () => {
                                     </button>
                                 </div>
                             )}
-                            isDisabled={isExploring || !!loadingState || currentItem.id === WIKI_ROOT_ID}
+                            isDisabled={currentItem.id === WIKI_ROOT_ID}
                         >
                             <MarkdownRenderer content={currentItem.content} className="prose-lg" />
                         </TextSelectionPopup>
@@ -296,7 +293,7 @@ const WikiExplorer: React.FC = () => {
                                         {suggestedTopics.map(topic => {
                                             const isLoading = explorations.some(e => e.status === 'loading' && e.term === topic);
                                             return (
-                                                <button key={topic} onClick={() => generateNewWiki(topic)} disabled={isExploring || !!loadingState} className="px-4 py-2 bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300 rounded-full font-medium text-sm hover:bg-indigo-200 dark:hover:bg-indigo-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
+                                                <button key={topic} onClick={() => generateNewWiki(topic)} className="px-4 py-2 bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300 rounded-full font-medium text-sm hover:bg-indigo-200 dark:hover:bg-indigo-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
                                                     {isLoading && <div className="w-4 h-4 border-2 border-indigo-400/50 border-t-indigo-400 rounded-full animate-spin"></div>}
                                                     {topic}
                                                 </button>
