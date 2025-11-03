@@ -44,7 +44,6 @@ function AppContent() {
   };
 
   const participants = activeSession ? agents.filter(a => activeSession.participantIds.includes(a.id)) : [];
-  const availableAgentsToAdd = activeSession ? agents.filter(a => !activeSession.participantIds.includes(a.id)) : [];
 
   const handleGoToNoteFromPreview = (noteId: string) => {
     presenter.handleSelectNote(noteId);
@@ -83,7 +82,6 @@ function AppContent() {
             isOpen={activeModal === 'addAgents'}
             onClose={presenter.handleCloseModal}
             currentParticipants={participants}
-            availableAgents={availableAgentsToAdd}
             onAddAgents={(agentIds) => presenter.handleAddAgentsToSession(activeSession.id, agentIds)}
           />
           <ConfirmationModal
