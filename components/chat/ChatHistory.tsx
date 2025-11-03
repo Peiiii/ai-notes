@@ -1,5 +1,5 @@
 
-import React, { useMemo, useRef, useEffect } from 'react';
+import React, { useMemo, useRef, useEffect, useState } from 'react';
 import { usePresenter } from '../../presenter';
 import { useChatStore } from '../../stores/chatStore';
 import { useAgentStore } from '../../stores/agentStore';
@@ -29,13 +29,35 @@ const ChatHistory: React.FC = () => {
     const activeSession = useMemo(() => sessions.find(s => s.id === activeSessionId) || null, [sessions, activeSessionId]);
 
     const chatEndRef = useRef<HTMLDivElement>(null);
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
+    const [isAtBottom, setIsAtBottom] = useState(true);
     const previousSessionId = useRef<string | null>(null);
 
     useEffect(() => {
         const isNewSession = previousSessionId.current !== activeSession?.id;
-        chatEndRef.current?.scrollIntoView({ behavior: isNewSession ? 'instant' : 'smooth' });
+        const lastMessage = activeSession?.history[activeSession.history.length - 1];
+
+        // Auto-scroll only if it's a new session, the user sent the message, or they are already at the bottom.
+        if (isNewSession || isAtBottom || (lastMessage && lastMessage.role === 'user')) {
+            chatEndRef.current?.scrollIntoView({ behavior: isNewSession ? 'instant' : 'smooth' });
+        }
+
         previousSessionId.current = activeSession?.id ?? null;
-    }, [activeSession?.id, activeSession?.history]);
+    }, [activeSession?.id, activeSession?.history, isAtBottom]);
+
+    const handleScroll = () => {
+        const container = scrollContainerRef.current;
+        if (container) {
+            const { scrollTop, scrollHeight, clientHeight } = container;
+            // A small threshold helps with fractional pixel values.
+            const scrollThreshold = 10; 
+            const isScrolledToBottom = scrollHeight - scrollTop - clientHeight <= scrollThreshold;
+            
+            if (isScrolledToBottom !== isAtBottom) {
+                 setIsAtBottom(isScrolledToBottom);
+            }
+        }
+    };
 
     const processedHistory = useMemo(() => {
         const history = activeSession?.history || [];
@@ -79,7 +101,11 @@ const ChatHistory: React.FC = () => {
     const participants = agents.filter(a => activeSession.participantIds.includes(a.id));
 
     return (
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div 
+            ref={scrollContainerRef}
+            onScroll={handleScroll}
+            className="flex-1 overflow-y-auto p-4 space-y-4"
+        >
             {processedHistory.map((msg) => {
                 const agent = agents.find(a => a.name === msg.persona);
                 if (msg.role === 'system') return (
