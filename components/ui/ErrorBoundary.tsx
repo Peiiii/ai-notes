@@ -1,31 +1,30 @@
-import React from 'react';
+import React, { Component, ErrorInfo, ReactNode } from 'react';
 
 interface ErrorBoundaryProps {
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
 interface ErrorBoundaryState {
   hasError: boolean;
   error: Error | null;
-  errorInfo: React.ErrorInfo | null;
+  errorInfo: ErrorInfo | null;
 }
 
-class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  // FIX: Added a constructor to initialize state and call super(props), which is required for class components to access 'this.state', 'this.props', and 'this.setState'.
-  constructor(props: ErrorBoundaryProps) {
-    super(props);
-    this.state = {
-      hasError: false,
-      error: null,
-      errorInfo: null,
-    };
-  }
+// Fix: Changed `React.Component` to a direct `Component` import to resolve
+// a potential module resolution issue where `setState` and `props` were not
+// being correctly inherited on the component instance.
+class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  state: ErrorBoundaryState = {
+    hasError: false,
+    error: null,
+    errorInfo: null,
+  };
 
   static getDerivedStateFromError(error: Error): Partial<ErrorBoundaryState> {
     return { hasError: true, error: error };
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("Uncaught error:", error, errorInfo);
     this.setState({ errorInfo: errorInfo });
   }

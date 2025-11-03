@@ -131,13 +131,6 @@ const ExplorationTray: React.FC = () => {
                 <h3 className="font-semibold text-sm text-slate-700 dark:text-slate-200 ml-2">Explorations ({explorations.length})</h3>
                 <div className="flex items-center">
                     <button 
-                        onClick={() => presenter.handleSetExplorationPanelMode(isSidebar ? 'tray' : 'sidebar')} 
-                        title={isSidebar ? "Undock Panel" : "Dock Panel as Sidebar"}
-                        className="p-2 rounded-full text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
-                    >
-                        {isSidebar ? <Square2StackIcon className="w-5 h-5" /> : <ViewColumnsIcon className="w-5 h-5" />}
-                    </button>
-                    <button 
                         onClick={presenter.handleClearCompletedExplorations} 
                         title="Clear Completed"
                         disabled={!hasCompleted}
@@ -145,6 +138,23 @@ const ExplorationTray: React.FC = () => {
                     >
                         <XCircleIcon className="w-5 h-5"/>
                     </button>
+                    {isSidebar ? (
+                         <button 
+                            onClick={() => presenter.handleSetExplorationPanelMode('tray')} 
+                            title="Close Sidebar"
+                            className="p-2 rounded-full text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                        >
+                            <XMarkIcon className="w-5 h-5" />
+                        </button>
+                    ) : (
+                        <button 
+                            onClick={() => presenter.handleSetExplorationPanelMode('sidebar')} 
+                            title="Dock Panel as Sidebar"
+                            className="p-2 rounded-full text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                        >
+                            <ViewColumnsIcon className="w-5 h-5" />
+                        </button>
+                    )}
                 </div>
             </div>
             <div className={isSidebar ? "flex-1 overflow-y-auto p-2 space-y-2" : ""}>

@@ -1,4 +1,3 @@
-
 import React, { useState, useLayoutEffect, useRef } from 'react';
 import { WikiEntry } from '../../types';
 import ChevronRightIcon from '../icons/ChevronRightIcon';
