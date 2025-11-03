@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useEffect } from 'react';
 import { Note, WikiEntry, WIKI_ROOT_ID, LoadingState } from '../../types';
 import { usePresenter } from '../../presenter';
@@ -32,6 +33,7 @@ const WikiExplorer: React.FC = () => {
   const { notes } = useNotesStore();
   const { wikis, wikiTopics, isLoadingWikiTopics, activeWikiHistory } = useWikiStore();
   const { initialWikiHistory } = useAppStore();
+  const explorations = useAppStore(state => state.explorations);
 
   const [subTopics, setSubTopics] = useState<{ title: string; topics: string[] } | null>(null);
   const [loadingState, setLoadingState] = useState<LoadingState | null>(null);
@@ -58,23 +60,12 @@ const WikiExplorer: React.FC = () => {
     }
   }, [currentItem, presenter.wikiManager]);
 
-  const generateNewWiki = async (term: string) => {
+  const generateNewWiki = (term: string) => {
     if (!currentItem || loadingState) return;
     
-    setLoadingState({ type: 'explore', id: term });
-
     const sourceNoteId = 'sourceNoteId' in currentItem ? currentItem.sourceNoteId : (notes[0]?.id || 'no-source');
-    const parentId = currentItem.id;
-    
-    try {
-        const newWikiEntry = await presenter.wikiManager.generateWiki(term, sourceNoteId, parentId, currentItem.content);
-        setHistory(prev => [...prev, newWikiEntry]);
-    } catch(e) {
-        console.error("Failed to generate next wiki", e);
-    } finally {
-      setSubTopics(null);
-      setLoadingState(null);
-    }
+    presenter.handleStartWikiExploration(term, currentItem.id, sourceNoteId, currentItem.content);
+    setSubTopics(null);
   };
 
   const handleSuggestTopics = async (selection: string) => {
@@ -102,35 +93,27 @@ const WikiExplorer: React.FC = () => {
     }
   };
 
-  const handleStartWithTopic = async (topic: string) => {
+  const handleStartWithTopic = (topic: string) => {
     if (loadingState) return;
-    setLoadingState({ type: 'explore', id: topic });
     const sourceNoteId = notes.length > 0 ? notes[0].id : 'no-source';
     const contextContent = notes.map(n => `${n.title} ${n.content}`).join('\n');
-    try {
-        const newWikiEntry = await presenter.wikiManager.generateWiki(topic, sourceNoteId, WIKI_ROOT_ID, contextContent);
-        setHistory([rootWiki, newWikiEntry]);
-    } catch (e) { console.error("Failed to start with topic", e); } 
-    finally { setLoadingState(null); }
+    presenter.handleStartWikiExploration(topic, WIKI_ROOT_ID, sourceNoteId, contextContent);
   };
   
-  const handleSelectNote = async (note: Note) => {
+  const handleSelectNote = (note: Note) => {
     if (loadingState) return;
     const existingWiki = wikis.find(w => w.sourceNoteId === note.id && w.parentId === WIKI_ROOT_ID);
     if (existingWiki) {
         setHistory([rootWiki, existingWiki]);
         return;
     }
-    setLoadingState({ type: 'explore', id: note.id });
     const term = note.title || `Exploration from Note`;
-    try {
-        const newWikiEntry = await presenter.wikiManager.generateWiki(term, note.id, WIKI_ROOT_ID, note.content);
-        setHistory([rootWiki, newWikiEntry]);
-    } catch(e) { console.error("Failed to generate wiki from note", e); } 
-    finally { setLoadingState(null); }
+    presenter.handleStartWikiExploration(term, WIKI_ROOT_ID, note.id, note.content);
   };
 
   if (!currentItem) return null;
+  
+  const isExploring = explorations.some(e => e.status === 'loading');
   
   return (
      <div className="h-full flex flex-col">
@@ -155,7 +138,6 @@ const WikiExplorer: React.FC = () => {
                 onSelectNote={handleSelectNote}
                 onStartWithTopic={handleStartWithTopic}
                 onSelectWiki={(wiki) => setHistory([rootWiki, wiki])}
-                loadingState={loadingState}
             />
         ) : (
             <div className="flex-1 overflow-y-auto p-6 md:p-8">
@@ -197,14 +179,10 @@ const WikiExplorer: React.FC = () => {
                                         generateNewWiki(text);
                                         close();
                                     }}
-                                    disabled={!!loadingState}
+                                    disabled={isExploring || !!loadingState}
                                     className="flex items-center gap-2 text-sm px-3 py-1.5 text-white hover:bg-slate-700 rounded-l-lg disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                    {loadingState?.type === 'explore' ? (
-                                        <div className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin"></div>
-                                    ) : (
-                                        <BookOpenIcon className="w-4 h-4" />
-                                    )}
+                                    <BookOpenIcon className="w-4 h-4" />
                                     Explore
                                 </button>
                                 <div className="w-px h-4 bg-slate-600"></div>
@@ -213,7 +191,7 @@ const WikiExplorer: React.FC = () => {
                                         handleSuggestTopics(text);
                                         close();
                                     }}
-                                    disabled={!!loadingState}
+                                    disabled={isExploring || !!loadingState}
                                     className="flex items-center gap-2 text-sm px-3 py-1.5 text-white hover:bg-slate-700 rounded-r-lg disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     {loadingState?.type === 'subtopics' ? (
@@ -225,7 +203,7 @@ const WikiExplorer: React.FC = () => {
                                 </button>
                             </div>
                         )}
-                        isDisabled={!!loadingState || currentItem.id === WIKI_ROOT_ID}
+                        isDisabled={isExploring || !!loadingState || currentItem.id === WIKI_ROOT_ID}
                     >
                         <MarkdownRenderer content={currentItem.content} className="prose-lg" />
                     </TextSelectionPopup>
@@ -248,9 +226,9 @@ const WikiExplorer: React.FC = () => {
                             <h3 className="text-xl font-semibold mb-4 text-slate-800 dark:text-slate-100">Further Exploration</h3>
                             <div className="flex flex-wrap gap-3">
                                 {currentItem.suggestedTopics.map(topic => {
-                                    const isLoading = loadingState?.type === 'explore' && loadingState.id === topic;
+                                     const isLoading = explorations.some(e => e.status === 'loading' && e.term === topic);
                                     return (
-                                        <button key={topic} onClick={() => generateNewWiki(topic)} disabled={!!loadingState} className="px-4 py-2 bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300 rounded-full font-medium text-sm hover:bg-indigo-200 dark:hover:bg-indigo-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
+                                        <button key={topic} onClick={() => generateNewWiki(topic)} disabled={isExploring || !!loadingState} className="px-4 py-2 bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300 rounded-full font-medium text-sm hover:bg-indigo-200 dark:hover:bg-indigo-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
                                             {isLoading && <div className="w-4 h-4 border-2 border-indigo-400/50 border-t-indigo-400 rounded-full animate-spin"></div>}
                                             {topic}
                                         </button>

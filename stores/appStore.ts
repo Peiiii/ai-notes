@@ -1,7 +1,7 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { ViewMode, Note, WikiEntry, PulseReport } from '../types';
+import { ViewMode, Note, WikiEntry, PulseReport, Exploration, ExplorationPanelMode } from '../types';
 
 interface AppState {
   viewMode: ViewMode;
@@ -15,6 +15,8 @@ interface AppState {
   previewingNoteId: string | null;
   isAgentHubOpen: boolean;
   agentToEditId: string | null;
+  explorations: Exploration[];
+  explorationPanelMode: ExplorationPanelMode;
 }
 
 export const useAppStore = create<AppState>()(
@@ -30,6 +32,8 @@ export const useAppStore = create<AppState>()(
       previewingNoteId: null,
       isAgentHubOpen: false,
       agentToEditId: null,
+      explorations: [],
+      explorationPanelMode: 'tray',
     }),
     {
       name: 'ai-notes-app-state',
@@ -37,6 +41,7 @@ export const useAppStore = create<AppState>()(
         viewMode: state.viewMode,
         activeNoteId: state.activeNoteId,
         isChatSidebarCollapsed: state.isChatSidebarCollapsed,
+        explorationPanelMode: state.explorationPanelMode,
       }),
     }
   )

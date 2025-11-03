@@ -1,4 +1,6 @@
 
+
+
 import React from 'react';
 import { PresenterProvider, usePresenter } from './presenter';
 import { useAppStore } from './stores/appStore';
@@ -18,6 +20,7 @@ import ConfirmationModal from './components/ui/ConfirmationModal';
 import RenameChatModal from './components/chat/RenameChatModal';
 import NotePreviewSidebar from './components/ui/NotePreviewSidebar';
 import AgentHubModal from './components/agent-hub/AgentHubModal';
+import ExplorationTray from './components/ui/ExplorationTray';
 
 
 function AppContent() {
@@ -59,6 +62,9 @@ function AppContent() {
         </div>
       )}
       <main className="flex-1 min-w-0">{renderMainView()}</main>
+      
+      <ExplorationTray />
+      
       <PulseReportModal 
         report={viewingPulseReport} 
         onClose={() => presenter.appManager.setViewingPulseReport(null)} 

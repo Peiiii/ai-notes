@@ -155,3 +155,13 @@ export interface Insight {
   content?: string;
   sourceNoteId?: string; // For related_note type
 }
+
+// --- Exploration Tray Types ---
+export type ExplorationPanelMode = 'tray' | 'sidebar';
+
+export interface Exploration {
+  id: string;
+  term: string;
+  status: 'loading' | 'complete' | 'error';
+  wikiEntry?: WikiEntry;
+}

@@ -1,4 +1,6 @@
 
+
+
 import React, { createContext, useContext, useEffect, useRef } from 'react';
 import { useAppStore } from '../stores/appStore';
 import { useNotesStore } from '../stores/notesStore';
@@ -13,7 +15,7 @@ import { WikiManager } from '../managers/WikiManager';
 import { ParliamentManager } from '../managers/ParliamentManager';
 import { CommandManager } from '../managers/CommandManager';
 import { InsightManager } from '../managers/InsightManager';
-import { KnowledgeCard, Note, WikiEntry, WIKI_ROOT_ID, DebateSynthesis, Todo, AIAgent, ChatMessage, DiscussionMode, ProactiveSuggestion, PresetChat } from '../types';
+import { KnowledgeCard, Note, WikiEntry, WIKI_ROOT_ID, DebateSynthesis, Todo, AIAgent, ChatMessage, DiscussionMode, ProactiveSuggestion, PresetChat, ExplorationPanelMode } from '../types';
 import { Command } from '../commands';
 import { getCreatorAgentResponse, getEditorAgentResponse } from '../services/agentAIService';
 import { presetChats } from '../components/chat/presetChats';
@@ -142,6 +144,38 @@ export class Presenter {
     this.appManager.setViewMode('wiki');
     this.appManager.setActiveNoteId(null);
   };
+  
+  // --- New Wiki Exploration Flow ---
+  handleStartWikiExploration = (term: string, parentId: string, sourceNoteId: string, contextContent: string) => {
+    const explorationId = this.appManager.addExploration(term);
+    
+    this.wikiManager.generateWiki(term, sourceNoteId, parentId, contextContent)
+      .then(wikiEntry => {
+        this.appManager.updateExploration(explorationId, { status: 'complete', wikiEntry });
+      })
+      .catch(error => {
+        console.error("Wiki Exploration failed:", error);
+        this.appManager.updateExploration(explorationId, { status: 'error' });
+      });
+  }
+
+  handleNavigateToWikiFromExploration = (wikiEntry: WikiEntry, explorationId: string) => {
+    this.handleViewWikiInStudio(wikiEntry.id);
+    this.appManager.removeExploration(explorationId);
+  }
+
+  handleDismissExploration = (id: string) => {
+    this.appManager.removeExploration(id);
+  }
+
+  handleSetExplorationPanelMode = (mode: ExplorationPanelMode) => {
+    this.appManager.setExplorationPanelMode(mode);
+  }
+  
+  handleClearCompletedExplorations = () => {
+    this.appManager.clearCompletedExplorations();
+  }
+  // --- End New Wiki Exploration Flow ---
 
   handleSaveDebateSynthesisAsNote = (topic: string, synthesis: DebateSynthesis) => {
     const title = `Synthesis on: ${topic}`;

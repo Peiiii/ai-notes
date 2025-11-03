@@ -1,6 +1,8 @@
 
+
 import React, { useState, useEffect } from 'react';
-import { Note, WikiEntry, WIKI_ROOT_ID, LoadingState } from '../../types';
+import { useAppStore } from '../../stores/appStore';
+import { Note, WikiEntry, WIKI_ROOT_ID, Exploration } from '../../types';
 import BookOpenIcon from '../icons/BookOpenIcon';
 import PaperAirplaneIcon from '../icons/PaperAirplaneIcon';
 import CpuChipIcon from '../icons/CpuChipIcon';
@@ -13,7 +15,6 @@ interface WikiStudioHomeProps {
     onSelectNote: (note: Note) => void;
     onStartWithTopic: (topic: string) => void;
     onSelectWiki: (wiki: WikiEntry) => void;
-    loadingState: LoadingState | null;
 }
 
 const WikiStudioHome: React.FC<WikiStudioHomeProps> = ({
@@ -24,29 +25,23 @@ const WikiStudioHome: React.FC<WikiStudioHomeProps> = ({
     onSelectNote,
     onStartWithTopic,
     onSelectWiki,
-    loadingState,
 }) => {
+    const explorations = useAppStore(state => state.explorations);
+    const isExploring = explorations.some(e => e.status === 'loading');
+
     const topLevelWikis = wikis.filter(w => w.parentId === WIKI_ROOT_ID).sort((a,b) => b.createdAt - a.createdAt).slice(0, 5);
     const recentNotes = notes.slice(0, 5);
     const [customTopic, setCustomTopic] = useState('');
-    const [isSubmittingCustomTopic, setIsSubmittingCustomTopic] = useState(false);
-
-    useEffect(() => {
-        if (loadingState === null) {
-            setIsSubmittingCustomTopic(false);
-        }
-    }, [loadingState]);
-
+    
     const handleCustomTopicSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (customTopic.trim() && !loadingState) {
-            setIsSubmittingCustomTopic(true);
+        if (customTopic.trim() && !isExploring) {
             onStartWithTopic(customTopic.trim());
             setCustomTopic('');
         }
     };
     
-    const isCustomTopicLoading = isSubmittingCustomTopic && loadingState?.type === 'explore';
+    const isCustomTopicLoading = explorations.some(e => e.status === 'loading' && e.term === customTopic.trim());
 
     return (
         <div className="h-full flex flex-col p-6 md:p-8 overflow-y-auto">
@@ -67,12 +62,12 @@ const WikiStudioHome: React.FC<WikiStudioHomeProps> = ({
                             value={customTopic}
                             onChange={(e) => setCustomTopic(e.target.value)}
                             placeholder="Explore any topic, idea, or concept..."
-                            disabled={!!loadingState}
+                            disabled={isExploring}
                             className="flex-1 w-full bg-transparent text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 rounded-full pl-5 pr-2 py-2 text-base focus:outline-none disabled:opacity-50"
                         />
                         <button
                             type="submit"
-                            disabled={!!loadingState || !customTopic.trim()}
+                            disabled={isExploring || !customTopic.trim()}
                             className="p-3 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 disabled:bg-slate-300 dark:disabled:bg-slate-600 disabled:cursor-not-allowed transition-colors flex-shrink-0 w-11 h-11 flex items-center justify-center"
                         >
                              {isCustomTopicLoading ? (
@@ -92,12 +87,12 @@ const WikiStudioHome: React.FC<WikiStudioHomeProps> = ({
                             <div className="flex flex-wrap justify-center items-center gap-x-3 gap-y-2 animate-in fade-in">
                                 <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Or try:</span>
                                 {wikiTopics.slice(0, 4).map((topic, index) => {
-                                    const isLoading = loadingState?.type === 'explore' && loadingState.id === topic;
+                                    const isLoading = explorations.some(e => e.status === 'loading' && e.term === topic);
                                     return (
                                         <button 
                                             key={index} 
                                             onClick={() => onStartWithTopic(topic)}
-                                            disabled={!!loadingState}
+                                            disabled={isExploring}
                                             className="px-3 py-1 bg-slate-100 dark:bg-slate-700/50 text-slate-700 dark:text-slate-300 rounded-full font-medium text-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                                         >
                                             {isLoading && <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin"></div>}
@@ -135,9 +130,9 @@ const WikiStudioHome: React.FC<WikiStudioHomeProps> = ({
                         <div className="space-y-2">
                             {recentNotes.length > 0 ? (
                                 recentNotes.map(note => {
-                                    const isLoading = loadingState?.type === 'explore' && loadingState.id === note.id;
+                                    const isLoading = explorations.some(e => e.status === 'loading' && e.term === (note.title || 'Exploration from Note'));
                                     return (
-                                        <button key={note.id} onClick={() => onSelectNote(note)} disabled={!!loadingState} className="w-full text-left p-3 rounded-lg bg-white dark:bg-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 transition-all hover:shadow-md flex items-center justify-between disabled:opacity-50 disabled:cursor-not-allowed">
+                                        <button key={note.id} onClick={() => onSelectNote(note)} disabled={isExploring} className="w-full text-left p-3 rounded-lg bg-white dark:bg-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 transition-all hover:shadow-md flex items-center justify-between disabled:opacity-50 disabled:cursor-not-allowed">
                                             <div className="flex-1 overflow-hidden">
                                                 <p className="font-semibold truncate text-slate-800 dark:text-slate-100">{note.title || 'Untitled Note'}</p>
                                                 <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{note.content || 'No content'}</p>
