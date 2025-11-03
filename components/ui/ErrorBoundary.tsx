@@ -11,9 +11,7 @@ interface ErrorBoundaryState {
 }
 
 class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  // Fix: Use a constructor to properly initialize state and ensure `this.props` is available.
-  // This is the standard way to set up state in a React class component and fixes errors
-  // where `state`, `props`, and `setState` were not being found on the component instance.
+  // FIX: In a class component, state must be initialized. Adding a constructor to set the initial state makes `this.state`, `this.props`, and `this.setState` available throughout the component, resolving the errors.
   constructor(props: ErrorBoundaryProps) {
     super(props);
     this.state = {

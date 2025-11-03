@@ -22,7 +22,7 @@ import ExplorationTray from './components/ui/ExplorationTray';
 
 function AppContent() {
   const presenter = usePresenter();
-  const { viewMode, activeNoteId, viewingPulseReport, commandToCreate, activeModal, previewingNoteId, isAgentHubOpen } = useAppStore();
+  const { viewMode, activeNoteId, viewingPulseReport, commandToCreate, activeModal, previewingNoteId, isAgentHubOpen, isMainSidebarCollapsed } = useAppStore();
   const { activeSessionId, sessions } = useChatStore();
   const agents = useAgentStore(state => state.agents);
   const activeSession = sessions.find(s => s.id === activeSessionId);
@@ -53,7 +53,7 @@ function AppContent() {
   return (
     <div className="h-screen w-screen flex antialiased text-slate-800 dark:text-slate-200 overflow-x-hidden">
       {viewMode !== 'chat' && (
-        <div className="w-full max-w-xs md:w-1/3 md:max-w-sm lg:w-1/4 border-r border-slate-200 dark:border-slate-700 flex-shrink-0">
+        <div className={`flex-shrink-0 border-r border-slate-200 dark:border-slate-700 transition-all duration-300 ${isMainSidebarCollapsed ? 'w-20' : 'w-80'}`}>
           <NoteList />
         </div>
       )}
@@ -122,7 +122,7 @@ function AppContent() {
 function App() {
   return (
     <PresenterProvider>
-      {/* Fix: Wrap AppContent in ErrorBoundary to provide the required `children` prop. */}
+      {/* FIX: The ErrorBoundary component requires a `children` prop. This is provided by wrapping it around the AppContent component. */}
       <ErrorBoundary>
         <AppContent />
       </ErrorBoundary>

@@ -7,6 +7,7 @@ interface AppState {
   viewMode: ViewMode;
   activeNoteId: string | null;
   isChatSidebarCollapsed: boolean;
+  isMainSidebarCollapsed: boolean;
   // Fix: Changed type to only allow WikiEntry[] to match component props.
   initialWikiHistory: WikiEntry[] | null;
   viewingPulseReport: PulseReport | null;
@@ -25,6 +26,7 @@ export const useAppStore = create<AppState>()(
       viewMode: 'editor',
       activeNoteId: null,
       isChatSidebarCollapsed: false,
+      isMainSidebarCollapsed: false,
       initialWikiHistory: null,
       viewingPulseReport: null,
       commandToCreate: null,
@@ -41,6 +43,7 @@ export const useAppStore = create<AppState>()(
         viewMode: state.viewMode,
         activeNoteId: state.activeNoteId,
         isChatSidebarCollapsed: state.isChatSidebarCollapsed,
+        isMainSidebarCollapsed: state.isMainSidebarCollapsed,
         explorationPanelMode: state.explorationPanelMode,
       }),
     }
