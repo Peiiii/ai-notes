@@ -1,6 +1,7 @@
 
 
 
+
 import React, { createContext, useContext, useEffect, useRef } from 'react';
 import { useAppStore } from '../stores/appStore';
 import { useNotesStore } from '../stores/notesStore';
@@ -199,6 +200,19 @@ ${synthesis.nextSteps.map(p => `- ${p}`).join('\n')}
     this.appManager.setViewMode('editor');
   };
   
+  // --- New Parliament History Methods ---
+  handleViewParliamentSession = (sessionId: string) => {
+    this.parliamentManager.viewSession(sessionId);
+  }
+  
+  handleEndParliamentSession = () => {
+    this.parliamentManager.endActiveSession();
+  }
+  
+  handleDeleteParliamentSession = (sessionId: string) => {
+    this.parliamentManager.deleteSession(sessionId);
+  }
+
   // --- New Multi-Agent Chat Methods ---
   
   handleCreateAgent = (agentData: Omit<AIAgent, 'id' | 'createdAt' | 'isCustom'>): AIAgent => {

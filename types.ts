@@ -6,6 +6,15 @@ export const WIKI_ROOT_ID = 'wiki_root';
 
 export type ParliamentMode = 'debate' | 'podcast';
 
+export interface ParliamentSession {
+  id: string;
+  mode: ParliamentMode;
+  topic: string;
+  noteId?: string;
+  createdAt: number;
+  history: ChatMessage[];
+}
+
 export type LoadingState = { type: 'subtopics' } | { type: 'explore'; id: string } | { type: 'regenerate' };
 
 export type NoteType = 'text';

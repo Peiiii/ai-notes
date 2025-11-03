@@ -1,6 +1,3 @@
-
-
-
 import React from 'react';
 import { PresenterProvider, usePresenter } from './presenter';
 import { useAppStore } from './stores/appStore';
@@ -127,7 +124,7 @@ function AppContent() {
 function App() {
   return (
     <PresenterProvider>
-      {/* Fix: Wrap AppContent in ErrorBoundary to provide children and fix missing property error. */}
+      {/* Fix: Wrap AppContent in ErrorBoundary to provide the required `children` prop. */}
       <ErrorBoundary>
         <AppContent />
       </ErrorBoundary>

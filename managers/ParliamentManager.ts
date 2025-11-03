@@ -1,6 +1,6 @@
 import { useParliamentStore } from '../stores/parliamentStore';
 import { useNotesStore } from '../stores/notesStore';
-import { ChatMessage } from '../types';
+import { ChatMessage, ParliamentMode, ParliamentSession } from '../types';
 import { 
     generateDebateTopics, 
     generateDebateTurn, 
@@ -38,45 +38,58 @@ export class ParliamentManager {
         }
     }
 
+    private startSession = (mode: ParliamentMode, topic: string, noteId?: string) => {
+        if (useParliamentStore.getState().isGenerating) return;
+
+        const newSession: ParliamentSession = {
+            id: crypto.randomUUID(),
+            mode,
+            topic,
+            noteId,
+            createdAt: Date.now(),
+            history: [],
+        };
+        
+        useParliamentStore.setState(state => ({
+            sessions: [newSession, ...state.sessions],
+            activeSessionId: newSession.id,
+            isGenerating: true,
+        }));
+        
+        return newSession;
+    }
+
     startDebate = async (topic: string, noteId?: string) => {
-        if (useParliamentStore.getState().isSessionActive) return;
-
-        this.resetSession();
-
-        useParliamentStore.setState({
-            isSessionActive: true,
-            currentSession: { mode: 'debate', topic, noteId },
-        });
-
+        const session = this.startSession('debate', topic, noteId);
+        if (!session) return;
         const noteContent = noteId ? useNotesStore.getState().notes.find(n => n.id === noteId)?.content : undefined;
-
-        this.runDebateLoop(topic, noteContent);
+        this.runDebateLoop(session.id, topic, noteContent);
     }
 
     startPodcast = async (topic: string, noteId?: string) => {
-        if (useParliamentStore.getState().isSessionActive) return;
-
-        this.resetSession();
-        
-        useParliamentStore.setState({
-            isSessionActive: true,
-            currentSession: { mode: 'podcast', topic, noteId },
-        });
-
+        const session = this.startSession('podcast', topic, noteId);
+        if (!session) return;
         const noteContent = noteId ? useNotesStore.getState().notes.find(n => n.id === noteId)?.content : undefined;
-        
-        this.runPodcastLoop(topic, noteContent);
+        this.runPodcastLoop(session.id, topic, noteContent);
     }
     
-    private runDebateLoop = async (topic: string, noteContent?: string) => {
+    private appendMessage = (sessionId: string, message: ChatMessage) => {
+        useParliamentStore.setState(state => ({
+            sessions: state.sessions.map(s => 
+                s.id === sessionId ? { ...s, history: [...s.history, message] } : s
+            )
+        }));
+    };
+
+    private runDebateLoop = async (sessionId: string, topic: string, noteContent?: string) => {
         try {
             for (let i = 0; i < MAX_DEBATE_TURNS; i++) {
                 const currentPersona = DEBATE_PERSONAS[i % 2];
-                const history = useParliamentStore.getState().sessionHistory;
+                const currentHistory = useParliamentStore.getState().sessions.find(s => s.id === sessionId)?.history || [];
                 
                 if (i > 0) await new Promise(res => setTimeout(res, 2000));
                 
-                const responseContent = await generateDebateTurn(topic, history, currentPersona.definition, i === 0 ? noteContent : undefined);
+                const responseContent = await generateDebateTurn(topic, currentHistory, currentPersona.definition, i === 0 ? noteContent : undefined);
 
                 const turnMessage: ChatMessage = {
                     id: crypto.randomUUID(),
@@ -85,13 +98,11 @@ export class ParliamentManager {
                     persona: currentPersona.name,
                 };
                 
-                useParliamentStore.setState(state => ({
-                    sessionHistory: [...state.sessionHistory, turnMessage]
-                }));
+                this.appendMessage(sessionId, turnMessage);
             }
 
             await new Promise(res => setTimeout(res, 1500));
-            const finalHistory = useParliamentStore.getState().sessionHistory;
+            const finalHistory = useParliamentStore.getState().sessions.find(s => s.id === sessionId)?.history || [];
             const synthesis = await generateDebateSynthesis(topic, finalHistory);
 
             const synthesisMessage: ChatMessage = {
@@ -101,49 +112,48 @@ export class ParliamentManager {
                 persona: "Moderator",
                 synthesisContent: synthesis,
             };
-            useParliamentStore.setState(state => ({
-                sessionHistory: [...state.sessionHistory, synthesisMessage]
-            }));
+            this.appendMessage(sessionId, synthesisMessage);
 
         } catch (error) {
-            this.handleError(error, "Debate failed:");
+            this.handleError(sessionId, error, "Debate failed:");
         } finally {
-            useParliamentStore.setState({ isSessionActive: false });
+            useParliamentStore.setState({ isGenerating: false });
         }
     }
 
-    private runPodcastLoop = async (topic: string, noteContent?: string) => {
+    private runPodcastLoop = async (sessionId: string, topic: string, noteContent?: string) => {
         try {
             // Intro
-            await this.addPodcastTurn(topic, 'Host', 'intro', noteContent);
+            await this.addPodcastTurn(sessionId, topic, 'Host', 'intro', noteContent);
             
             // Guest Greeting
-            await this.addPodcastTurn(topic, 'Guest Expert', 'greeting');
+            await this.addPodcastTurn(sessionId, topic, 'Guest Expert', 'greeting');
             
             // Discussion
             for (let i = 0; i < PODCAST_EXCHANGES; i++) {
-                await this.addPodcastTurn(topic, 'Host', 'question');
-                await this.addPodcastTurn(topic, 'Guest Expert', 'answer');
+                await this.addPodcastTurn(sessionId, topic, 'Host', 'question');
+                await this.addPodcastTurn(sessionId, topic, 'Guest Expert', 'answer');
             }
 
             // Outro
-            await this.addPodcastTurn(topic, 'Host', 'outro');
+            await this.addPodcastTurn(sessionId, topic, 'Host', 'outro');
 
         } catch (error) {
-            this.handleError(error, "Podcast generation failed:");
+            this.handleError(sessionId, error, "Podcast generation failed:");
         } finally {
-            useParliamentStore.setState({ isSessionActive: false });
+            useParliamentStore.setState({ isGenerating: false });
         }
     }
 
     private addPodcastTurn = async (
+        sessionId: string,
         topic: string,
         persona: 'Host' | 'Guest Expert',
         turnType: 'intro' | 'question' | 'answer' | 'outro' | 'greeting',
         noteContext?: string
     ) => {
         await new Promise(res => setTimeout(res, 2500));
-        const history = useParliamentStore.getState().sessionHistory;
+        const history = useParliamentStore.getState().sessions.find(s => s.id === sessionId)?.history || [];
         const responseContent = await generatePodcastTurn(topic, history, persona, turnType, noteContext);
         
         const turnMessage: ChatMessage = {
@@ -152,12 +162,10 @@ export class ParliamentManager {
             content: responseContent,
             persona: persona,
         };
-        useParliamentStore.setState(state => ({
-            sessionHistory: [...state.sessionHistory, turnMessage]
-        }));
+        this.appendMessage(sessionId, turnMessage);
     };
 
-    private handleError = (error: unknown, message: string) => {
+    private handleError = (sessionId: string, error: unknown, message: string) => {
         console.error(message, error);
         const errorMessage: ChatMessage = {
             id: crypto.randomUUID(),
@@ -165,16 +173,26 @@ export class ParliamentManager {
             content: "An error occurred during the session. Please try again.",
             persona: "Moderator"
         };
-        useParliamentStore.setState(state => ({
-            sessionHistory: [...state.sessionHistory, errorMessage]
-        }));
+        this.appendMessage(sessionId, errorMessage);
     }
 
-    resetSession = () => {
+    endActiveSession = () => {
         useParliamentStore.setState({
-            sessionHistory: [],
-            isSessionActive: false,
-            currentSession: null,
+            activeSessionId: null,
+            isGenerating: false,
         });
+    }
+    
+    viewSession = (sessionId: string) => {
+        useParliamentStore.setState({
+            activeSessionId: sessionId,
+            isGenerating: false,
+        });
+    }
+
+    deleteSession = (sessionId: string) => {
+        useParliamentStore.setState(state => ({
+            sessions: state.sessions.filter(s => s.id !== sessionId)
+        }));
     }
 }

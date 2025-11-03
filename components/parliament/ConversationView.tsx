@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef } from 'react';
 import { usePresenter } from '../../presenter';
 import { useParliamentStore } from '../../stores/parliamentStore';
@@ -74,36 +73,39 @@ const SynthesisCard: React.FC<{ synthesis: DebateSynthesis; topic: string; onSav
 
 const ConversationView: React.FC = () => {
   const presenter = usePresenter();
-  const { sessionHistory, isSessionActive, currentSession } = useParliamentStore();
+  const { sessions, activeSessionId, isGenerating } = useParliamentStore();
+  const activeSession = sessions.find(s => s.id === activeSessionId);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [sessionHistory, isSessionActive]);
+  }, [activeSession?.history, isGenerating]);
 
-  const modeTitle = currentSession?.mode === 'debate' ? 'Debate' : 'Podcast';
+  if (!activeSession) return null;
+
+  const modeTitle = activeSession.mode === 'debate' ? 'Debate' : 'Podcast';
 
   return (
     <div className="h-full flex flex-col bg-white dark:bg-slate-800/50">
       <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex items-center gap-4">
-        <button onClick={presenter.parliamentManager.resetSession} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+        <button onClick={presenter.handleEndParliamentSession} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
             <ArrowLeftIcon className="w-5 h-5"/>
         </button>
         <div>
             <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">AI Parliament / {modeTitle}</h1>
-            <p className="text-sm text-slate-500 dark:text-slate-400 truncate max-w-md">Topic: {currentSession?.topic}</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400 truncate max-w-md">Topic: {activeSession.topic}</p>
         </div>
       </div>
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         <div className="max-w-4xl mx-auto w-full space-y-4">
-            {sessionHistory.map((msg) => {
-                if (msg.synthesisContent && currentSession) {
+            {activeSession.history.map((msg) => {
+                if (msg.synthesisContent) {
                     return <SynthesisCard 
                               key={msg.id} 
                               synthesis={msg.synthesisContent} 
-                              topic={currentSession.topic} 
-                              onSave={() => presenter.handleSaveDebateSynthesisAsNote(currentSession.topic, msg.synthesisContent!)}
+                              topic={activeSession.topic} 
+                              onSave={() => presenter.handleSaveDebateSynthesisAsNote(activeSession.topic, msg.synthesisContent!)}
                            />;
                 }
 
@@ -119,7 +121,7 @@ const ConversationView: React.FC = () => {
                     </div>
                 );
             })}
-            {isSessionActive && (
+            {isGenerating && (
                 <div className="flex items-start gap-3 max-w-4xl justify-start">
                     <div className="p-3 rounded-lg bg-slate-100 dark:bg-slate-700 rounded-bl-none">
                         <div className="flex items-center gap-2">
@@ -133,11 +135,11 @@ const ConversationView: React.FC = () => {
         </div>
         <div ref={chatEndRef} />
       </div>
-      {!isSessionActive && sessionHistory.length > 0 && (
+      {!isGenerating && activeSession.history.length > 0 && (
          <div className="p-4 border-t border-slate-200 dark:border-slate-700">
             <div className="max-w-4xl mx-auto flex gap-2">
-                <button onClick={presenter.parliamentManager.resetSession} className="w-full bg-indigo-600 text-white font-semibold py-2.5 rounded-lg hover:bg-indigo-700 transition-colors">
-                    Start a New Session
+                <button onClick={presenter.handleEndParliamentSession} className="w-full bg-indigo-600 text-white font-semibold py-2.5 rounded-lg hover:bg-indigo-700 transition-colors">
+                    Back to Parliament Home
                 </button>
             </div>
          </div>

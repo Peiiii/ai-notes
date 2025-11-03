@@ -1,13 +1,14 @@
 
+
 import React from 'react';
 import { useParliamentStore } from '../../stores/parliamentStore';
 import ParliamentHome from './ParliamentHome';
 import ConversationView from './ConversationView';
 
 const ParliamentView: React.FC = () => {
-  const { currentSession } = useParliamentStore();
+  const { activeSessionId } = useParliamentStore();
 
-  if (currentSession) {
+  if (activeSessionId) {
     return <ConversationView />;
   }
   
