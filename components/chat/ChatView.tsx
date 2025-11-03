@@ -31,11 +31,12 @@ const ChatView: React.FC = () => {
   const firstTimeCheckRef = useRef(false);
 
   useEffect(() => {
-      if (sessions.length === 0 && !firstTimeCheckRef.current) {
-          setIsPresetModalOpen(true);
-          firstTimeCheckRef.current = true;
-      }
-  }, [sessions]);
+    // If sessions is empty on first load, create the default sessions automatically.
+    if (sessions.length === 0 && !firstTimeCheckRef.current) {
+        presenter.handleCreateDefaultSessions();
+        firstTimeCheckRef.current = true; // Prevents this from running again
+    }
+  }, [sessions, presenter]);
 
   const handleConfirmPresets = (selectedPresets: PresetChat[]) => {
       presenter.handleCreateSessionsFromPresets(selectedPresets);
@@ -43,7 +44,7 @@ const ChatView: React.FC = () => {
   };
 
   const handleSkipPresets = () => {
-      presenter.handleCreateDefaultSessions();
+      // This now just closes the modal if it was opened manually.
       setIsPresetModalOpen(false);
   };
 
@@ -170,7 +171,7 @@ const ChatView: React.FC = () => {
           isOpen={isPresetModalOpen}
           onConfirm={handleConfirmPresets}
           onSkip={handleSkipPresets}
-          isFirstTimeSetup={sessions.length === 0}
+          isFirstTimeSetup={false}
       />
       <NewChatModal
         isOpen={isNewChatOpen}

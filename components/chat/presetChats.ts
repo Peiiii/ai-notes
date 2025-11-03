@@ -6,7 +6,7 @@ export const presetChats: PresetChat[] = [
     name: 'AI Companion',
     description: 'A one-on-one chat with your general-purpose AI assistant.',
     participantIds: ['default-companion'],
-    discussionMode: 'concurrent',
+    discussionMode: 'moderated',
     isDefault: true,
   },
   {
@@ -18,17 +18,25 @@ export const presetChats: PresetChat[] = [
     isDefault: true,
   },
   {
+    id: 'preset-brainstorm',
+    name: 'Brainstorming Crew',
+    description: 'Generate and refine ideas with a diverse team of thinkers.',
+    participantIds: ['brainstorm-contrarian', 'brainstorm-connector', 'brainstorm-philosopher', 'brainstorm-architect'],
+    discussionMode: 'moderated',
+    isDefault: true,
+  },
+  {
     id: 'preset-creative',
     name: 'Creative Council',
     description: 'Brainstorm stories, marketing copy, and novel ideas with a team of creative specialists.',
     participantIds: ['default-creative-writer', 'default-visionary', 'default-companion'],
-    discussionMode: 'concurrent',
+    discussionMode: 'moderated',
   },
   {
     id: 'preset-tech',
     name: 'Tech Review Board',
     description: 'Get feedback on technical ideas, code, and architecture from a pragmatic perspective.',
     participantIds: ['default-code-assistant', 'default-pragmatist', 'default-ethicist'],
-    discussionMode: 'turn_based',
+    discussionMode: 'moderated',
   },
 ];
