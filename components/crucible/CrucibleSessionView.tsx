@@ -11,7 +11,8 @@ import MarkdownRenderer from '../ui/MarkdownRenderer';
 import GlobeAltIcon from '../icons/GlobeAltIcon';
 import TextSelectionPopup from '../ui/TextSelectionPopup';
 import ExpansionPopup from './ExpansionPopup';
-import CrucibleTaskTray from './CrucibleTaskTray';
+// Fix: Remove unused import for CrucibleTaskTray, which is not a module.
+import { ExpansionSidebar } from './ExpansionSidebar';
 
 // --- Brainstorming Phase Component ---
 const BrainstormingPhase: React.FC<{ session: NonNullable<ReturnType<typeof useCrucibleStore>['sessions'][0]> }> = ({ session }) => {
@@ -35,22 +36,30 @@ const BrainstormingPhase: React.FC<{ session: NonNullable<ReturnType<typeof useC
             {/* Divergent Thoughts */}
             <div>
                 <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">1. Brainstorm Concepts</h2>
-                <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Click concepts to add them to the reactor. Add your own ideas to the mix.</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Click a concept to add it to the reactor. Hover and click the ✨ to expand on an idea.</p>
                 <div className="flex flex-wrap gap-3">
                     {session.divergentThoughts.map((thought) => {
                         const isInReactor = session.reactorTerms.includes(thought);
                         return (
-                            <button 
-                                key={thought}
-                                onClick={() => handleToggleReactorTerm(thought)}
-                                className={`px-4 py-2 rounded-full font-medium text-sm border-2 transition-all duration-200 ${
-                                    isInReactor
-                                    ? 'bg-indigo-100 dark:bg-indigo-900/50 border-indigo-300 dark:border-indigo-700 text-indigo-800 dark:text-indigo-200'
-                                    : 'bg-white dark:bg-slate-700/50 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:border-indigo-500 dark:hover:border-indigo-500'
-                                }`}
-                            >
-                                {thought}
-                            </button>
+                            <div key={thought} className="relative group">
+                                <button 
+                                    onClick={() => handleToggleReactorTerm(thought)}
+                                    className={`pl-4 pr-5 py-2 rounded-full font-medium text-sm border-2 transition-all duration-200 ${
+                                        isInReactor
+                                        ? 'bg-indigo-100 dark:bg-indigo-900/50 border-indigo-300 dark:border-indigo-700 text-indigo-800 dark:text-indigo-200'
+                                        : 'bg-white dark:bg-slate-700/50 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:border-indigo-500 dark:hover:border-indigo-500'
+                                    }`}
+                                >
+                                    {thought}
+                                </button>
+                                <button
+                                    onClick={() => presenter.crucibleManager.expandSingleThought(session.id, thought)}
+                                    className="absolute top-1/2 -right-1 -translate-y-1/2 p-1 bg-white dark:bg-slate-700 rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
+                                    title={`Expand "${thought}"`}
+                                >
+                                    <SparklesIcon className="w-3.5 h-3.5 text-amber-500" />
+                                </button>
+                            </div>
                         );
                     })}
                 </div>
@@ -161,7 +170,7 @@ const CrucibleSessionView: React.FC = () => {
                     )}
                 </div>
             </div>
-            <CrucibleTaskTray sessionId={session.id} />
+            {showBrainstorming && <ExpansionSidebar session={session} />}
         </div>
     );
 };

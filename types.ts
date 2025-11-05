@@ -175,7 +175,7 @@ export interface Exploration {
   wikiEntry?: WikiEntry;
 }
 
-// --- Crucible / Story Engine Types ---
+// --- Crucible / Virtual Creation Types ---
 export interface CrucibleStoryStructure {
   title: string;
   logline: string;
@@ -206,6 +206,13 @@ export interface CrucibleTask {
   result?: string;
 }
 
+export interface CrucibleExpansionState {
+    id: string;
+    term: string;
+    thoughts: string[];
+    isLoading: boolean;
+}
+
 export interface CrucibleSession {
   id: string;
   topic: string;
@@ -214,4 +221,5 @@ export interface CrucibleSession {
   reactorTerms: string[];
   contentBlocks: CrucibleContentBlock[];
   isLoading: 'thoughts' | 'story' | false;
+  expansionHistory: CrucibleExpansionState[];
 }

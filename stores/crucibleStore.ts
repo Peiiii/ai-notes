@@ -1,20 +1,21 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { CrucibleSession, CrucibleContentBlock, CrucibleTask } from '../types';
+import { CrucibleSession, CrucibleContentBlock, CrucibleExpansionState } from '../types';
 
 interface CrucibleState {
   sessions: CrucibleSession[];
   activeSessionId: string | null;
-  tasks: CrucibleTask[]; // Non-persisted task queue
   addSession: (session: CrucibleSession) => void;
   updateSession: (sessionId: string, updates: Partial<Omit<CrucibleSession, 'id'>>) => void;
   deleteSession: (sessionId: string) => void;
   setActiveSessionId: (sessionId: string | null) => void;
-  // New methods for iterative content
   addContentBlock: (sessionId: string, block: CrucibleContentBlock, parentBlockId?: string) => void;
-  addTask: (task: CrucibleTask) => void;
-  updateTask: (taskId: string, updates: Partial<Omit<CrucibleTask, 'id'>>) => void;
-  removeTask: (taskId: string) => void;
+  
+  // New methods for managing expansion history
+  addExpansion: (sessionId: string, expansion: CrucibleExpansionState) => void;
+  updateExpansion: (sessionId: string, expansionId: string, updates: Partial<Omit<CrucibleExpansionState, 'id'>>) => void;
+  removeExpansion: (sessionId: string, expansionId: string) => void;
+  clearExpansionHistory: (sessionId: string) => void;
 }
 
 export const useCrucibleStore = create<CrucibleState>()(
@@ -22,7 +23,6 @@ export const useCrucibleStore = create<CrucibleState>()(
     (set, get) => ({
       sessions: [],
       activeSessionId: null,
-      tasks: [], // Initialize tasks
       addSession: (session) => {
         set((state) => ({ sessions: [session, ...state.sessions] }));
       },
@@ -62,21 +62,50 @@ export const useCrucibleStore = create<CrucibleState>()(
             };
         });
       },
-      addTask: (task) => set(state => ({ tasks: [...state.tasks, task] })),
-      updateTask: (taskId, updates) => set(state => ({
-        tasks: state.tasks.map(t => t.id === taskId ? { ...t, ...updates } : t)
-      })),
-      removeTask: (taskId) => set(state => ({
-        tasks: state.tasks.filter(t => t.id !== taskId)
-      })),
+      
+      // --- Expansion History Management ---
+      addExpansion: (sessionId, expansion) => {
+        set(state => ({
+          sessions: state.sessions.map(s => 
+            s.id === sessionId 
+              ? { ...s, expansionHistory: [expansion, ...s.expansionHistory] }
+              : s
+          )
+        }));
+      },
+      updateExpansion: (sessionId, expansionId, updates) => {
+        set(state => ({
+          sessions: state.sessions.map(s => 
+            s.id === sessionId 
+              ? { 
+                  ...s, 
+                  expansionHistory: s.expansionHistory.map(e => 
+                    e.id === expansionId ? { ...e, ...updates } : e
+                  ) 
+                }
+              : s
+          )
+        }));
+      },
+      removeExpansion: (sessionId, expansionId) => {
+        set(state => ({
+          sessions: state.sessions.map(s => 
+            s.id === sessionId 
+              ? { ...s, expansionHistory: s.expansionHistory.filter(e => e.id !== expansionId) }
+              : s
+          )
+        }));
+      },
+      clearExpansionHistory: (sessionId) => {
+        set(state => ({
+          sessions: state.sessions.map(s => 
+            s.id === sessionId ? { ...s, expansionHistory: [] } : s
+          )
+        }));
+      },
     }),
     {
       name: 'ai-notes-crucible-sessions',
-      // Exclude 'tasks' from being persisted to localStorage
-      partialize: (state) => {
-        const { tasks, ...rest } = state;
-        return rest;
-      },
     }
   )
 );

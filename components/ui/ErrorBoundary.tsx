@@ -12,30 +12,30 @@ interface ErrorBoundaryState {
 
 // An ErrorBoundary is a class component that catches JavaScript errors anywhere in its child component tree.
 class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  // Fix: Use a constructor for state initialization. This is a more traditional and widely supported
-  // approach for class components, which can resolve issues where properties like 'props' and 'setState'
-  // are not correctly identified on the 'this' context by certain build tools.
-  constructor(props: ErrorBoundaryProps) {
-    super(props);
-    this.state = {
-      hasError: false,
-      error: null,
-      errorInfo: null,
-    };
-  }
+  // Fix: Initialize state as a class property instead of in a constructor.
+  // This is a more modern syntax and can resolve issues with `this` context in some build configurations.
+  // Fix: Removed redundant 'public' modifier.
+  state: ErrorBoundaryState = {
+    hasError: false,
+    error: null,
+    errorInfo: null,
+  };
 
-  public static getDerivedStateFromError(error: Error): Partial<ErrorBoundaryState> {
+  // Fix: Removed redundant 'public' modifier.
+  static getDerivedStateFromError(error: Error): Partial<ErrorBoundaryState> {
     // Update state so the next render will show the fallback UI.
     return { hasError: true, error };
   }
 
-  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+  // Fix: Removed 'public' modifier to fix issue where 'this.setState' was not found.
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     // You can also log the error to an error reporting service.
     console.error("Uncaught error:", error, errorInfo);
     this.setState({ errorInfo });
   }
 
-  public render() {
+  // Fix: Removed 'public' modifier to fix issue where 'this.props' was not found.
+  render() {
     if (this.state.hasError) {
       // You can render any custom fallback UI.
       return (
