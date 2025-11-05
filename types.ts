@@ -1,6 +1,6 @@
 
 
-export type ViewMode = 'editor' | 'studio' | 'chat' | 'wiki' | 'parliament';
+export type ViewMode = 'editor' | 'studio' | 'chat' | 'wiki' | 'parliament' | 'crucible';
 
 export const WIKI_ROOT_ID = 'wiki_root';
 
@@ -173,4 +173,32 @@ export interface Exploration {
   term: string;
   status: 'loading' | 'complete' | 'error' | 'visited';
   wikiEntry?: WikiEntry;
+}
+
+// --- Crucible / Story Engine Types ---
+export type ConceptOperator = 'generalize' | 'specify' | 'analogize' | 'synthesize' | 'reverse' | 'perspective';
+
+export interface CrucibleStoryStructure {
+  title: string;
+  logline: string;
+  worldview: string;
+  characters: {
+    name: string;
+    description: string;
+  }[];
+  outline: {
+    act_1: { title: string, plot_points: string[] };
+    act_2: { title: string, plot_points: string[] };
+    act_3: { title: string, plot_points: string[] };
+  };
+}
+
+export interface CrucibleSession {
+  id: string;
+  topic: string;
+  createdAt: number;
+  divergentThoughts: string[];
+  reactorTerms: string[];
+  storyStructure: CrucibleStoryStructure | null;
+  isLoading: 'thoughts' | 'expansion' | 'story' | false;
 }

@@ -1,4 +1,4 @@
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import React, { ErrorInfo, ReactNode } from 'react';
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -10,27 +10,30 @@ interface ErrorBoundaryState {
   errorInfo: ErrorInfo | null;
 }
 
-// Fix: Changed `React.Component` to a direct `Component` import to resolve
-// a potential module resolution issue where `setState` and `props` were not
-// being correctly inherited on the component instance.
-class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  state: ErrorBoundaryState = {
+// An ErrorBoundary is a class component that catches JavaScript errors anywhere in its child component tree.
+class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  // Fix: Initialize state using a class property instead of a constructor.
+  // This resolves the errors where 'state', 'props', and 'setState' were not found.
+  public state: ErrorBoundaryState = {
     hasError: false,
     error: null,
     errorInfo: null,
   };
 
-  static getDerivedStateFromError(error: Error): Partial<ErrorBoundaryState> {
-    return { hasError: true, error: error };
+  public static getDerivedStateFromError(error: Error): Partial<ErrorBoundaryState> {
+    // Update state so the next render will show the fallback UI.
+    return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    // You can also log the error to an error reporting service.
     console.error("Uncaught error:", error, errorInfo);
-    this.setState({ errorInfo: errorInfo });
+    this.setState({ errorInfo });
   }
 
-  render() {
+  public render() {
     if (this.state.hasError) {
+      // You can render any custom fallback UI.
       return (
         <div className="h-screen w-screen flex items-center justify-center p-4 bg-slate-100 dark:bg-slate-900">
           <div className="max-w-2xl w-full bg-white dark:bg-slate-800 p-8 rounded-lg shadow-lg border border-red-500/30">

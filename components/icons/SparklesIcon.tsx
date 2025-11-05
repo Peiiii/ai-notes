@@ -1,6 +1,7 @@
 
 import React from 'react';
 
+// Note: This is a different icon from the one in `icons-material`. This one is for general UI sparkle effects.
 const SparklesIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"

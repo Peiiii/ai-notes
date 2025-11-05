@@ -15,6 +15,7 @@ import HoverPopup from '../ui/HoverPopup';
 import ChevronDoubleLeftIcon from '../icons/ChevronDoubleLeftIcon';
 import ChevronDoubleRightIcon from '../icons/ChevronDoubleRightIcon';
 import DocumentTextIcon from '../icons/DocumentTextIcon';
+import BeakerIcon from '../icons/BeakerIcon';
 
 const NoteList: React.FC = () => {
   const presenter = usePresenter();
@@ -35,6 +36,7 @@ const NoteList: React.FC = () => {
       'chat': presenter.handleShowChat,
       'wiki': presenter.handleShowWiki,
       'parliament': presenter.handleShowParliament,
+      'crucible': presenter.handleShowCrucible,
       'editor': presenter.handleReturnToEditor
     };
     const isActive = viewMode === view;
@@ -92,6 +94,9 @@ const NoteList: React.FC = () => {
           <NavButton view="chat" title="Chat" icon={<ChatBubbleLeftRightIcon className="w-5 h-5 flex-shrink-0" />} />
           <NavButton view="wiki" title="Wiki" icon={<BookOpenIcon className="w-5 h-5 flex-shrink-0" />} />
           <NavButton view="parliament" title="Parliament" icon={<UsersIcon className="w-5 h-5 flex-shrink-0" />} />
+        </div>
+         <div className="mt-2">
+            <NavButton view="crucible" title="Crucible" icon={<BeakerIcon className="w-5 h-5 flex-shrink-0" />} />
         </div>
       </div>
       <div className="flex-1 overflow-y-auto px-4 pb-4">

@@ -48,6 +48,8 @@ export async function getLiveInsights(textSnippet: string, allNotes: Note[]): Pr
 - Use 'find_related_notes' to link to existing knowledge. Be liberal; it's better to show a loosely related note than nothing.
 - Use 'identify_action_item' to capture potential tasks.
 - Use 'identify_wiki_concept' to suggest knowledge base expansion for key terms.
+- CRITICAL: You MUST identify and use the primary language of the user's text snippet for all your tool call arguments. For example, if the user is writing in Chinese, the 'topic', 'task', and 'term' you generate must also be in Chinese.
+
 You have access to the titles of all notes for context.
 
 All Note Titles:

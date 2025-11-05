@@ -30,6 +30,7 @@ export async function generateThreadChatResponse(note: Note, question: string): 
     const prompt = `You are an AI assistant focused on a single note. Your purpose is to help the user with the content of *this specific note*.
 You can help them rewrite, brainstorm, summarize, or answer questions about it. Be helpful and conversational.
 Base your answer *only* on the note's content and the recent conversation history provided.
+CRITICAL: You MUST respond in the same language as the "USER'S QUESTION".
 
 --- CONVERSATION HISTORY ---
 ${historyContent}

@@ -10,6 +10,7 @@ import ChatView from './components/chat/ChatView';
 import PulseReportModal from './components/studio/PulseReportModal';
 import WikiStudio from './components/wiki/WikiStudio';
 import ParliamentView from './components/parliament/ParliamentView';
+import CrucibleView from './components/crucible/CrucibleView';
 import ErrorBoundary from './components/ui/ErrorBoundary';
 import CreateCommandModal from './components/chat/CreateCommandModal';
 import AddAgentsModal from './components/chat/AddAgentsModal';
@@ -37,6 +38,8 @@ function AppContent() {
         return <WikiStudio />;
       case 'parliament':
         return <ParliamentView />;
+      case 'crucible':
+        return <CrucibleView />;
       case 'editor':
       default:
         return <NoteEditor key={activeNoteId} />;

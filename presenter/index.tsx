@@ -1,4 +1,6 @@
 
+
+
 import React, { createContext, useContext, useEffect, useRef } from 'react';
 import { useAppStore } from '../stores/appStore';
 import { useNotesStore } from '../stores/notesStore';
@@ -13,6 +15,7 @@ import { WikiManager } from '../managers/WikiManager';
 import { ParliamentManager } from '../managers/ParliamentManager';
 import { CommandManager } from '../managers/CommandManager';
 import { InsightManager } from '../managers/InsightManager';
+import { CrucibleManager } from '../managers/CrucibleManager';
 import { KnowledgeCard, Note, WikiEntry, WIKI_ROOT_ID, DebateSynthesis, Todo, AIAgent, ChatMessage, DiscussionMode, ProactiveSuggestion, PresetChat, ExplorationPanelMode } from '../types';
 import { Command } from '../commands';
 import { getCreatorAgentResponse, getEditorAgentResponse } from '../services/agentAIService';
@@ -36,6 +39,7 @@ export class Presenter {
   parliamentManager = new ParliamentManager();
   commandManager = new CommandManager();
   insightManager = new InsightManager();
+  crucibleManager = new CrucibleManager();
 
   constructor() {
     this.chatManager = new ChatManager(this.notesManager);
@@ -100,6 +104,11 @@ export class Presenter {
     this.appManager.setViewMode('parliament');
     this.appManager.setActiveNoteId(null);
     this.parliamentManager.fetchTopics();
+  };
+
+  handleShowCrucible = () => {
+    this.appManager.setViewMode('crucible');
+    this.appManager.setActiveNoteId(null);
   };
 
   handleCardToNote = (card: KnowledgeCard) => {
