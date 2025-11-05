@@ -10,7 +10,7 @@ interface ExpansionSidebarProps {
 
 export const ExpansionSidebar: React.FC<ExpansionSidebarProps> = ({ session }) => {
   const presenter = usePresenter();
-  const { expansionHistory } = session;
+  const { expansionHistory = [] } = session;
 
   return (
     <div className="w-80 md:w-96 flex-shrink-0 h-full flex flex-col border-l border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 animate-in slide-in-from-right-10 duration-300">
