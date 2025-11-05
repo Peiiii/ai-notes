@@ -1,7 +1,7 @@
 import { GenerateJsonParams } from './providers/types';
 import { getConfig } from './aiService';
 import { Type } from "@google/genai";
-import { CrucibleStoryStructure, ConceptOperator } from '../types';
+import { CrucibleStoryStructure } from '../types';
 
 // Schema for generating divergent thoughts
 const divergentThoughtsSchema = {
@@ -40,47 +40,70 @@ export const generateDivergentThoughts = async (topic: string): Promise<string[]
     return provider.generateJson(params);
 };
 
-
-// NEW function for concept operators
-const expansionSchema = {
+// NEW function for suggesting actions
+const suggestedActionsSchema = {
     type: Type.ARRAY,
-    description: "A list of 3-5 new, related words or short phrases based on the operator.",
+    description: "A list of 4-5 diverse, one-word or short-phrase creative actions.",
     items: { type: Type.STRING }
 };
 
-export const expandWithOperator = async (terms: string[], operator: ConceptOperator): Promise<string[]> => {
-    const operatorDescriptions: Record<ConceptOperator, string> = {
-        generalize: "Take the core idea of the terms and find a broader, more abstract category or concept they belong to (go up one level of abstraction).",
-        specify: "Take the core idea of the terms and provide more specific examples, instances, or components (go down one level of abstraction).",
-        analogize: "Find a compelling analogy or metaphor for the core idea from a completely different domain (e.g., explain a physics concept using a music analogy).",
-        synthesize: "Combine the terms into a new, single, hybrid concept or a short phrase that encapsulates their fusion.",
-        reverse: "Find the antonyms, opposites, or a complete inversion of the core idea presented by the terms.",
-        perspective: "Imagine how different archetypes (e.g., an artist, an engineer, a child) would view these concepts. Provide short phrases from their perspectives."
-    };
-    
+export const suggestActions = async (triggerText: string): Promise<string[]> => {
     const prompt = `
-    You are a creative thinking assistant. Your task is to expand on a set of concepts using a specific thinking operator.
+    Based on the following selected text from a story, suggest 4-5 diverse, creative, one-word or short-phrase actions to expand upon it.
 
-    **CRITICAL LANGUAGE RULE:** You MUST respond in the same language as the user's provided 'Concepts'.
+    **Selected Text:** "${triggerText}"
 
-    **Concepts:** "${terms.join('", "')}"
-
-    **Thinking Operator to Apply:** ${operator.charAt(0).toUpperCase() + operator.slice(1)}
-    **Operator Definition:** ${operatorDescriptions[operator]}
+    **Examples of Actions:**
+    - "Expand"
+    - "Add a twist"
+    - "Foreshadow"
+    - "Describe the setting"
+    - "Introduce a conflict"
+    - "Reveal a secret"
+    - "Add 3-part reversal"
 
     **Task:**
-    Based on the operator, generate a list of 3-5 new, creative, and relevant words or short phrases that expand upon the initial concepts.
+    Generate a list of actions that are relevant to the selected text. The actions should be creative and varied.
 
     Respond ONLY with a valid JSON array of strings.
     `;
 
-    const { provider, model } = getConfig('proactiveSuggestions'); 
-    const params: GenerateJsonParams = { model, prompt, schema: expansionSchema };
+    const { provider, model } = getConfig('proactiveSuggestions');
+    const params: GenerateJsonParams = { model, prompt, schema: suggestedActionsSchema };
     return provider.generateJson(params);
 };
 
+// NEW function for iterative expansion
+export const generateExpansion = async (context: { parentContent: string; triggerText: string; }, prompt: string): Promise<string> => {
+    const aiPrompt = `
+    You are a collaborative creative writer. Your task is to continue a story based on a user's prompt and a selected piece of text.
 
-// NEW function for story structure
+    **CRITICAL LANGUAGE RULE:** You MUST write the new section in the same language as the provided 'Full Context'.
+
+    **Full Context of the Story So Far:**
+    ---
+    ${context.parentContent}
+    ---
+
+    **The User has highlighted this specific text:** "${context.triggerText}"
+
+    **User's Instruction for the next section:** "${prompt}"
+
+    **Task:**
+    Write the next section of the story. The new section should seamlessly follow the instruction, be contextually aware of the full story, and be written in engaging, high-quality prose.
+
+    - Format your response in clean Markdown.
+    - Do not repeat the user's prompt or the context.
+    - Respond ONLY with the newly generated story content.
+    `;
+
+    const { provider, model } = getConfig('agent_final_answer');
+    // Using generateText as we expect a markdown string, not JSON
+    return provider.generateText({ model, prompt: aiPrompt });
+};
+
+
+// Function for initial story structure
 const storyStructureSchema = {
     type: Type.OBJECT,
     properties: {

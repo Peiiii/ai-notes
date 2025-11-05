@@ -176,8 +176,6 @@ export interface Exploration {
 }
 
 // --- Crucible / Story Engine Types ---
-export type ConceptOperator = 'generalize' | 'specify' | 'analogize' | 'synthesize' | 'reverse' | 'perspective';
-
 export interface CrucibleStoryStructure {
   title: string;
   logline: string;
@@ -193,12 +191,27 @@ export interface CrucibleStoryStructure {
   };
 }
 
+export interface CrucibleContentBlock {
+  id: string;
+  type: 'structure' | 'expansion';
+  content: CrucibleStoryStructure | string;
+}
+
+export interface CrucibleTask {
+  id: string;
+  status: 'loading' | 'complete' | 'error';
+  prompt: string;
+  parentBlockId: string;
+  triggerText: string;
+  result?: string;
+}
+
 export interface CrucibleSession {
   id: string;
   topic: string;
   createdAt: number;
   divergentThoughts: string[];
   reactorTerms: string[];
-  storyStructure: CrucibleStoryStructure | null;
-  isLoading: 'thoughts' | 'expansion' | 'story' | false;
+  contentBlocks: CrucibleContentBlock[];
+  isLoading: 'thoughts' | 'story' | false;
 }
