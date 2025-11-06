@@ -1,5 +1,5 @@
-
 import React, { useState, useRef, useCallback, useEffect, ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 
 interface TextSelectionPopupProps {
   children: React.ReactNode;
@@ -29,9 +29,13 @@ const TextSelectionPopup: React.FC<TextSelectionPopupProps> = ({
 
             if (containerRef.current && selectedNode && containerRef.current.contains(selectedNode)) {
                 const rect = range.getBoundingClientRect();
+                // Use viewport coordinates for a fixed-position popup.
+                // getBoundingClientRect() already returns viewport-relative values,
+                // so do NOT add window scroll offsets here, otherwise the popup
+                // may jump far away (often to the bottom of the page).
                 setPopup({
-                    top: rect.bottom + window.scrollY + 8,
-                    left: rect.left + window.scrollX + rect.width / 2,
+                    top: rect.bottom + 8,
+                    left: rect.left + rect.width / 2,
                     text: selectionText,
                 });
             } else {
@@ -66,15 +70,16 @@ const TextSelectionPopup: React.FC<TextSelectionPopupProps> = ({
   return (
     <div ref={containerRef}>
       {children}
-      {popup && (
+      {popup && createPortal(
         <div
           ref={popupRef}
           onMouseUp={(e) => e.stopPropagation()}
           style={{ top: `${popup.top}px`, left: `${popup.left}px`, transform: 'translateX(-50%)' }}
-          className="fixed z-10"
+          className="fixed z-50"
         >
           {renderPopupContent({ text: popup.text, close: closePopup })}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
