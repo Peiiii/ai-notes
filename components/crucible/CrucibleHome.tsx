@@ -43,18 +43,18 @@ const CrucibleHome: React.FC = () => {
             value={topicInput}
             onChange={(e) => setTopicInput(e.target.value)}
             placeholder="Start with a new topic..."
-            className="flex-1 w-full bg-transparent text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 rounded-full pl-5 pr-2 py-3 text-base focus:outline-none disabled:opacity-50"
+            className="flex-1 w-full bg-transparent text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 rounded-full pl-5 pr-2 py-2 text-base focus:outline-none disabled:opacity-50"
             disabled={isLoading}
           />
           <button
             type="submit"
             disabled={!topicInput.trim() || isLoading}
-            className="p-4 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 disabled:bg-slate-300 dark:disabled:bg-slate-600 disabled:cursor-not-allowed transition-colors flex-shrink-0 w-14 h-14 flex items-center justify-center"
+            className="p-3 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 disabled:bg-slate-300 dark:disabled:bg-slate-600 disabled:cursor-not-allowed transition-colors flex-shrink-0 w-11 h-11 flex items-center justify-center"
           >
             {isLoading ? (
-              <div className="w-6 h-6 border-2 border-white/50 border-t-white rounded-full animate-spin"></div>
+              <div className="w-5 h-5 border-2 border-white/50 border-t-white rounded-full animate-spin"></div>
             ) : (
-              <PaperAirplaneIcon className="w-6 h-6" />
+              <PaperAirplaneIcon className="w-5 h-5" />
             )}
           </button>
         </form>

@@ -6,31 +6,43 @@ import { CrucibleStoryStructure } from '../types';
 // Schema for generating divergent thoughts
 const divergentThoughtsSchema = {
     type: Type.ARRAY,
-    description: "A list of 15-20 diverse, associative, and thought-provoking words or short phrases related to the user's topic.",
+    description: "A list of 30-40 diverse, associative, and thought-provoking words or short phrases related to the user's topic.",
     items: { type: Type.STRING }
 };
 
 // New function to generate initial ideas
 export const generateDivergentThoughts = async (topic: string): Promise<string[]> => {
     const prompt = `
-    You are a Creative Catalyst AI. Your goal is to shatter creative blocks by generating a wide spectrum of associations for a given topic.
+    You are 'Synapse', an AI Creative Catalyst. Your purpose is to bridge the gap between the known and the unknown, sparking creativity by providing a balanced blend of both directly relevant (convergent) and wildly imaginative (divergent) associations for any given topic.
 
     **CRITICAL LANGUAGE RULE:**
     1.  First, identify the primary language of the user's topic provided below.
-    2.  Your entire response, including all generated words and phrases for all categories, MUST be in that single identified language.
-    3.  For example, if the topic is in Chinese, all generated terms MUST be in Chinese. If the topic is in Spanish, all terms MUST be in Spanish. DO NOT revert to English unless English is the language of the topic.
+    2.  Your entire response, including all generated words and phrases, MUST be in that single identified language.
 
     **User's Topic:** "${topic}"
 
     **Your Task:**
-    Generate a rich list of 15-20 associated words or short phrases (2-5 words max) based on the topic. The list MUST be highly diverse and include a mix of the following categories, all in the identified language:
+    Generate a list of 30-40 associated words or short phrases. Your goal is a balance between foundational ideas and creative sparks.
+    -   About one-third of your suggestions should be **Convergent**: directly related, thematic, and concrete.
+    -   The remaining two-thirds should be **Divergent**: metaphorical, paradoxical, sensory, and unexpected.
 
-    1.  **Direct Associations (4-5 terms):** Words that are directly and semantically related to the topic.
-    2.  **Imaginative & Metaphorical (4-5 terms):** Poetic or metaphorical concepts related to the topic.
-    3.  **Philosophical & Abstract (4-5 terms):** High-level, abstract, or philosophical ideas related to the topic.
-    4.  **Stochastic Wild Cards (2-3 terms):** Completely random and unrelated words to force novel connections. These wild cards MUST also be in the identified language and should not have any obvious link to the topic.
+    Vary the length of your phrases from single words to more evocative phrases (up to 7 words). The list must be a mix of the following categories, all in the identified language:
 
-    Combine all generated terms into a single, shuffled JSON array. Variety is paramount. Avoid full sentences.
+    **--- Convergent Ideas (Foundation) ---**
+    1.  **Direct & Thematic (6-7 terms):** Core concepts, synonyms, and direct themes associated with the topic. (e.g., for "Ocean": vastness, marine life, exploration, the deep).
+    2.  **Concrete & Mundane (4-5 terms):** Tangible, everyday objects or elements related to the topic. (e.g., for "Ocean": salt, fishing net, seashell, shipping container).
+
+    **--- Divergent Ideas (Sparks) ---**
+    3.  **Sensory & Visceral (4-5 terms):** Evoke specific tastes, textures, sounds, smells, or physical feelings. (e.g., for "Ocean": the sting of cold spray, pressure in the ears, taste of brine).
+    4.  **Metaphorical & Abstract (4-5 terms):** Connect the topic to larger concepts, emotions, or philosophical ideas. (e.g., for "Ocean": liquid memory, the subconscious, a mirror for the sky).
+    5.  **Actions & Processes (3-4 terms):** What does the topic do? What is done to it? (e.g., for "Ocean": swallowing coastlines, breathing with the moon, hiding secrets).
+    6.  **Paradoxical & Contradictory (3-4 terms):** Ideas that seem to conflict with the topic. (e.g., for "Ocean": a silent roar, the desert of the sea, crushing weightlessness).
+    7.  **Mythic & Historical (3-4 terms):** Allusions to myths, history, folklore, or archetypes. (e.g., for "Ocean": sunken cities, Leviathan's slumber, ghost ships).
+    8.  **Technological & Futuristic (3-4 terms):** Juxtapose with sci-fi or future concepts. (e.g., for "Ocean": data-currents, bioluminescent data farms, submersible drones).
+    9.  **Scale & Perspective (2-3 terms):** View from a microscopic or macroscopic viewpoint. (e.g., for "Ocean": a single plankton, the view from orbit, a drop of water containing worlds).
+    10. **Stochastic Wild Cards (1-2 terms):** Completely random, unrelated words to force novel connections. (e.g., for "Ocean": library, melody, velvet).
+
+    Combine all generated terms into a single, shuffled JSON array.
 
     Respond ONLY with a valid JSON array of strings that conforms to the schema. Remember the CRITICAL LANGUAGE RULE.
     `;
