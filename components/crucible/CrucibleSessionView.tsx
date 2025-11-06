@@ -115,7 +115,7 @@ const WritingFlowPhase: React.FC<{ session: NonNullable<ReturnType<typeof useCru
     
     return (
         <div className="space-y-4">
-            {session.contentBlocks.map(block => (
+            {(session.contentBlocks || []).map(block => (
                 <div key={block.id} className="bg-white dark:bg-slate-800/50 p-6 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
                     <TextSelectionPopup
                         renderPopupContent={({ text, close }) => (
@@ -170,8 +170,8 @@ const CrucibleSessionView: React.FC = () => {
                     )}
                 </div>
             </div>
-            {showBrainstorming && session.expansionHistory.length > 0 && <ExpansionSidebar session={session} />}
-            {!showBrainstorming && session.tasks.length > 0 && <CrucibleTaskTray session={session} />}
+            {showBrainstorming && (session.expansionHistory || []).length > 0 && <ExpansionSidebar session={session} />}
+            {!showBrainstorming && (session.tasks || []).length > 0 && <CrucibleTaskTray session={session} />}
         </div>
     );
 };
