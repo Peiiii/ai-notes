@@ -73,7 +73,7 @@ export const useCrucibleStore = create<CrucibleState>()(
         set(state => ({
           sessions: state.sessions.map(s => 
             s.id === sessionId 
-              ? { ...s, expansionHistory: [expansion, ...s.expansionHistory] }
+              ? { ...s, expansionHistory: [expansion, ...(s.expansionHistory || [])] }
               : s
           )
         }));
@@ -84,7 +84,7 @@ export const useCrucibleStore = create<CrucibleState>()(
             s.id === sessionId 
               ? { 
                   ...s, 
-                  expansionHistory: s.expansionHistory.map(e => 
+                  expansionHistory: (s.expansionHistory || []).map(e => 
                     e.id === expansionId ? { ...e, ...updates } : e
                   ) 
                 }
@@ -96,7 +96,7 @@ export const useCrucibleStore = create<CrucibleState>()(
         set(state => ({
           sessions: state.sessions.map(s => 
             s.id === sessionId 
-              ? { ...s, expansionHistory: s.expansionHistory.filter(e => e.id !== expansionId) }
+              ? { ...s, expansionHistory: (s.expansionHistory || []).filter(e => e.id !== expansionId) }
               : s
           )
         }));
@@ -114,7 +114,7 @@ export const useCrucibleStore = create<CrucibleState>()(
         set(state => ({
           sessions: state.sessions.map(s =>
             s.id === sessionId
-              ? { ...s, tasks: [task, ...s.tasks] }
+              ? { ...s, tasks: [task, ...(s.tasks || [])] }
               : s
           )
         }));
@@ -125,7 +125,7 @@ export const useCrucibleStore = create<CrucibleState>()(
             s.id === sessionId
               ? {
                   ...s,
-                  tasks: s.tasks.map(t =>
+                  tasks: (s.tasks || []).map(t =>
                     t.id === taskId ? { ...t, ...updates } : t
                   )
                 }
@@ -137,7 +137,7 @@ export const useCrucibleStore = create<CrucibleState>()(
         set(state => ({
           sessions: state.sessions.map(s =>
             s.id === sessionId
-              ? { ...s, tasks: s.tasks.filter(t => t.id !== taskId) }
+              ? { ...s, tasks: (s.tasks || []).filter(t => t.id !== taskId) }
               : s
           )
         }));
