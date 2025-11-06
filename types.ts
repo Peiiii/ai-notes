@@ -222,4 +222,5 @@ export interface CrucibleSession {
   contentBlocks: CrucibleContentBlock[];
   isLoading: 'thoughts' | 'story' | false;
   expansionHistory: CrucibleExpansionState[];
+  tasks: CrucibleTask[];
 }

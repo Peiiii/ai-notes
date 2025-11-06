@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { CrucibleSession, CrucibleContentBlock, CrucibleExpansionState } from '../types';
+import { CrucibleSession, CrucibleContentBlock, CrucibleExpansionState, CrucibleTask } from '../types';
 
 interface CrucibleState {
   sessions: CrucibleSession[];
@@ -16,6 +16,11 @@ interface CrucibleState {
   updateExpansion: (sessionId: string, expansionId: string, updates: Partial<Omit<CrucibleExpansionState, 'id'>>) => void;
   removeExpansion: (sessionId: string, expansionId: string) => void;
   clearExpansionHistory: (sessionId: string) => void;
+
+  // Methods for managing active tasks
+  addTask: (sessionId: string, task: CrucibleTask) => void;
+  updateTask: (sessionId: string, taskId: string, updates: Partial<Omit<CrucibleTask, 'id'>>) => void;
+  removeTask: (sessionId: string, taskId: string) => void;
 }
 
 export const useCrucibleStore = create<CrucibleState>()(
@@ -100,6 +105,40 @@ export const useCrucibleStore = create<CrucibleState>()(
         set(state => ({
           sessions: state.sessions.map(s => 
             s.id === sessionId ? { ...s, expansionHistory: [] } : s
+          )
+        }));
+      },
+
+      // --- Task Management ---
+      addTask: (sessionId, task) => {
+        set(state => ({
+          sessions: state.sessions.map(s =>
+            s.id === sessionId
+              ? { ...s, tasks: [task, ...s.tasks] }
+              : s
+          )
+        }));
+      },
+      updateTask: (sessionId, taskId, updates) => {
+        set(state => ({
+          sessions: state.sessions.map(s =>
+            s.id === sessionId
+              ? {
+                  ...s,
+                  tasks: s.tasks.map(t =>
+                    t.id === taskId ? { ...t, ...updates } : t
+                  )
+                }
+              : s
+          )
+        }));
+      },
+      removeTask: (sessionId, taskId) => {
+        set(state => ({
+          sessions: state.sessions.map(s =>
+            s.id === sessionId
+              ? { ...s, tasks: s.tasks.filter(t => t.id !== taskId) }
+              : s
           )
         }));
       },

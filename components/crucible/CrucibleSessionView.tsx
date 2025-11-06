@@ -11,7 +11,7 @@ import MarkdownRenderer from '../ui/MarkdownRenderer';
 import GlobeAltIcon from '../icons/GlobeAltIcon';
 import TextSelectionPopup from '../ui/TextSelectionPopup';
 import ExpansionPopup from './ExpansionPopup';
-// Fix: Remove unused import for CrucibleTaskTray, which is not a module.
+import CrucibleTaskTray from './CrucibleTaskTray';
 import { ExpansionSidebar } from './ExpansionSidebar';
 
 // --- Brainstorming Phase Component ---
@@ -170,7 +170,8 @@ const CrucibleSessionView: React.FC = () => {
                     )}
                 </div>
             </div>
-            {showBrainstorming && <ExpansionSidebar session={session} />}
+            {showBrainstorming && session.expansionHistory.length > 0 && <ExpansionSidebar session={session} />}
+            {!showBrainstorming && session.tasks.length > 0 && <CrucibleTaskTray session={session} />}
         </div>
     );
 };

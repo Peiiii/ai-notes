@@ -1,3 +1,4 @@
+
 import React, { ErrorInfo, ReactNode } from 'react';
 
 interface ErrorBoundaryProps {
@@ -23,15 +24,15 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
     return { hasError: true, error };
   }
 
-  // Fix: Converted to a standard class method to ensure `this` context is correctly handled by React's lifecycle.
-  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+  // Fix: Converted to an arrow function to ensure `this` context is correctly bound.
+  componentDidCatch = (error: Error, errorInfo: ErrorInfo) => {
     // You can also log the error to an error reporting service.
     console.error("Uncaught error:", error, errorInfo);
     this.setState({ errorInfo });
   }
 
-  // Fix: Converted to a standard class method to ensure `this` context is correctly handled by React's lifecycle.
-  render() {
+  // Fix: Converted to an arrow function to ensure `this` context is correctly bound.
+  render = () => {
     if (this.state.hasError) {
       // You can render any custom fallback UI.
       return (

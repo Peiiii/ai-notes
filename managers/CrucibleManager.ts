@@ -1,6 +1,6 @@
 import { useCrucibleStore } from '../stores/crucibleStore';
 import * as crucibleAIService from '../services/crucibleAIService';
-import { CrucibleSession, CrucibleContentBlock } from '../types';
+import { CrucibleSession, CrucibleContentBlock, CrucibleStoryStructure, CrucibleTask } from '../types';
 
 export class CrucibleManager {
   startNewSession = async (topic: string) => {
@@ -13,6 +13,7 @@ export class CrucibleManager {
       contentBlocks: [],
       isLoading: 'thoughts',
       expansionHistory: [],
+      tasks: [],
     };
     
     useCrucibleStore.getState().addSession(newSession);
@@ -116,10 +117,74 @@ export class CrucibleManager {
   };
   
   startExpansion = async (sessionId: string, parentBlockId: string, triggerText: string, prompt: string) => {
-    // This function's logic would need a non-persistent task store to work correctly,
-    // which has been removed for simplicity in this refactor.
-    // For now, we'll just log that it was called.
-    console.log(`Expansion triggered for session ${sessionId} with prompt: "${prompt}"`);
+    const { sessions, addTask, updateTask } = useCrucibleStore.getState();
+    const session = sessions.find(s => s.id === sessionId);
+    const parentBlock = session?.contentBlocks.find(b => b.id === parentBlockId);
+
+    if (!session || !parentBlock) {
+        console.error("Could not find session or parent block for expansion.");
+        return;
+    }
+
+    const newTaskId = crypto.randomUUID();
+    const newTask: CrucibleTask = {
+        id: newTaskId,
+        status: 'loading',
+        prompt,
+        parentBlockId,
+        triggerText,
+    };
+
+    addTask(sessionId, newTask);
+
+    try {
+        const storyToString = (s: CrucibleStoryStructure): string => {
+            let text = `# ${s.title}\n\n**Logline:** ${s.logline}\n\n## Worldview\n${s.worldview}\n\n## Characters\n`;
+            s.characters.forEach(c => { text += `### ${c.name}\n${c.description}\n\n`; });
+            text += `## Outline\n### Act 1: ${s.outline.act_1.title}\n` + s.outline.act_1.plot_points.map(p => `- ${p}`).join('\n');
+            text += `\n### Act 2: ${s.outline.act_2.title}\n` + s.outline.act_2.plot_points.map(p => `- ${p}`).join('\n');
+            text += `\n### Act 3: ${s.outline.act_3.title}\n` + s.outline.act_3.plot_points.map(p => `- ${p}`).join('\n');
+            return text;
+        };
+
+        const parentContent = typeof parentBlock.content === 'string'
+            ? parentBlock.content
+            : storyToString(parentBlock.content as CrucibleStoryStructure);
+
+        const expansionContent = await crucibleAIService.generateExpansion({ parentContent, triggerText }, prompt);
+
+        updateTask(sessionId, newTaskId, {
+            status: 'complete',
+            result: expansionContent,
+        });
+    } catch (error) {
+        console.error("Failed to generate expansion:", error);
+        updateTask(sessionId, newTaskId, {
+            status: 'error',
+            result: `> **Error:** Failed to generate expansion for prompt: "${prompt}"`,
+        });
+    }
+  };
+
+  acceptExpansionResult = (sessionId: string, taskId: string) => {
+    const { sessions, addContentBlock, removeTask } = useCrucibleStore.getState();
+    const session = sessions.find(s => s.id === sessionId);
+    const task = session?.tasks.find(t => t.id === taskId);
+
+    if (!session || !task || !task.result) return;
+    
+    const newBlock: CrucibleContentBlock = {
+        id: crypto.randomUUID(),
+        type: 'expansion',
+        content: task.result,
+    };
+
+    addContentBlock(sessionId, newBlock, task.parentBlockId);
+    removeTask(sessionId, taskId);
+  };
+
+  dismissTask = (sessionId: string, taskId: string) => {
+      useCrucibleStore.getState().removeTask(sessionId, taskId);
   };
 
 
